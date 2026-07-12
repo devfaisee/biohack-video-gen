@@ -12,14 +12,14 @@ function App() {
     setLoading(true);
     try {
       // Assuming backend runs on port 5000 locally
-      const res = await axios.post('http://localhost:5000/api/generate', {
+      const res = await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/generate', {
         durationMinutes: duration,
         format: format
       });
       
       setResult({
         ...res.data,
-        videoUrl: \`http://localhost:5000\${res.data.videoUrl}\`
+        videoUrl: \`https://biohack-video-gen-server-production.up.railway.app\${res.data.videoUrl}\`
       });
     } catch (error) {
       console.error('Error generating video:', error);
