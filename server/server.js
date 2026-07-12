@@ -83,7 +83,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         addLog("Generating script via Grok 4.5 (OpenRouter)...");
         const chatCompletion = await openai.chat.completions.create({
-            model: "x-ai/grok-2-1212", 
+            model: "x-ai/grok-4.5", 
             messages: [{ role: "user", content: systemPrompt }]
         });
 
