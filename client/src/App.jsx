@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Sparkles, Play, Video } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles, Play, Video, Terminal } from 'lucide-react';
 import axios from 'axios';
 
 function App() {
@@ -7,11 +7,29 @@ function App() {
   const [duration, setDuration] = useState(1);
   const [format, setFormat] = useState('horizontal');
   const [result, setResult] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const logsEndRef = useRef(null);
+
+  useEffect(() => {
+    const sse = new EventSource('https://biohack-video-gen-server-production.up.railway.app/api/logs');
+    sse.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      setLogs(prev => [...prev, data.log]);
+    };
+    return () => sse.close();
+  }, []);
+
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [logs]);
 
   const generateVideo = async () => {
     setLoading(true);
+    setLogs([]); // Clear previous logs
+    setResult(null);
     try {
-      // Assuming backend runs on port 5000 locally
       const res = await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/generate', {
         durationMinutes: duration,
         format: format
@@ -81,18 +99,32 @@ function App() {
           )}
         </button>
 
+        {/* Live Logs Terminal */}
+        <div className="terminal-container" style={{ marginTop: '2rem', background: '#000', borderRadius: '12px', overflow: 'hidden', border: '1px solid #333' }}>
+          <div className="terminal-header" style={{ background: '#111', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#888' }}>
+            <Terminal size={14} /> Server Logs Live
+          </div>
+          <div className="terminal-body" style={{ padding: '1rem', height: '200px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.85rem', color: '#0f0' }}>
+            {logs.map((log, i) => (
+              <div key={i} className="log-line" style={{ marginBottom: '0.25rem' }}>{`> ${log}`}</div>
+            ))}
+            {logs.length === 0 && <div style={{ color: '#555' }}>Waiting for logs...</div>}
+            <div ref={logsEndRef} />
+          </div>
+        </div>
+
         {result && (
-          <div className="result-card">
-            <h2 className="result-title">{result.title}</h2>
-            <p className="subtitle">{result.description}</p>
+          <div className="result-card" style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <h2 className="result-title" style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>{result.title}</h2>
+            <p className="subtitle" style={{ color: '#94a3b8' }}>{result.description}</p>
             
-            <div className="tags">
+            <div className="tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem' }}>
               {result.tags.map((tag, i) => (
-                <span key={i} className="tag">#{tag}</span>
+                <span key={i} className="tag" style={{ background: 'rgba(59,130,246,0.2)', color: '#93c5fd', padding: '0.25rem 0.75rem', borderRadius: '99px', fontSize: '0.75rem' }}>#{tag}</span>
               ))}
             </div>
 
-            <div className="video-player">
+            <div className="video-player" style={{ marginTop: '1.5rem', borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
               <video 
                 controls 
                 width="100%" 
