@@ -222,8 +222,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             clips[i] = { img: imgPath, audio: audioPath };
         };
 
-        // Process segments in chunks of 4 to avoid massive rate limit spikes
-        const CHUNK_SIZE = 4;
+        // Process API generation in chunks of 5
+        const CHUNK_SIZE = 5;
         for (let i = 0; i < scriptData.segments.length; i += CHUNK_SIZE) {
             const chunk = [];
             for (let j = i; j < i + CHUNK_SIZE && j < scriptData.segments.length; j++) {
@@ -234,31 +234,42 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        addLog("Assets generated. Stitching clips sequentially to prevent memory crash...");
+        addLog("Assets generated. Stitching clips in parallel (Chunked) for maximum speed...");
         const clipPaths = new Array(clips.length);
         
-        for (let i = 0; i < clips.length; i++) {
+        // Run FFmpeg processes in parallel chunks (safe for 8GB RAM)
+        const FFMPEG_CHUNK_SIZE = 4; 
+        for (let i = 0; i < clips.length; i += FFMPEG_CHUNK_SIZE) {
             if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
-            const clip = clips[i];
-            const clipPath = path.join(projectDir, `clip_${i}.mp4`);
-            addLog(`Encoding clip ${i + 1}/${clips.length}...`);
-            await new Promise((resolve, reject) => {
-                ffmpeg()
-                    .input(clip.img)
-                    .loop()
-                    .input(clip.audio)
-                    .videoCodec('libx264')
-                    .audioCodec('aac')
-                    .outputOptions([
-                        '-shortest',
-                        '-pix_fmt yuv420p',
-                        '-vf scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080'
-                    ])
-                    .save(clipPath)
-                    .on('end', resolve)
-                    .on('error', reject);
-            });
-            clipPaths[i] = clipPath;
+            
+            const chunk = [];
+            for (let j = i; j < i + FFMPEG_CHUNK_SIZE && j < clips.length; j++) {
+                const clip = clips[j];
+                const clipPath = path.join(projectDir, `clip_${j}.mp4`);
+                clipPaths[j] = clipPath;
+                
+                chunk.push(new Promise((resolve, reject) => {
+                    ffmpeg()
+                        .input(clip.img)
+                        .loop()
+                        .input(clip.audio)
+                        .videoCodec('libx264')
+                        .audioCodec('aac')
+                        .outputOptions([
+                            '-shortest',
+                            '-pix_fmt yuv420p',
+                            '-vf scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080',
+                            '-preset veryfast', // Drastically speeds up encoding
+                            '-threads 2' // Balances CPU load across parallel processes
+                        ])
+                        .save(clipPath)
+                        .on('end', resolve)
+                        .on('error', reject);
+                }));
+            }
+            
+            addLog(`Encoding clips ${i + 1} to ${Math.min(i + FFMPEG_CHUNK_SIZE, clips.length)} of ${clips.length}...`);
+            await Promise.all(chunk);
         }
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
