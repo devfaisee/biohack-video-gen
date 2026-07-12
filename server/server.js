@@ -145,10 +145,10 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     }
                 );
                 return imgRes[0];
-            }, \`Image Gen ${i+1}\`);
+            }, `Image Gen ${i+1}`);
 
-            const imgPath = path.join(projectDir, \`img_${i}.webp\`);
-            const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), \`Download Image ${i+1}\`);
+            const imgPath = path.join(projectDir, `img_${i}.webp`);
+            const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), `Download Image ${i+1}`);
             fs.writeFileSync(imgPath, imgBuffer.data);
             addLog(`[Segment ${i + 1}] Image downloaded.`);
 
@@ -166,7 +166,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                         }
                     }
                 );
-            }, \`Audio Gen ${i+1}\`);
+            }, `Audio Gen ${i+1}`);
             
             const audioPath = path.join(projectDir, `audio_${i}.wav`);
             const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer' }), `Download Audio ${i+1}`);
