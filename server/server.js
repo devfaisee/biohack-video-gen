@@ -162,18 +162,39 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
             // 2. Generate Audio
             addLog(`[Segment ${i + 1}] Requesting voiceover from Gemini 3.1 Flash TTS...`);
+            addLog(`[Segment ${i + 1}] Narration text: "${segment.narration}"`);
+            addLog(`[Segment ${i + 1}] Voice prompt: "${segment.voicePrompt}"`);
             const audioUrl = await withRetry(async () => {
-                return await replicate.run(
-                    "google/gemini-3.1-flash-tts",
-                    {
-                        input: {
-                            text: segment.narration,
-                            voice: "Charon", 
-                            prompt: segment.voicePrompt,
-                            language_code: "en-US"
+                try {
+                    return await replicate.run(
+                        "google/gemini-3.1-flash-tts",
+                        {
+                            input: {
+                                text: segment.narration,
+                                voice: "Charon", 
+                                prompt: segment.voicePrompt,
+                                language_code: "en-US"
+                            }
                         }
+                    );
+                } catch (ttsError) {
+                    addLog(`[WARN] Gemini TTS threw an error on Segment ${i+1}: ${ttsError.message}`);
+                    if (ttsError.message.includes("sensitive") || ttsError.message.includes("E005")) {
+                        addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized, prompt-less fallback...`);
+                        return await replicate.run(
+                            "google/gemini-3.1-flash-tts",
+                            {
+                                input: {
+                                    text: segment.narration.replace(/\[.*?\]/g, '').trim(), // strip tags
+                                    voice: "Charon",
+                                    language_code: "en-US"
+                                    // completely removed voicePrompt
+                                }
+                            }
+                        );
                     }
-                );
+                    throw ttsError;
+                }
             }, `Audio Gen ${i+1}`);
             
             const audioPath = path.join(projectDir, `audio_${i}.wav`);
