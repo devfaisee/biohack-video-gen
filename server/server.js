@@ -49,6 +49,12 @@ app.get('/api/logs', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    
+    // Send existing logs immediately so a refresh doesn't wipe out context
+    for(const log of currentLogs) {
+        res.write(`data: ${JSON.stringify({log})}\n\n`);
+    }
+    
     logStreamSubscribers.add(res);
     req.on('close', () => logStreamSubscribers.delete(res));
 });
@@ -107,7 +113,7 @@ Output pure JSON with the following structure:
     {
       "narration": "[extremely fast] Did you know that... [short pause] [whispering] your memory can be optimized?",
       "voicePrompt": "DIRECTOR'S NOTES: Intense, extremely fast-paced, dropping into a mysterious whisper at the end.",
-      "imagePrompt": "A highly detailed visual prompt for an AI image generator (flux-schnell). Describe the scene, lighting, style (Dark Cinematic Tech, neon, sleek). Must be perfectly relevant to the sentence."
+      "imagePrompt": "A highly detailed visual prompt for an AI image generator (flux-schnell). Instruct the AI to intelligently choose a highly professional, dynamic, and consistent cinematic documentary style (do not force 'neon' or any specific aesthetic unless highly relevant to the topic). Describe the scene, lighting, and composition. Must be perfectly relevant to the sentence."
     }
   ]
 }
@@ -295,7 +301,20 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         }));
 
     } catch (err) {
-        addLog(JSON.stringify({ event: "error", message: err.message }));
+        addLog(JSON.stringify({ event: "error", message: err.message, id: global.currentJob?.id || "unknown" }));
+        
+        // Save failed run to history so the user can see what happened
+        const errorId = global.currentJob?.id || crypto.randomUUID();
+        const errorMetadata = {
+            id: errorId,
+            title: "Failed Generation",
+            description: "This video generation failed due to an error: " + err.message,
+            status: "error",
+            error: err.message,
+            createdAt: new Date().toISOString()
+        };
+        fs.writeFileSync(path.join(outputDir, `${errorId}_error.json`), JSON.stringify(errorMetadata, null, 2));
+
     } finally {
         global.currentJob = null;
     }
@@ -309,6 +328,10 @@ app.post('/api/cancel', (req, res) => {
     } else {
         res.json({ message: "No active generation to cancel." });
     }
+});
+
+app.get('/api/status', (req, res) => {
+    res.json({ isRunning: !!global.currentJob, currentJobId: global.currentJob?.id || null });
 });
 
 // Endpoint to fetch all previously generated videos
