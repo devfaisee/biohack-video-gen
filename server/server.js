@@ -155,7 +155,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     {
                         input: {
                             text: segment.narration,
-                            speaker: "https://replicate.delivery/pbxt/Jt79w0xsT64R1JsiJ0IQ5cVK9jjKlWXOcApvqh0rZncuVZQk/speaker.wav", 
+                            speaker: "https://raw.githubusercontent.com/coqui-ai/TTS/main/tests/data/ljspeech/wavs/LJ001-0001.wav", 
                             language: "en"
                         }
                     }
