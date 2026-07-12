@@ -90,7 +90,7 @@ CRITICAL RULES FOR FAST-PACED RETENTION:
 1. The first 5 seconds MUST be an aggressive, curiosity-inducing hook.
 2. Visuals must change RAPIDLY. Provide a new visual prompt for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking. Do NOT group multiple sentences into one segment.
 3. The tone should be punchy, mysterious, and highly engaging.
-4. STRICT SAFETY FILTER: You MUST NOT use words or themes that trigger AI safety filters (e.g. gore, violence, suicide, explicit sexual content, drugs, harm). If you discuss psychology or biohacking, use clean, scientific, and brand-safe language. Gemini TTS will crash if the text is flagged as sensitive!
+4. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter and will instantly ban the generation if it detects ANY sensitive language. You MUST NOT use words like "hacking", "manipulating", "lying", "drug", "addiction", "kill", "harm", or "trick". Use perfectly safe, uplifting, and strictly scientific terminology (e.g., "optimizing", "understanding", "neuroplasticity"). Make it sound educational and safe for children.
 
 We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expressive capabilities!
 - Use inline tags inside the "narration" like [sigh], [laughing], [whispering], [shouting], [extremely fast], [short pause], [medium pause] to make it sound incredibly human and dynamic.
@@ -100,10 +100,10 @@ Output pure JSON with the following structure:
 {
   "title": "A highly clickable, viral YouTube title",
   "description": "YouTube video description optimized for SEO",
-  "tags": ["biohacking", "neuroscience", "viral"],
+  "tags": ["neuroscience", "optimization", "viral"],
   "segments": [
     {
-      "narration": "[extremely fast] Did you know that... [short pause] [whispering] your brain is lying to you?",
+      "narration": "[extremely fast] Did you know that... [short pause] [whispering] your memory can be optimized?",
       "voicePrompt": "DIRECTOR'S NOTES: Intense, extremely fast-paced, dropping into a mysterious whisper at the end.",
       "imagePrompt": "A highly detailed visual prompt for an AI image generator (flux-schnell). Describe the scene, lighting, style (Dark Cinematic Tech, neon, sleek). Must be perfectly relevant to the sentence."
     }
