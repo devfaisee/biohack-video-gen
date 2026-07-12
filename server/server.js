@@ -84,6 +84,10 @@ CRITICAL RULES FOR FAST-PACED RETENTION:
 2. Visuals must change RAPIDLY. Provide a new visual prompt for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking. Do NOT group multiple sentences into one segment.
 3. The tone should be punchy, mysterious, and highly engaging.
 
+We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expressive capabilities!
+- Use inline tags inside the "narration" like [sigh], [laughing], [whispering], [shouting], [extremely fast], [short pause], [medium pause] to make it sound incredibly human and dynamic.
+- Provide a "voicePrompt" for each segment describing the exact style, tone, pace, and emotion for that specific sentence.
+
 Output pure JSON with the following structure:
 {
   "title": "A highly clickable, viral YouTube title",
@@ -91,7 +95,8 @@ Output pure JSON with the following structure:
   "tags": ["biohacking", "neuroscience", "viral"],
   "segments": [
     {
-      "narration": "One single punchy sentence.",
+      "narration": "[extremely fast] Did you know that... [short pause] [whispering] your brain is lying to you?",
+      "voicePrompt": "DIRECTOR'S NOTES: Intense, extremely fast-paced, dropping into a mysterious whisper at the end.",
       "imagePrompt": "A highly detailed visual prompt for an AI image generator (flux-schnell). Describe the scene, lighting, style (Dark Cinematic Tech, neon, sleek). Must be perfectly relevant to the sentence."
     }
   ]
@@ -107,8 +112,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         }, "Script Generation (Grok)");
 
         let jsonStr = chatCompletion.choices[0].message.content;
-        if (jsonStr.startsWith('```')) {
-            jsonStr = jsonStr.replace(/^```json\n/, '').replace(/\n```$/, '');
+        if (jsonStr.startsWith('\`\`\`')) {
+            jsonStr = jsonStr.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
         }
 
         const scriptData = JSON.parse(jsonStr);
@@ -140,27 +145,28 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     }
                 );
                 return imgRes[0];
-            }, `Image Gen ${i+1}`);
+            }, \`Image Gen ${i+1}\`);
 
-            const imgPath = path.join(projectDir, `img_${i}.webp`);
-            const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), `Download Image ${i+1}`);
+            const imgPath = path.join(projectDir, \`img_${i}.webp\`);
+            const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), \`Download Image ${i+1}\`);
             fs.writeFileSync(imgPath, imgBuffer.data);
             addLog(`[Segment ${i + 1}] Image downloaded.`);
 
             // 2. Generate Audio
-            addLog(`[Segment ${i + 1}] Requesting voiceover from XTTS...`);
+            addLog(`[Segment ${i + 1}] Requesting voiceover from Gemini 3.1 Flash TTS...`);
             const audioUrl = await withRetry(async () => {
                 return await replicate.run(
-                    "lucataco/xtts-v2:684bc3855b37866c0c65add2ff39c78f3dea3f4ff103a436465326e0f438d55e",
+                    "google/gemini-3.1-flash-tts",
                     {
                         input: {
                             text: segment.narration,
-                            speaker: "https://raw.githubusercontent.com/coqui-ai/TTS/main/tests/data/ljspeech/wavs/LJ001-0001.wav", 
-                            language: "en"
+                            voice: "Charon", 
+                            prompt: segment.voicePrompt,
+                            language_code: "en-US"
                         }
                     }
                 );
-            }, `Audio Gen ${i+1}`);
+            }, \`Audio Gen ${i+1}\`);
             
             const audioPath = path.join(projectDir, `audio_${i}.wav`);
             const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer' }), `Download Audio ${i+1}`);
