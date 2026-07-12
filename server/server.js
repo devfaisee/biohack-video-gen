@@ -228,11 +228,14 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        addLog("Assets generated. Stitching all clips in parallel...");
+        addLog("Assets generated. Stitching clips sequentially to prevent memory crash...");
         const clipPaths = new Array(clips.length);
         
-        await Promise.all(clips.map(async (clip, i) => {
+        for (let i = 0; i < clips.length; i++) {
+            if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
+            const clip = clips[i];
             const clipPath = path.join(projectDir, `clip_${i}.mp4`);
+            addLog(`Encoding clip ${i + 1}/${clips.length}...`);
             await new Promise((resolve, reject) => {
                 ffmpeg()
                     .input(clip.img)
@@ -250,8 +253,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     .on('error', reject);
             });
             clipPaths[i] = clipPath;
-            addLog(`Clip ${i + 1}/${clips.length} encoded.`);
-        }));
+        }
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 

@@ -172,7 +172,7 @@ function App() {
             
             <a 
               href={result.videoUrl} 
-              download={`NeuroGen_${result.title.substring(0,20).replace(/[^a-z0-9]/gi, '_')}.mp4`}
+              download={`NeuroGen_${(result.title || 'Video').substring(0,20).replace(/[^a-z0-9]/gi, '_')}.mp4`}
               className="btn"
               style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', background: '#3b82f6', color: '#fff', textDecoration: 'none' }}
               target="_blank"
