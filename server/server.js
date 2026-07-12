@@ -6,6 +6,8 @@ const Replicate = require('replicate');
 const fs = require('fs');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
+const ffmpegStatic = require('ffmpeg-static');
+ffmpeg.setFfmpegPath(ffmpegStatic);
 const crypto = require('crypto');
 const axios = require('axios');
 
