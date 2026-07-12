@@ -10,7 +10,19 @@ function App() {
   const [logs, setLogs] = useState([]);
   const logsEndRef = useRef(null);
 
+  const [libraryVideos, setLibraryVideos] = useState([]);
+
+  const fetchLibrary = async () => {
+    try {
+      const res = await axios.get('https://biohack-video-gen-server-production.up.railway.app/api/videos');
+      setLibraryVideos(res.data);
+    } catch (e) {
+      console.error("Failed to fetch library", e);
+    }
+  };
+
   useEffect(() => {
+    fetchLibrary();
     const sse = new EventSource('https://biohack-video-gen-server-production.up.railway.app/api/logs');
     sse.onmessage = (e) => {
       const data = JSON.parse(e.data);
@@ -24,6 +36,7 @@ function App() {
               videoUrl: `https://biohack-video-gen-server-production.up.railway.app${parsedLog.videoUrl}`
            });
            setLoading(false);
+           fetchLibrary(); // Refresh library when a new video finishes!
            return;
         }
         if (parsedLog.event === "error") {
@@ -184,6 +197,50 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Library Section */}
+      {libraryVideos.length > 0 && (
+        <div style={{ marginTop: '4rem' }}>
+          <h2 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '2rem', textAlign: 'center', background: 'linear-gradient(135deg, #60a5fa, #c084fc)', WebkitBackgroundClip: 'text', color: 'transparent' }}>
+            Video Library
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {libraryVideos.map((video) => (
+              <div key={video.id} className="result-card" style={{ marginTop: 0 }}>
+                <h2 className="result-title">{video.title}</h2>
+                <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.6' }}>{video.description}</p>
+                
+                <div className="tags">
+                  {video.tags && video.tags.map((tag, i) => (
+                    <span key={i} className="tag">#{tag}</span>
+                  ))}
+                </div>
+
+                <div className="video-player" style={{ marginTop: '2rem', borderRadius: '16px', overflow: 'hidden', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <video 
+                    controls 
+                    width="100%" 
+                    src={`https://biohack-video-gen-server-production.up.railway.app${video.videoUrl}`}
+                    style={{ display: 'block', maxHeight: '500px', width: '100%', objectFit: 'contain' }}
+                  >
+                  </video>
+                </div>
+                
+                <a 
+                  href={`https://biohack-video-gen-server-production.up.railway.app${video.videoUrl}`} 
+                  download={`NeuroGen_${(video.title || 'Video').substring(0,20).replace(/[^a-z0-9]/gi, '_')}.mp4`}
+                  className="btn"
+                  style={{ marginTop: '2rem', padding: '1.25rem', fontSize: '1.1rem', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', textDecoration: 'none' }}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  📥 Download Video (.mp4)
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

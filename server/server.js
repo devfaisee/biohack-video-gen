@@ -274,15 +274,24 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         });
 
         const finalUrl = `/output/${videoId}.mp4`;
+        
+        // Save metadata for the Library
+        const metadata = {
+            id: videoId,
+            title: scriptData.title,
+            description: scriptData.description,
+            tags: scriptData.tags,
+            videoUrl: finalUrl,
+            createdAt: new Date().toISOString()
+        };
+        fs.writeFileSync(path.join(outputDir, `${videoId}.json`), JSON.stringify(metadata, null, 2));
+
         addLog(`Video generated successfully: ${finalUrl}`);
         
         // Broadcast success to frontend
         addLog(JSON.stringify({
             event: "complete",
-            title: scriptData.title,
-            description: scriptData.description,
-            tags: scriptData.tags,
-            videoUrl: finalUrl
+            ...metadata
         }));
 
     } catch (err) {
@@ -299,6 +308,26 @@ app.post('/api/cancel', (req, res) => {
         res.json({ message: "Generation Cancelled successfully." });
     } else {
         res.json({ message: "No active generation to cancel." });
+    }
+});
+
+// Endpoint to fetch all previously generated videos
+app.get('/api/videos', (req, res) => {
+    try {
+        const files = fs.readdirSync(outputDir);
+        const videos = [];
+        for (const file of files) {
+            if (file.endsWith('.json')) {
+                const data = JSON.parse(fs.readFileSync(path.join(outputDir, file), 'utf8'));
+                videos.push(data);
+            }
+        }
+        // Sort by newest first
+        videos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        res.json(videos);
+    } catch (err) {
+        console.error("Error reading video library:", err);
+        res.status(500).json({ error: "Failed to read videos" });
     }
 });
 
