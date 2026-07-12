@@ -19,7 +19,7 @@ function App() {
       
       setResult({
         ...res.data,
-        videoUrl: \`https://biohack-video-gen-server-production.up.railway.app\${res.data.videoUrl}\`
+        videoUrl: `https://biohack-video-gen-server-production.up.railway.app${res.data.videoUrl}`
       });
     } catch (error) {
       console.error('Error generating video:', error);
