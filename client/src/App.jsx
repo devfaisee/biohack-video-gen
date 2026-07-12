@@ -150,21 +150,22 @@ function App() {
         </div>
 
         {result && (
-          <div className="result-card" style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <h2 className="result-title" style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>{result.title}</h2>
-            <p className="subtitle" style={{ color: '#94a3b8' }}>{result.description}</p>
+          <div className="result-card">
+            <h2 className="result-title">{result.title}</h2>
+            <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.6' }}>{result.description}</p>
             
-            <div className="tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem' }}>
+            <div className="tags">
               {result.tags.map((tag, i) => (
-                <span key={i} className="tag" style={{ background: 'rgba(59,130,246,0.2)', color: '#93c5fd', padding: '0.25rem 0.75rem', borderRadius: '99px', fontSize: '0.75rem' }}>#{tag}</span>
+                <span key={i} className="tag">#{tag}</span>
               ))}
             </div>
 
-            <div className="video-player" style={{ marginTop: '1.5rem', borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
+            <div className="video-player" style={{ marginTop: '2rem', borderRadius: '16px', overflow: 'hidden', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
               <video 
                 controls 
                 width="100%" 
                 src={result.videoUrl}
+                style={{ display: 'block', maxHeight: '500px', width: '100%', objectFit: 'contain' }}
               >
                 Your browser does not support the video tag.
               </video>
@@ -174,11 +175,11 @@ function App() {
               href={result.videoUrl} 
               download={`NeuroGen_${(result.title || 'Video').substring(0,20).replace(/[^a-z0-9]/gi, '_')}.mp4`}
               className="btn"
-              style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', background: '#3b82f6', color: '#fff', textDecoration: 'none' }}
+              style={{ marginTop: '2rem', padding: '1.25rem', fontSize: '1.1rem', background: 'linear-gradient(135deg, #10b981, #059669)', textDecoration: 'none' }}
               target="_blank"
               rel="noreferrer"
             >
-              📥 Download Final Video
+              📥 Download Final Masterpiece (.mp4)
             </a>
           </div>
         )}
