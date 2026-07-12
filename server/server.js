@@ -22,8 +22,8 @@ if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
 if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
 
 const openai = new OpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKey: process.env.OPENROUTER_API_KEY,
+    apiKey: process.env.OPENROUTER_API_KEY || "dummy_key_to_prevent_crash_on_boot",
+    baseURL: "https://openrouter.ai/api/v1"
 });
 
 const replicate = new Replicate({
