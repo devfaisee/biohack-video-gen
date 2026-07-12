@@ -51,13 +51,30 @@ app.get('/api/logs', (req, res) => {
     req.on('close', () => logStreamSubscribers.delete(res));
 });
 
+// Robust Retry Logic
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+async function withRetry(fn, operationName, maxRetries = 3, delayMs = 3000) {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await fn();
+        } catch (err) {
+            if (i === maxRetries - 1) {
+                addLog(`[FATAL] ${operationName} failed after ${maxRetries} attempts.`);
+                throw err;
+            }
+            addLog(`[WARN] ${operationName} failed: ${err.message}. Retrying in ${delayMs/1000}s... (Attempt ${i+1}/${maxRetries})`);
+            await sleep(delayMs);
+        }
+    }
+}
+
 app.post('/api/generate', async (req, res) => {
     try {
         currentLogs = []; // Reset logs for new generation
         const { durationMinutes = 1 } = req.body;
         addLog(`Starting generation for ${durationMinutes} minutes...`);
         
-        const wordCount = durationMinutes * 130; 
+        const wordCount = Math.floor(durationMinutes * 130); 
 
         const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the Psychology, Neuroscience, and Biohacking niche. 
 Your goal is to write a highly viral, retention-optimized script for a horizontal YouTube video.
@@ -82,10 +99,12 @@ Output pure JSON with the following structure:
 Ensure the JSON is strictly valid and contains no markdown formatting around it.`;
 
         addLog("Generating script via Grok 4.5 (OpenRouter)...");
-        const chatCompletion = await openai.chat.completions.create({
-            model: "x-ai/grok-4.5", 
-            messages: [{ role: "user", content: systemPrompt }]
-        });
+        const chatCompletion = await withRetry(async () => {
+            return await openai.chat.completions.create({
+                model: "x-ai/grok-4.5", 
+                messages: [{ role: "user", content: systemPrompt }]
+            });
+        }, "Script Generation (Grok)");
 
         let jsonStr = chatCompletion.choices[0].message.content;
         if (jsonStr.startsWith('```')) {
@@ -101,54 +120,57 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         const clips = [];
 
-        // Generate Assets
+        // Generate Assets with Retry Logic
         for (let i = 0; i < scriptData.segments.length; i++) {
             const segment = scriptData.segments[i];
             addLog(`[Segment ${i + 1}/${scriptData.segments.length}] Generating assets...`);
 
             // 1. Generate Image
             addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
-            const imgRes = await replicate.run(
-                "black-forest-labs/flux-schnell",
-                {
-                    input: {
-                        prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
-                        aspect_ratio: "16:9",
-                        output_format: "webp",
-                        num_outputs: 1
+            const imageUrl = await withRetry(async () => {
+                const imgRes = await replicate.run(
+                    "black-forest-labs/flux-schnell",
+                    {
+                        input: {
+                            prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
+                            aspect_ratio: "16:9",
+                            output_format: "webp",
+                            num_outputs: 1
+                        }
                     }
-                }
-            );
-            const imageUrl = imgRes[0];
+                );
+                return imgRes[0];
+            }, `Image Gen ${i+1}`);
+
             const imgPath = path.join(projectDir, `img_${i}.webp`);
-            addLog(`[Segment ${i + 1}] Image downloaded.`);
-            
-            const imgBuffer = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+            const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), `Download Image ${i+1}`);
             fs.writeFileSync(imgPath, imgBuffer.data);
+            addLog(`[Segment ${i + 1}] Image downloaded.`);
 
             // 2. Generate Audio
             addLog(`[Segment ${i + 1}] Requesting voiceover from XTTS...`);
-            const audioRes = await replicate.run(
-                "lucataco/xtts-v2:684bc3855b37866c0c65add2ff39c78f3dea3f4ff103a436465326e0f438d55e",
-                {
-                    input: {
-                        text: segment.narration,
-                        speaker: "https://replicate.delivery/pbxt/Jt79w0xsT64R1JsiJ0IQ5cVK9jjKlWXOcApvqh0rZncuVZQk/speaker.wav", 
-                        language: "en"
+            const audioUrl = await withRetry(async () => {
+                return await replicate.run(
+                    "lucataco/xtts-v2:684bc3855b37866c0c65add2ff39c78f3dea3f4ff103a436465326e0f438d55e",
+                    {
+                        input: {
+                            text: segment.narration,
+                            speaker: "https://replicate.delivery/pbxt/Jt79w0xsT64R1JsiJ0IQ5cVK9jjKlWXOcApvqh0rZncuVZQk/speaker.wav", 
+                            language: "en"
+                        }
                     }
-                }
-            );
+                );
+            }, `Audio Gen ${i+1}`);
             
-            const audioUrl = audioRes;
             const audioPath = path.join(projectDir, `audio_${i}.wav`);
-            const audioBuffer = await axios.get(audioUrl, { responseType: 'arraybuffer' });
+            const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer' }), `Download Audio ${i+1}`);
             fs.writeFileSync(audioPath, audioBuffer.data);
             addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
 
             clips.push({ image: imgPath, audio: audioPath, output: path.join(projectDir, `clip_${i}.mp4`) });
         }
 
-        addLog("Assets generated. Stitching video with FFmpeg...");
+        addLog("Assets generated. Stitching individual clips with FFmpeg...");
 
         // Generate individual clips
         for (let i = 0; i < clips.length; i++) {
