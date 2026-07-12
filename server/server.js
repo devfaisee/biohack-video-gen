@@ -68,14 +68,21 @@ async function withRetry(fn, operationName, maxRetries = 3, delayMs = 3000) {
     }
 }
 
-app.post('/api/generate', async (req, res) => {
-    try {
-        currentLogs = []; // Reset logs for new generation
-        const { durationMinutes = 1 } = req.body;
-        addLog(`Starting generation for ${durationMinutes} minutes...`);
-        
-        const wordCount = Math.floor(durationMinutes * 130); 
+app.post('/api/generate', (req, res) => {
+    const { durationMinutes = 1 } = req.body;
+    addLog(`Starting generation for ${durationMinutes} minutes...`);
+    
+    // Start background job to prevent Railway 100s timeout
+    generateVideoJob(durationMinutes).catch(err => {
+        addLog(JSON.stringify({ event: "error", message: err.message }));
+    });
+    
+    res.json({ message: "Generation started in the background" });
+});
 
+async function generateVideoJob(durationMinutes) {
+    try {
+        const wordCount = durationMinutes * 130;
         const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the Psychology, Neuroscience, and Biohacking niche. 
 Your goal is to write a highly viral, retention-optimized script for a horizontal YouTube video.
 The script should be approximately ${wordCount} words total.
@@ -83,6 +90,7 @@ CRITICAL RULES FOR FAST-PACED RETENTION:
 1. The first 5 seconds MUST be an aggressive, curiosity-inducing hook.
 2. Visuals must change RAPIDLY. Provide a new visual prompt for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking. Do NOT group multiple sentences into one segment.
 3. The tone should be punchy, mysterious, and highly engaging.
+4. STRICT SAFETY FILTER: You MUST NOT use words or themes that trigger AI safety filters (e.g. gore, violence, suicide, explicit sexual content, drugs, harm). If you discuss psychology or biohacking, use clean, scientific, and brand-safe language. Gemini TTS will crash if the text is flagged as sensitive!
 
 We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expressive capabilities!
 - Use inline tags inside the "narration" like [sigh], [laughing], [whispering], [shouting], [extremely fast], [short pause], [medium pause] to make it sound incredibly human and dynamic.
@@ -112,8 +120,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         }, "Script Generation (Grok)");
 
         let jsonStr = chatCompletion.choices[0].message.content;
-        if (jsonStr.startsWith('\`\`\`')) {
-            jsonStr = jsonStr.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+        if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```json\n/, '').replace(/\n```$/, '');
         }
 
         const scriptData = JSON.parse(jsonStr);
@@ -173,40 +181,40 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             fs.writeFileSync(audioPath, audioBuffer.data);
             addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
 
-            clips.push({ image: imgPath, audio: audioPath, output: path.join(projectDir, `clip_${i}.mp4`) });
+            clips.push({ img: imgPath, audio: audioPath });
         }
 
-        addLog("Assets generated. Stitching individual clips with FFmpeg...");
-
-        // Generate individual clips
+        addLog("Stitching individual clips with FFmpeg...");
+        const clipPaths = [];
+        
         for (let i = 0; i < clips.length; i++) {
             addLog(`Encoding clip ${i + 1}/${clips.length}...`);
+            const clipPath = path.join(projectDir, `clip_${i}.mp4`);
             await new Promise((resolve, reject) => {
                 ffmpeg()
-                    .input(clips[i].image)
+                    .input(clips[i].img)
                     .loop()
                     .input(clips[i].audio)
+                    .videoCodec('libx264')
+                    .audioCodec('aac')
                     .outputOptions([
-                        '-c:v libx264',
-                        '-tune stillimage',
-                        '-c:a aac',
-                        '-b:a 192k',
+                        '-shortest',
                         '-pix_fmt yuv420p',
-                        '-shortest'
+                        '-vf scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080'
                     ])
-                    .save(clips[i].output)
+                    .save(clipPath)
                     .on('end', resolve)
                     .on('error', reject);
             });
+            clipPaths.push(clipPath);
         }
 
-        addLog("Concatenating all clips into final masterpiece...");
+        addLog("Concatenating clips into final video...");
         const listPath = path.join(projectDir, 'list.txt');
-        const listContent = clips.map(c => `file '${c.output}'`).join('\n');
+        const listContent = clipPaths.map(p => `file '${p}'`).join('\n');
         fs.writeFileSync(listPath, listContent);
 
         const finalVideoPath = path.join(outputDir, `${videoId}.mp4`);
-
         await new Promise((resolve, reject) => {
             ffmpeg()
                 .input(listPath)
@@ -217,21 +225,22 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 .on('error', reject);
         });
 
-        addLog(`Video generated successfully: ${videoId}.mp4`);
-
-        res.json({
-            success: true,
+        const finalUrl = `/output/${videoId}.mp4`;
+        addLog(`Video generated successfully: ${finalUrl}`);
+        
+        // Broadcast success to frontend
+        addLog(JSON.stringify({
+            event: "complete",
             title: scriptData.title,
             description: scriptData.description,
             tags: scriptData.tags,
-            videoUrl: `/output/${videoId}.mp4`
-        });
+            videoUrl: finalUrl
+        }));
 
-    } catch (error) {
-        addLog(`CRITICAL ERROR: ${error.message}`);
-        res.status(500).json({ success: false, error: error.message });
+    } catch (err) {
+        addLog(JSON.stringify({ event: "error", message: err.message }));
     }
-});
+}
 
 app.use('/output', express.static(outputDir));
 

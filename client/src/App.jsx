@@ -14,7 +14,26 @@ function App() {
     const sse = new EventSource('https://biohack-video-gen-server-production.up.railway.app/api/logs');
     sse.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      setLogs(prev => [...prev, data.log]);
+      try {
+        const parsedLog = JSON.parse(data.log);
+        if (parsedLog.event === "complete") {
+           setResult({
+              title: parsedLog.title,
+              description: parsedLog.description,
+              tags: parsedLog.tags,
+              videoUrl: `https://biohack-video-gen-server-production.up.railway.app${parsedLog.videoUrl}`
+           });
+           setLoading(false);
+           return;
+        }
+        if (parsedLog.event === "error") {
+           alert("Generation failed: " + parsedLog.message);
+           setLoading(false);
+           return;
+        }
+      } catch(err) {
+        setLogs(prev => [...prev, data.log]);
+      }
     };
     return () => sse.close();
   }, []);
@@ -30,19 +49,14 @@ function App() {
     setLogs([]); // Clear previous logs
     setResult(null);
     try {
-      const res = await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/generate', {
+      await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/generate', {
         durationMinutes: duration,
         format: format
       });
-      
-      setResult({
-        ...res.data,
-        videoUrl: `https://biohack-video-gen-server-production.up.railway.app${res.data.videoUrl}`
-      });
+      // Generation continues in the background. Result is set via SSE 'complete' event.
     } catch (error) {
       console.error('Error generating video:', error);
-      alert('Failed to generate video. Check console for details.');
-    } finally {
+      alert('Failed to start video generation. Check console for details.');
       setLoading(false);
     }
   };
