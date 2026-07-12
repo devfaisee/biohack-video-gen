@@ -199,11 +199,11 @@ function App() {
       </div>
 
       {/* Library Section */}
-      {libraryVideos.length > 0 && (
-        <div style={{ marginTop: '4rem' }}>
-          <h2 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '2rem', textAlign: 'center', background: 'linear-gradient(135deg, #60a5fa, #c084fc)', WebkitBackgroundClip: 'text', color: 'transparent' }}>
-            Video Library
-          </h2>
+      <div style={{ marginTop: '4rem' }}>
+        <h2 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '2rem', textAlign: 'center', background: 'linear-gradient(135deg, #60a5fa, #c084fc)', WebkitBackgroundClip: 'text', color: 'transparent' }}>
+          Saved & Generated Videos
+        </h2>
+        {libraryVideos.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             {libraryVideos.map((video) => (
               <div key={video.id} className="result-card" style={{ marginTop: 0 }}>
@@ -239,8 +239,14 @@ function App() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div style={{ textAlign: 'center', color: '#888', padding: '3rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+            <Video size={48} style={{ margin: '0 auto 1rem', opacity: 0.5, display: 'block' }} />
+            <p style={{ fontSize: '1.1rem' }}>No videos generated yet.</p>
+            <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', opacity: 0.7 }}>Create your first masterpiece above, and it will appear here!</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
