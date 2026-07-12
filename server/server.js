@@ -132,90 +132,110 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         fs.mkdirSync(projectDir);
 
         const clips = [];
+        
+        // Expose a global abort controller for the current job
+        const abortController = new AbortController();
+        global.currentJob = { id: videoId, abort: () => abortController.abort() };
 
-        // Generate Assets with Retry Logic
-        for (let i = 0; i < scriptData.segments.length; i++) {
+        addLog(`Starting parallel generation of ${scriptData.segments.length} segments...`);
+
+        // Generate all segments concurrently (limit concurrency to 4 to avoid rate limits)
+        const generateSegment = async (i) => {
+            if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
             const segment = scriptData.segments[i];
-            addLog(`[Segment ${i + 1}/${scriptData.segments.length}] Generating assets...`);
-
-            // 1. Generate Image
-            addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
-            const imageUrl = await withRetry(async () => {
-                const imgRes = await replicate.run(
-                    "black-forest-labs/flux-schnell",
-                    {
-                        input: {
-                            prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
-                            aspect_ratio: "16:9",
-                            output_format: "webp",
-                            num_outputs: 1
-                        }
-                    }
-                );
-                return imgRes[0];
-            }, `Image Gen ${i+1}`);
+            addLog(`[Segment ${i + 1}/${scriptData.segments.length}] Starting parallel asset generation...`);
 
             const imgPath = path.join(projectDir, `img_${i}.webp`);
-            const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), `Download Image ${i+1}`);
-            fs.writeFileSync(imgPath, imgBuffer.data);
-            addLog(`[Segment ${i + 1}] Image downloaded.`);
+            const audioPath = path.join(projectDir, `audio_${i}.wav`);
 
-            // 2. Generate Audio
-            addLog(`[Segment ${i + 1}] Requesting voiceover from Gemini 3.1 Flash TTS...`);
-            addLog(`[Segment ${i + 1}] Narration text: "${segment.narration}"`);
-            addLog(`[Segment ${i + 1}] Voice prompt: "${segment.voicePrompt}"`);
-            const audioUrl = await withRetry(async () => {
-                try {
-                    return await replicate.run(
-                        "google/gemini-3.1-flash-tts",
-                        {
-                            input: {
-                                text: segment.narration,
-                                voice: "Charon", 
-                                prompt: segment.voicePrompt,
-                                language_code: "en-US"
-                            }
-                        }
-                    );
-                } catch (ttsError) {
-                    addLog(`[WARN] Gemini TTS threw an error on Segment ${i+1}: ${ttsError.message}`);
-                    if (ttsError.message.includes("sensitive") || ttsError.message.includes("E005")) {
-                        addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized, prompt-less fallback...`);
-                        return await replicate.run(
-                            "google/gemini-3.1-flash-tts",
+            // Run Image and Audio concurrently
+            await Promise.all([
+                // IMAGE TASK
+                (async () => {
+                    addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
+                    const imageUrl = await withRetry(async () => {
+                        const imgRes = await replicate.run(
+                            "black-forest-labs/flux-schnell",
                             {
                                 input: {
-                                    text: segment.narration.replace(/\[.*?\]/g, '').trim(), // strip tags
-                                    voice: "Charon",
-                                    language_code: "en-US"
-                                    // completely removed voicePrompt
+                                    prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
+                                    aspect_ratio: "16:9",
+                                    output_format: "webp",
+                                    num_outputs: 1
                                 }
                             }
                         );
-                    }
-                    throw ttsError;
-                }
-            }, `Audio Gen ${i+1}`);
-            
-            const audioPath = path.join(projectDir, `audio_${i}.wav`);
-            const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer' }), `Download Audio ${i+1}`);
-            fs.writeFileSync(audioPath, audioBuffer.data);
-            addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
+                        return imgRes[0];
+                    }, `Image Gen ${i+1}`);
+                    const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), `Download Image ${i+1}`);
+                    fs.writeFileSync(imgPath, imgBuffer.data);
+                    addLog(`[Segment ${i + 1}] Image downloaded.`);
+                })(),
 
-            clips.push({ img: imgPath, audio: audioPath });
+                // AUDIO TASK
+                (async () => {
+                    addLog(`[Segment ${i + 1}] Requesting voiceover from Gemini 3.1 Flash TTS...`);
+                    const audioUrl = await withRetry(async () => {
+                        try {
+                            return await replicate.run(
+                                "google/gemini-3.1-flash-tts",
+                                {
+                                    input: {
+                                        text: segment.narration,
+                                        voice: "Charon", 
+                                        prompt: segment.voicePrompt,
+                                        language_code: "en-US"
+                                    }
+                                }
+                            );
+                        } catch (ttsError) {
+                            if (ttsError.message.includes("sensitive") || ttsError.message.includes("E005")) {
+                                addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized, prompt-less fallback...`);
+                                return await replicate.run(
+                                    "google/gemini-3.1-flash-tts",
+                                    {
+                                        input: {
+                                            text: segment.narration.replace(/\[.*?\]/g, '').trim(),
+                                            voice: "Charon",
+                                            language_code: "en-US"
+                                        }
+                                    }
+                                );
+                            }
+                            throw ttsError;
+                        }
+                    }, `Audio Gen ${i+1}`);
+                    const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer' }), `Download Audio ${i+1}`);
+                    fs.writeFileSync(audioPath, audioBuffer.data);
+                    addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
+                })()
+            ]);
+
+            clips[i] = { img: imgPath, audio: audioPath };
+        };
+
+        // Process segments in chunks of 4 to avoid massive rate limit spikes
+        const CHUNK_SIZE = 4;
+        for (let i = 0; i < scriptData.segments.length; i += CHUNK_SIZE) {
+            const chunk = [];
+            for (let j = i; j < i + CHUNK_SIZE && j < scriptData.segments.length; j++) {
+                chunk.push(generateSegment(j));
+            }
+            await Promise.all(chunk);
         }
 
-        addLog("Stitching individual clips with FFmpeg...");
-        const clipPaths = [];
+        if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
+
+        addLog("Assets generated. Stitching all clips in parallel...");
+        const clipPaths = new Array(clips.length);
         
-        for (let i = 0; i < clips.length; i++) {
-            addLog(`Encoding clip ${i + 1}/${clips.length}...`);
+        await Promise.all(clips.map(async (clip, i) => {
             const clipPath = path.join(projectDir, `clip_${i}.mp4`);
             await new Promise((resolve, reject) => {
                 ffmpeg()
-                    .input(clips[i].img)
+                    .input(clip.img)
                     .loop()
-                    .input(clips[i].audio)
+                    .input(clip.audio)
                     .videoCodec('libx264')
                     .audioCodec('aac')
                     .outputOptions([
@@ -227,8 +247,11 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     .on('end', resolve)
                     .on('error', reject);
             });
-            clipPaths.push(clipPath);
-        }
+            clipPaths[i] = clipPath;
+            addLog(`Clip ${i + 1}/${clips.length} encoded.`);
+        }));
+
+        if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
         addLog("Concatenating clips into final video...");
         const listPath = path.join(projectDir, 'list.txt');
@@ -260,8 +283,20 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
     } catch (err) {
         addLog(JSON.stringify({ event: "error", message: err.message }));
+    } finally {
+        global.currentJob = null;
     }
 }
+
+app.post('/api/cancel', (req, res) => {
+    if (global.currentJob) {
+        global.currentJob.abort();
+        global.currentJob = null;
+        res.json({ message: "Generation Cancelled successfully." });
+    } else {
+        res.json({ message: "No active generation to cancel." });
+    }
+});
 
 app.use('/output', express.static(outputDir));
 

@@ -61,6 +61,15 @@ function App() {
     }
   };
 
+  const cancelGeneration = async () => {
+    try {
+      await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/cancel');
+      setLoading(false);
+    } catch (error) {
+      console.error('Error cancelling video:', error);
+    }
+  };
+
   return (
     <div className="app-container">
       <div className="glass-card">
@@ -101,17 +110,30 @@ function App() {
           />
         </div>
 
-        <button 
-          className="btn" 
-          onClick={generateVideo} 
-          disabled={loading}
-        >
-          {loading ? (
-            <><div className="loader"></div> Generating Masterpiece...</>
-          ) : (
-            <><Sparkles size={20} /> Find Idea & Generate</>
-          )}
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+            <button 
+            className="btn" 
+            onClick={generateVideo} 
+            disabled={loading}
+            style={{ flex: 1 }}
+            >
+            {loading ? (
+                <><div className="loader"></div> Generating Masterpiece...</>
+            ) : (
+                <><Sparkles size={20} /> Find Idea & Generate</>
+            )}
+            </button>
+
+            {loading && (
+            <button 
+                className="btn" 
+                onClick={cancelGeneration}
+                style={{ background: '#ef4444', color: '#fff', padding: '0 2rem' }}
+            >
+                Stop
+            </button>
+            )}
+        </div>
 
         {/* Live Logs Terminal */}
         <div className="terminal-container" style={{ marginTop: '2rem', background: '#000', borderRadius: '12px', overflow: 'hidden', border: '1px solid #333' }}>
