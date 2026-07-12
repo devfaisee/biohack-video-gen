@@ -59,18 +59,23 @@ app.post('/api/generate', async (req, res) => {
         
         const wordCount = durationMinutes * 130; 
 
-        const systemPrompt = `You are an expert scriptwriter specializing in the Psychology, Neuroscience, and Biohacking niche. 
-Your goal is to write a compelling script for a horizontal YouTube video.
+        const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the Psychology, Neuroscience, and Biohacking niche. 
+Your goal is to write a highly viral, retention-optimized script for a horizontal YouTube video.
 The script should be approximately ${wordCount} words total.
+CRITICAL RULES FOR FAST-PACED RETENTION:
+1. The first 5 seconds MUST be an aggressive, curiosity-inducing hook.
+2. Visuals must change RAPIDLY. Provide a new visual prompt for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking. Do NOT group multiple sentences into one segment.
+3. The tone should be punchy, mysterious, and highly engaging.
+
 Output pure JSON with the following structure:
 {
-  "title": "A highly clickable YouTube title",
-  "description": "YouTube video description",
-  "tags": ["tag1", "tag2"],
+  "title": "A highly clickable, viral YouTube title",
+  "description": "YouTube video description optimized for SEO",
+  "tags": ["biohacking", "neuroscience", "viral"],
   "segments": [
     {
-      "narration": "The exact words the voiceover will say. Around 2-3 sentences.",
-      "imagePrompt": "A highly detailed visual prompt for an AI image generator (flux-schnell). Describe the scene, lighting, style (Dark Cinematic Tech, neon, sleek)."
+      "narration": "One single punchy sentence.",
+      "imagePrompt": "A highly detailed visual prompt for an AI image generator (flux-schnell). Describe the scene, lighting, style (Dark Cinematic Tech, neon, sleek). Must be perfectly relevant to the sentence."
     }
   ]
 }
