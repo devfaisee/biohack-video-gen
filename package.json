@@ -1,0 +1,9 @@
+{
+  "name": "biohack-video-gen-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install": "cd server && npm install",
+    "start": "cd server && node server.js"
+  }
+}
