@@ -115,12 +115,13 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      <div className="glass-card">
-        <div className="header">
-          <h1 className="title">NeuroGen Studio</h1>
-          <p className="subtitle">AI Biohacking & Neuroscience Video Creator</p>
-        </div>
+    <div className="app-container" style={{ display: 'flex', gap: '2rem', maxWidth: '1400px', margin: '0 auto', alignItems: 'flex-start' }}>
+      <div style={{ flex: '1 1 70%', minWidth: 0 }}>
+        <div className="glass-card">
+          <div className="header">
+            <h1 className="title">NeuroGen Studio</h1>
+            <p className="subtitle">AI Biohacking & Neuroscience Video Creator</p>
+          </div>
 
         <div className="form-group">
           <label className="label">Video Topic or Niche</label>
@@ -283,10 +284,14 @@ function App() {
                 
                 {video.status !== 'error' && (
                   <>
-                    <div className="tags">
+                    <div className="tags" style={{ marginBottom: '1rem' }}>
                       {video.tags && video.tags.map((tag, i) => (
                         <span key={i} className="tag">#{tag}</span>
                       ))}
+                    </div>
+
+                    <div style={{ display: 'inline-block', background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 'bold', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                      🖼️ {video.imageCount || 'Multiple'} Unique AI Images Generated
                     </div>
 
                     <div className="video-player" style={{ marginTop: '2rem', borderRadius: '16px', overflow: 'hidden', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -321,6 +326,41 @@ function App() {
             <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', opacity: 0.7 }}>Create your first masterpiece above, and it will appear here!</p>
           </div>
         )}
+      </div>
+      </div>
+
+      {/* Analytics Sidebar */}
+      <div style={{ flex: '1 1 30%', minWidth: '300px', position: 'sticky', top: '2rem' }}>
+        <div className="glass-card" style={{ padding: '1.5rem' }}>
+          <h3 style={{ marginTop: 0, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', color: '#a855f7', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            📊 Generation Stats
+          </h3>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem', maxHeight: '500px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+            {libraryVideos.map(vid => (
+              <div key={vid.id} style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {vid.status === 'error' ? '❌ ' : ''}{vid.title || 'Untitled Video'}
+                </div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: vid.status === 'error' ? '#ef4444' : '#10b981' }}>
+                  {vid.status === 'error' ? 'Failed Generation' : `🖼️ ${vid.imageCount || '?'} Images`}
+                </div>
+              </div>
+            ))}
+            {libraryVideos.length === 0 && (
+              <div style={{ color: '#64748b', fontSize: '0.9rem', textAlign: 'center', padding: '2rem 0' }}>
+                No stats available yet.
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ fontSize: '0.9rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Total AI Images Made</div>
+            <div style={{ fontSize: '3rem', fontWeight: '900', color: '#fff', textShadow: '0 0 20px rgba(168, 85, 247, 0.4)' }}>
+              {libraryVideos.reduce((acc, v) => acc + (v.imageCount || 0), 0)}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -344,6 +344,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             description: scriptData.description,
             tags: scriptData.tags,
             videoUrl: finalUrl,
+            imageCount: scriptData.segments.length,
             createdAt: new Date().toISOString()
         };
         fs.writeFileSync(path.join(outputDir, `${videoId}.json`), JSON.stringify(metadata, null, 2));
