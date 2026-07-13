@@ -2,13 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Filter } from 'lucide-react';
 import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-
-const NICHES = {
-  "Health & Science": ["Neuroscience & Biohacking", "Dopamine Detox", "Fitness & Diet", "Mental Health"],
-  "Stories & Fiction": ["True Crime", "Senior Revenge", "Horror / Paranormal", "Sci-Fi Short Stories"],
-  "Finance & Business": ["Crypto & Web3", "Personal Finance", "Entrepreneurship", "Real Estate", "Tech Startups"],
-  "Mystery & History": ["Unsolved Mysteries", "Ancient History", "Conspiracy Theories", "Lost Civilizations"]
-};
+import NICHES from './niches.json';
 
 const BASE_URL = 'https://biohack-video-gen-server-production.up.railway.app';
 

@@ -1,0 +1,122 @@
+{
+  "Stories & Fiction": [
+    "True Crime: Unsolved", "True Crime: Serial Killers", "True Crime: Heists", "True Crime: Missing Persons", "True Crime: Cold Cases",
+    "Senior Revenge: Corporate", "Senior Revenge: Scammers", "Senior Revenge: Neighbors", "Senior Revenge: Inheritance", "Senior Revenge: Petty",
+    "Horror: Paranormal", "Horror: Psychological", "Horror: Found Footage", "Horror: Deep Woods", "Horror: Ocean Depths",
+    "Sci-Fi: Dystopian Futures", "Sci-Fi: Time Travel Paradoxes", "Sci-Fi: Alien Encounters", "Sci-Fi: Cyberpunk Underground", "Sci-Fi: AI Takeover",
+    "Fantasy: Dark Magic", "Fantasy: Hidden Worlds", "Fantasy: Epic Quests", "Fantasy: Urban Myths", "Fantasy: Dragons",
+    "Mystery: Locked Room", "Mystery: Detective Noir", "Mystery: Historical Secrets", "Mystery: Small Town", "Mystery: Cryptic Puzzles",
+    "Romance: Enemies to Lovers", "Romance: Tragic Endings", "Romance: Historical", "Romance: Sci-Fi Love", "Romance: Slow Burn",
+    "Thriller: Government Conspiracy", "Thriller: Psychological Games", "Thriller: Survival Game", "Thriller: Hitman Escapes", "Thriller: Viral Outbreak",
+    "Drama: Family Betrayals", "Drama: Rags to Riches", "Drama: Courtroom Battles", "Drama: Medical Miracles", "Drama: High School Secrets",
+    "Comedy: Absurd Situations", "Comedy: Office Politics", "Comedy: Dark Humor", "Comedy: Satirical Futures", "Comedy: Awkward Encounters"
+  ],
+  "Health & Science": [
+    "Neuroscience: Dopamine Detox", "Neuroscience: Flow State", "Neuroscience: Neuroplasticity", "Neuroscience: Memory Hacking", "Neuroscience: Sleep Optimization",
+    "Biohacking: Cold Plunge", "Biohacking: Red Light Therapy", "Biohacking: Nootropics", "Biohacking: Intermittent Fasting", "Biohacking: Continuous Glucose Monitoring",
+    "Fitness: Hypertrophy Science", "Fitness: Zone 2 Cardio", "Fitness: Powerlifting Mechanics", "Fitness: Calisthenics Progression", "Fitness: Mobility Protocols",
+    "Diet: Carnivore Diet", "Diet: Keto Optimization", "Diet: Plant-Based Longevity", "Diet: Gut Microbiome", "Diet: Anti-Inflammatory",
+    "Mental Health: Anxiety Reduction", "Mental Health: Trauma Healing", "Mental Health: CBT Techniques", "Mental Health: Meditation States", "Mental Health: Breathwork",
+    "Medicine: Future of Surgery", "Medicine: Gene Editing (CRISPR)", "Medicine: Stem Cell Therapy", "Medicine: Cancer Breakthroughs", "Medicine: Robotic Limbs",
+    "Psychology: Dark Psychology", "Psychology: Body Language", "Psychology: Manipulation Tactics", "Psychology: Habit Formation", "Psychology: Carl Jung Archetypes",
+    "Space Science: Black Holes", "Space Science: Mars Colonization", "Space Science: Exoplanets", "Space Science: Dark Matter", "Space Science: The Multiverse",
+    "Biology: Deep Sea Creatures", "Biology: Extremophiles", "Biology: Evolutionary Anomalies", "Biology: Venomous Species", "Biology: Fungal Networks",
+    "Physics: Quantum Mechanics", "Physics: String Theory", "Physics: Thermodynamics", "Physics: Relativity Explained", "Physics: Particle Accelerators"
+  ],
+  "Finance & Business": [
+    "Crypto: Altcoin Analysis", "Crypto: DeFi Protocols", "Crypto: Web3 Gaming", "Crypto: On-Chain Sleuthing", "Crypto: Macro Cycles",
+    "Personal Finance: FIRE Movement", "Personal Finance: Dividend Investing", "Personal Finance: Credit Card Churning", "Personal Finance: Tax Loopholes", "Personal Finance: Budgeting Hacks",
+    "Entrepreneurship: SaaS Building", "Entrepreneurship: E-commerce Drop-shipping", "Entrepreneurship: Agency Scaling", "Entrepreneurship: Solopreneurship", "Entrepreneurship: Y-Combinator Advice",
+    "Real Estate: House Hacking", "Real Estate: Commercial Flipping", "Real Estate: Airbnb Arbitrage", "Real Estate: Wholesaling", "Real Estate: REITs",
+    "Stock Market: Options Trading", "Stock Market: Value Investing", "Stock Market: Day Trading Strategies", "Stock Market: Algorithmic Trading", "Stock Market: Insider Buying Tracking",
+    "Business History: Corporate Downfalls", "Business History: Monopolies", "Business History: Marketing Genius", "Business History: Hostile Takeovers", "Business History: Trillion Dollar Companies",
+    "Economics: Hyperinflation", "Economics: Central Bank Digital Currencies", "Economics: Supply Chain Crises", "Economics: BRICS vs USD", "Economics: Game Theory",
+    "Side Hustles: Print on Demand", "Side Hustles: Affiliate Marketing", "Side Hustles: Ghostwriting", "Side Hustles: Digital Products", "Side Hustles: Vending Machines",
+    "Sales: Cold Calling", "Sales: Closing Techniques", "Sales: B2B Enterprise", "Sales: Copywriting Psychology", "Sales: Negotiation Tactics",
+    "Venture Capital: Pitch Deck Tear-downs", "Venture Capital: Angel Investing", "Venture Capital: Valuations", "Venture Capital: Silicon Valley Drama", "Venture Capital: Tech Bubbles"
+  ],
+  "Mystery & History": [
+    "Ancient History: Roman Empire", "Ancient History: Egyptian Pyramids", "Ancient History: Mayan Collapse", "Ancient History: Bronze Age Collapse", "Ancient History: Gobekli Tepe",
+    "Unsolved Mysteries: Disappearances", "Unsolved Mysteries: Cryptic Codes", "Unsolved Mysteries: Ghost Ships", "Unsolved Mysteries: Unidentified Signals", "Unsolved Mysteries: Buried Treasure",
+    "Conspiracy Theories: Project MKUltra", "Conspiracy Theories: Area 51", "Conspiracy Theories: Secret Societies", "Conspiracy Theories: Moon Landing", "Conspiracy Theories: Hollow Earth",
+    "Lost Civilizations: Atlantis", "Lost Civilizations: Lemuria", "Lost Civilizations: El Dorado", "Lost Civilizations: Indus Valley", "Lost Civilizations: Roanoke Colony",
+    "Military History: WWII Tactics", "Military History: Cold War Espionage", "Military History: Medieval Sieges", "Military History: Naval Battles", "Military History: Special Forces Missions",
+    "Historical Figures: Alexander the Great", "Historical Figures: Genghis Khan", "Historical Figures: Nikola Tesla", "Historical Figures: Cleopatra", "Historical Figures: Leonardo da Vinci",
+    "Mythology: Greek Gods", "Mythology: Norse Legends", "Mythology: Japanese Yokai", "Mythology: Egyptian Afterlife", "Mythology: Celtic Lore",
+    "Artifacts: Holy Grail", "Artifacts: Antikythera Mechanism", "Artifacts: Voynich Manuscript", "Artifacts: Ark of the Covenant", "Artifacts: Crystal Skulls",
+    "Espionage: KGB Spies", "Espionage: CIA Covert Ops", "Espionage: MI6 History", "Espionage: Cyber Warfare", "Espionage: Double Agents",
+    "Disasters: Chernobyl", "Disasters: Titanic", "Disasters: Pompeii", "Disasters: Hindenburg", "Disasters: Tunguska Event"
+  ],
+  "Tech & AI": [
+    "AI News: LLM Breakthroughs", "AI News: AGI Timelines", "AI News: Open Source vs Closed", "AI News: AI Agents", "AI News: AI Regulation",
+    "Software Dev: React Ecosystem", "Software Dev: Rust Lang", "Software Dev: System Design", "Software Dev: DevOps Pipelines", "Software Dev: Open Source Projects",
+    "Cybersecurity: Zero-Day Exploits", "Cybersecurity: Ransomware Gangs", "Cybersecurity: Ethical Hacking", "Cybersecurity: Social Engineering", "Cybersecurity: Cryptography",
+    "Hardware: GPU Architecture", "Hardware: Quantum Computing", "Hardware: Brain-Computer Interfaces", "Hardware: Solid State Batteries", "Hardware: Silicon Photonics",
+    "Tech Reviews: Latest Smartphones", "Tech Reviews: VR/AR Headsets", "Tech Reviews: Mechanical Keyboards", "Tech Reviews: Audiophile Gear", "Tech Reviews: Smart Home",
+    "Gaming Tech: Unreal Engine 5", "Gaming Tech: Ray Tracing", "Gaming Tech: Cloud Gaming", "Gaming Tech: Procedural Generation", "Gaming Tech: Netcode",
+    "Robotics: Humanoid Robots", "Robotics: Drone Swarms", "Robotics: Industrial Automation", "Robotics: Boston Dynamics", "Robotics: Microbots",
+    "Data Science: Machine Learning", "Data Science: Big Data Analytics", "Data Science: Neural Networks", "Data Science: Natural Language Processing", "Data Science: Computer Vision",
+    "Internet Culture: Viral Trends", "Internet Culture: Meme Origins", "Internet Culture: Creator Economy", "Internet Culture: Digital Footprint", "Internet Culture: Platform Algorithms",
+    "Future Tech: Flying Cars", "Future Tech: Fusion Power", "Future Tech: Holograms", "Future Tech: Space Elevators", "Future Tech: Nanotechnology"
+  ],
+  "Motivation & Mindset": [
+    "Stoicism: Marcus Aurelius", "Stoicism: Emotional Control", "Stoicism: Facing Adversity", "Stoicism: Amor Fati", "Stoicism: Daily Meditations",
+    "Success Stories: Billionaire Habits", "Success Stories: Athlete Routines", "Success Stories: Comeback Stories", "Success Stories: Historical Underdogs", "Success Stories: Genius Workflows",
+    "Productivity: Pomodoro Technique", "Productivity: Notion Systems", "Productivity: Deep Work", "Productivity: Time Blocking", "Productivity: Anti-Procrastination",
+    "Leadership: Team Building", "Leadership: Military Strategy", "Leadership: Corporate Management", "Leadership: Charisma Building", "Leadership: Conflict Resolution",
+    "Self-Improvement: Confidence", "Self-Improvement: Public Speaking", "Self-Improvement: Goal Setting", "Self-Improvement: Rejection Therapy", "Self-Improvement: Identity Shifting",
+    "Spirituality: Zen Buddhism", "Spirituality: Law of Attraction", "Spirituality: Ego Death", "Spirituality: Mindfulness", "Spirituality: Chakra Alignment",
+    "Relationships: Communication Skills", "Relationships: Attachment Styles", "Relationships: Boundary Setting", "Relationships: Dating Psychology", "Relationships: Marriage Advice",
+    "Philosophy: Existentialism", "Philosophy: Nihilism vs Absurdism", "Philosophy: Eastern Philosophy", "Philosophy: Ethical Dilemmas", "Philosophy: Simulation Theory",
+    "Mindset: Abundance Mindset", "Mindset: Growth vs Fixed", "Mindset: Victim Mentality", "Mindset: Delayed Gratification", "Mindset: Unbreakable Resilience",
+    "Inspiration: Speeches", "Inspiration: Cinematic Montages", "Inspiration: Quotes Breakdown", "Inspiration: Life Lessons", "Inspiration: Awakening Moments"
+  ],
+  "Pop Culture & Entertainment": [
+    "Movie Recaps: Sci-Fi Thrillers", "Movie Recaps: Hidden Gems", "Movie Recaps: Mind-Bending Twists", "Movie Recaps: Horror Classics", "Movie Recaps: Action Blockbusters",
+    "Anime: Shonen Breakdown", "Anime: Seinen Masterpieces", "Anime: Power Scaling", "Anime: Lore Explanation", "Anime: Upcoming Seasons",
+    "Gaming Lore: Elden Ring", "Gaming Lore: Fallout Universe", "Gaming Lore: Halo Timeline", "Gaming Lore: Five Nights at Freddy's", "Gaming Lore: Mass Effect",
+    "Celebrity News: Hollywood Drama", "Celebrity News: Musician Beefs", "Celebrity News: Cancel Culture", "Celebrity News: Comebacks", "Celebrity News: Hidden Lives",
+    "TV Shows: Series Finales", "TV Shows: Character Arcs", "TV Shows: Easter Eggs", "TV Shows: Sitcom Tropes", "TV Shows: Prestige Drama",
+    "Music: Album Reviews", "Music: Sample Breakdown", "Music: Industry Secrets", "Music: Vocal Analysis", "Music: Greatest Hits History",
+    "Comics: Marvel MCU", "Comics: DC Universe", "Comics: Indie Graphic Novels", "Comics: Origin Stories", "Comics: Alternate Timelines",
+    "Pop Culture Analysis: Nostalgia", "Pop Culture Analysis: Fandom Toxicity", "Pop Culture Analysis: Marketing Brilliance", "Pop Culture Analysis: Trends", "Pop Culture Analysis: Cultural Reset",
+    "Esports: Tournament Highlights", "Esports: Pro Player Analysis", "Esports: Roster Changes", "Esports: Meta Shifts", "Esports: Org Drama",
+    "Internet Drama: YouTuber Apologies", "Internet Drama: Twitch Bans", "Internet Drama: Twitter Wars", "Internet Drama: TikTok Beefs", "Internet Drama: Discord Leaks"
+  ],
+  "Lifestyle & Travel": [
+    "Travel Guides: Hidden Gems", "Travel Guides: Budget Backpacking", "Travel Guides: Luxury Resorts", "Travel Guides: Dangerous Places", "Travel Guides: Food Tours",
+    "Minimalism: Decluttering", "Minimalism: Digital Minimalism", "Minimalism: Capsule Wardrobe", "Minimalism: Tiny Homes", "Minimalism: Essentialism",
+    "Luxury: Supercars", "Luxury: Mansions", "Luxury: Watches", "Luxury: Private Jets", "Luxury: High Fashion",
+    "Fashion: Streetwear Trends", "Fashion: Vintage Thrifting", "Fashion: Sneaker Culture", "Fashion: Runway Analysis", "Fashion: Sustainable Clothing",
+    "Van Life: Build Tutorials", "Van Life: Off-Grid Living", "Van Life: Solo Travel", "Van Life: Remote Work", "Van Life: Challenges",
+    "Food: Street Food", "Food: Michelin Star Reviews", "Food: Cooking Tutorials", "Food: Extreme Spicy", "Food: Weird Delicacies",
+    "Photography: Portrait Tips", "Photography: Landscape Editing", "Photography: Street Photography", "Photography: Film Cameras", "Photography: Drone Shots",
+    "Language Learning: Polyglot Tips", "Language Learning: Immersion", "Language Learning: Accent Reduction", "Language Learning: Memory Palaces", "Language Learning: Linguistics",
+    "Pet Care: Dog Training", "Pet Care: Exotic Pets", "Pet Care: Cat Psychology", "Pet Care: Aquascaping", "Pet Care: Vet Advice",
+    "DIY: Home Renovation", "DIY: Woodworking", "DIY: 3D Printing", "DIY: Upcycling", "DIY: Electronics Repair"
+  ],
+  "Sports & Action": [
+    "Football/Soccer: Tactical Analysis", "Football/Soccer: Transfer Rumors", "Football/Soccer: Greatest Goals", "Football/Soccer: Club History", "Football/Soccer: Player Biographies",
+    "Basketball/NBA: Draft Scouting", "Basketball/NBA: GOAT Debates", "Basketball/NBA: Shooting Mechanics", "Basketball/NBA: Playoff Breakdown", "Basketball/NBA: Streetball",
+    "Combat Sports: UFC Breakdowns", "Combat Sports: Boxing History", "Combat Sports: BJJ Techniques", "Combat Sports: Muay Thai Strikes", "Combat Sports: Street Fights Analyzed",
+    "Extreme Sports: Base Jumping", "Extreme Sports: Big Wave Surfing", "Extreme Sports: Free Solo Climbing", "Extreme Sports: Downhill MTB", "Extreme Sports: Parkour",
+    "Motorsports: F1 Strategy", "Motorsports: Rally Crashes", "Motorsports: MotoGP Tech", "Motorsports: Nascar Rivalries", "Motorsports: Drift Battles",
+    "Fitness Challenges: Iron Man", "Fitness Challenges: Navy SEAL Test", "Fitness Challenges: 100 Mile Ultramarathon", "Fitness Challenges: CrossFit Games", "Fitness Challenges: Strongman",
+    "Olympics: Historic Records", "Olympics: Scandalous Moments", "Olympics: Gymnastics Routine", "Olympics: Track & Field", "Olympics: Winter Sports",
+    "Golf: Swing Mechanics", "Golf: PGA Tour", "Golf: Equipment Reviews", "Golf: Course Vlogs", "Golf: Masters History",
+    "Tennis: Grand Slam Highlights", "Tennis: Federer vs Nadal", "Tennis: Serve Analysis", "Tennis: Up and Comers", "Tennis: Racket Tech",
+    "Outdoors: Survival Skills", "Outdoors: Bushcraft", "Outdoors: Hunting Tactics", "Outdoors: Deep Sea Fishing", "Outdoors: Camping Gear"
+  ],
+  "Education & Tutorials": [
+    "Math: Paradoxes", "Math: Calculus Explained", "Math: Numberphile Puzzles", "Math: Probability in Real Life", "Math: Geometry Visualized",
+    "Coding: Python Projects", "Coding: Web Dev Portfolios", "Coding: LeetCode Prep", "Coding: C++ Basics", "Coding: Game Development",
+    "Design: UI/UX Principles", "Design: Graphic Design Trends", "Design: Logo Redesigns", "Design: Blender 3D", "Design: Color Theory",
+    "Art: Digital Painting", "Art: Sketching Fundamentals", "Art: Watercolor Techniques", "Art: Art History", "Art: Sculpting",
+    "Music Production: FL Studio", "Music Production: Ableton Live", "Music Production: Mixing & Mastering", "Music Production: Beat Making", "Music Production: Sound Design",
+    "Video Editing: Premiere Pro", "Video Editing: After Effects", "Video Editing: DaVinci Resolve", "Video Editing: Transitions", "Video Editing: Color Grading",
+    "Writing: Worldbuilding", "Writing: Screenwriting", "Writing: Novel Structuring", "Writing: Poetry", "Writing: Character Development",
+    "Engineering: How It Works", "Engineering: Mega-structures", "Engineering: Reverse Engineering", "Engineering: Bridge Collapses", "Engineering: Aerospace",
+    "Languages: English Grammar", "Languages: Spanish Fluency", "Languages: Japanese Kanji", "Languages: French Pronunciation", "Languages: Mandarin Basics",
+    "Test Prep: SAT/ACT", "Test Prep: MCAT", "Test Prep: LSAT", "Test Prep: Study Hacks", "Test Prep: Memory Techniques"
+  ]
+}
