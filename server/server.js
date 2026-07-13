@@ -433,7 +433,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                             '-map 1:a:0', // Only take audio from input 1
                             '-shortest',
                             '-pix_fmt yuv420p',
-                            `-vf scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,ass='${escapedAssPath}'`,
+                            `-vf scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB,ass='${escapedAssPath}'`,
                             '-preset veryfast', // Drastically speeds up encoding
                             '-threads 2' // Balances CPU load across parallel processes
                         ])
