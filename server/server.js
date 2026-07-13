@@ -251,8 +251,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     if (visualSource === 'stock_videos') {
                         const query = segment.searchQuery || segment.imagePrompt || "science";
                         addLog(`[Segment ${i + 1}] Searching stock video for: ${query}...`);
-                        const videoUrl = await withRetry(() => fetchStockVideo(query), \`Stock Search \${i+1}\`);
-                        const videoBuffer = await withRetry(() => axios.get(videoUrl, { responseType: 'arraybuffer' }), \`Download Stock Video \${i+1}\`);
+                        const videoUrl = await withRetry(() => fetchStockVideo(query), `Stock Search ${i+1}`);
+                        const videoBuffer = await withRetry(() => axios.get(videoUrl, { responseType: 'arraybuffer' }), `Download Stock Video ${i+1}`);
                         fs.writeFileSync(visualPath, videoBuffer.data);
                         addLog(`[Segment ${i + 1}] Stock Video downloaded.`);
                     } else {
@@ -270,8 +270,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                                 }
                             );
                             return imgRes[0];
-                        }, \`Image Gen \${i+1}\`);
-                        const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), \`Download Image \${i+1}\`);
+                        }, `Image Gen ${i+1}`);
+                        const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), `Download Image ${i+1}`);
                         fs.writeFileSync(visualPath, imgBuffer.data);
                         addLog(`[Segment ${i + 1}] Image downloaded.`);
                     }
@@ -309,8 +309,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                             }
                             throw ttsError;
                         }
-                    }, \`Audio Gen \${i+1}\`);
-                    const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer' }), \`Download Audio \${i+1}\`);
+                    }, `Audio Gen ${i+1}`);
+                    const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer' }), `Download Audio ${i+1}`);
                     fs.writeFileSync(audioPath, audioBuffer.data);
                     addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
                 })()
@@ -356,7 +356,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 const m = Math.floor((sec % 3600) / 60);
                 const s = Math.floor(sec % 60);
                 const cs = Math.floor((sec % 1) * 100);
-                return \`\${h}:\${m.toString().padStart(2, '0')}:\${s.toString().padStart(2, '0')}.\${cs.toString().padStart(2, '0')}\`;
+                return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
             };
 
             let currentStart = 0;
@@ -366,7 +366,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 const chunkDuration = timePerWord * words.slice(i, i+3).length;
                 const end = currentStart + chunkDuration;
                 
-                ass += \`Dialogue: 0,\${formatASSTime(currentStart)},\${formatASSTime(end)},Default,,0,0,0,,{\\\\fad(100,100)}\${chunk}\\n\`;
+                ass += `Dialogue: 0,${formatASSTime(currentStart)},${formatASSTime(end)},Default,,0,0,0,,{\\fad(100,100)}${chunk}\n`;
                 currentStart = end;
             }
             fs.writeFileSync(filepath, ass);
@@ -383,10 +383,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             const chunk = [];
             for (let j = i; j < i + FFMPEG_CHUNK_SIZE && j < clips.length; j++) {
                 const clip = clips[j];
-                const clipPath = path.join(projectDir, \`clip_\${j}.mp4\`);
+                const clipPath = path.join(projectDir, `clip_${j}.mp4`);
                 clipPaths[j] = clipPath;
                 
-                const assPath = path.join(projectDir, \`sub_\${j}.ass\`);
+                const assPath = path.join(projectDir, `sub_${j}.ass`);
                 generateASS(clip.text, clip.duration, assPath);
                 
                 // Escape paths for FFmpeg filter on Windows
@@ -406,7 +406,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         .outputOptions([
                             '-shortest',
                             '-pix_fmt yuv420p',
-                            \`-vf scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,ass='\${escapedAssPath}'\`,
+                            `-vf scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,ass='${escapedAssPath}'`,
                             '-preset veryfast', // Drastically speeds up encoding
                             '-threads 2' // Balances CPU load across parallel processes
                         ])
