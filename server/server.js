@@ -370,7 +370,7 @@ PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,90,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,3,2,10,10,120,1
+Style: Default,Arial,90,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,3,2,10,10,120,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -385,14 +385,30 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             };
 
             let currentStart = 0;
-            // Group into 2-word chunks for fast-paced kinetic Hormozi style
-            for (let i = 0; i < words.length; i += 2) {
-                const chunk = words.slice(i, i + 2).join(' ');
-                const chunkDuration = timePerWord * words.slice(i, i+2).length;
-                const end = currentStart + chunkDuration;
+            // Group into 3-word chunks for fast-paced kinetic Hormozi style
+            for (let i = 0; i < words.length; i += 3) {
+                const chunkWords = words.slice(i, i + 3);
+                const chunkDuration = timePerWord * chunkWords.length;
+                const chunkEnd = currentStart + chunkDuration;
                 
-                ass += `Dialogue: 0,${formatASSTime(currentStart)},${formatASSTime(end)},Default,,0,0,0,,{\\fad(50,50)}${chunk}\n`;
-                currentStart = end;
+                // For each word in the chunk, display the whole chunk but highlight the active word
+                for (let w = 0; w < chunkWords.length; w++) {
+                    const wordStart = currentStart + (w * timePerWord);
+                    const wordEnd = wordStart + timePerWord;
+                    
+                    let highlightedText = "";
+                    for (let j = 0; j < chunkWords.length; j++) {
+                        if (j === w) {
+                            highlightedText += `{\\c&H0000FFFF&}${chunkWords[j]} `; // Highlight Yellow
+                        } else {
+                            highlightedText += `{\\c&H00FFFFFF&}${chunkWords[j]} `; // Default White
+                        }
+                    }
+                    
+                    ass += `Dialogue: 0,${formatASSTime(wordStart)},${formatASSTime(wordEnd)},Default,,0,0,0,,${highlightedText.trim()}\n`;
+                }
+                
+                currentStart = chunkEnd;
             }
             fs.writeFileSync(filepath, ass);
         }
