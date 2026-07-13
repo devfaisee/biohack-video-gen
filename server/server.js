@@ -79,11 +79,11 @@ async function withRetry(fn, operationName, maxRetries = 6, baseDelayMs = 4000) 
 }
 
 app.post('/api/generate', (req, res) => {
-    const { durationMinutes = 1, topic, customTitle, customDescription } = req.body;
-    addLog(`Starting generation for ${durationMinutes} minutes on topic: ${topic || 'Default'}...`);
+    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'ai_images' } = req.body;
+    addLog(`Starting generation for ${durationMinutes} minutes on topic: ${topic || 'Default'} [Visuals: ${visualSource}]...`);
     
     // Start background job to prevent Railway 100s timeout
-    generateVideoJob({ durationMinutes, topic, customTitle, customDescription }).catch(err => {
+    generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource }).catch(err => {
         addLog(JSON.stringify({ event: "error", message: err.message }));
     });
     
@@ -117,7 +117,7 @@ Output ONLY pure JSON with no markdown formatting:
     }
 });
 
-async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription }) {
+async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource }) {
     try {
         const wordCount = durationMinutes * 130;
         const targetNiche = topic || "Psychology, Neuroscience, and Biohacking";
@@ -132,6 +132,10 @@ User Description: "${customDescription || ''}"
 Do NOT generate a random topic. You MUST strictly follow and explore this exact topic, while still generating the final optimized JSON title/description.`;
         }
 
+        const visualInstruction = visualSource === 'stock_videos'
+            ? `"searchQuery": "A 1-3 word highly literal search query for a stock video API (e.g. 'brain mri', 'doctor lab', 'running snow'). Be extremely simple and literal."`
+            : `"imagePrompt": "A highly detailed visual prompt for an AI image generator. The aesthetic MUST wildly vary to match the context of the sentence (e.g., a photorealistic glowing brain synapse, a vintage 1990s VHS recording of an experiment, a minimalist corporate office, etc.). Do NOT use the exact same aesthetic for every image."`;
+
         const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the ${targetNiche} niche (style of Huberman Lab mixed with high-retention cinematic documentaries). 
 Your goal is to write a highly viral, retention-optimized script for a horizontal YouTube video.
 ${specificIdeaInstruction}
@@ -142,7 +146,7 @@ Do NOT summarize. Do NOT finish early. You must dive deeply into the science, pr
 
 CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
 1. THE HOOK: The first 5 seconds MUST be an aggressive, curiosity-inducing hook that makes clicking off impossible.
-2. VISUAL PACING: Visuals must change RAPIDLY. Provide a new visual prompt for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking. Do NOT group multiple sentences into one segment.
+2. VISUAL PACING: Visuals must change RAPIDLY. Provide a new visual instruction for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking. Do NOT group multiple sentences into one segment.
 3. TITLE & SEO: The title must be highly clickable and psychologically compelling (clickbait but professional and true, e.g., "The 1 Habit That Rewires Your Brain In 24 Hours"). 
 4. TAGS/HASHTAGS: Provide highly targeted, algorithm-optimizing SEO tags used by top creators (e.g., "andrew huberman", "dopamine detox protocol", "peak cognitive performance"). Do NOT just use basic single words like "brain" or "science".
 5. TONE: Professional, authoritative, highly engaging, and intensely fascinating.
@@ -161,7 +165,7 @@ Output pure JSON with the following structure:
     {
       "narration": "[extremely fast] Did you know that... [short pause] [whispering] your memory can be optimized?",
       "voicePrompt": "DIRECTOR'S NOTES: Intense, extremely fast-paced, dropping into a mysterious whisper at the end.",
-      "imagePrompt": "A highly detailed visual prompt for an AI image generator (flux-schnell). The aesthetic MUST wildly vary to match the context of the sentence (e.g., a photorealistic glowing brain synapse, a vintage 1990s VHS recording of an experiment, a minimalist corporate office, a cinematic wide shot of an athlete in the snow, a futuristic cyberpunk lab, etc.). Do NOT use the exact same aesthetic for every image. Make the scene, lighting, and composition highly diverse and engaging."
+      ${visualInstruction}
     }
   ]
 }
@@ -195,37 +199,82 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         addLog(`Starting parallel generation of ${scriptData.segments.length} segments...`);
 
+        const pexelsKey = "vGnr3wLcpfgybFLKKXjcPcqMOPc4MM89JJA1j2WpGfrKNh29XTHVualY";
+        const pixabayKey = "54069102-5cb5de9252e9808a1e0d5f201";
+
+        async function fetchStockVideo(query) {
+            try {
+                const res = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`, {
+                    headers: { Authorization: pexelsKey }
+                });
+                if (res.data.videos && res.data.videos.length > 0) {
+                    const video = res.data.videos[0];
+                    const hdFile = video.video_files.find(f => f.quality === 'hd' || f.width >= 1280) || video.video_files[0];
+                    return hdFile.link;
+                }
+            } catch (e) {
+                console.warn("Pexels failed, falling back to Pixabay", e.message);
+            }
+            try {
+                const res = await axios.get(`https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodeURIComponent(query)}&video_type=film&orientation=horizontal`);
+                if (res.data.hits && res.data.hits.length > 0) {
+                    const video = res.data.hits[0];
+                    return video.videos.large.url || video.videos.medium.url || video.videos.small.url;
+                }
+            } catch (e) {
+                console.warn("Pixabay failed", e.message);
+            }
+            throw new Error(`No stock videos found for query: ${query}`);
+        }
+
+        const getAudioDuration = (filePath) => new Promise((resolve, reject) => {
+            ffmpeg.ffprobe(filePath, (err, metadata) => {
+                if (err) reject(err);
+                else resolve(metadata.format.duration);
+            });
+        });
+
         // Generate all segments concurrently (limit concurrency to 4 to avoid rate limits)
         const generateSegment = async (i) => {
             if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
             const segment = scriptData.segments[i];
             addLog(`[Segment ${i + 1}/${scriptData.segments.length}] Starting parallel asset generation...`);
 
-            const imgPath = path.join(projectDir, `img_${i}.webp`);
+            const visualExt = visualSource === 'stock_videos' ? 'mp4' : 'webp';
+            const visualPath = path.join(projectDir, `visual_${i}.${visualExt}`);
             const audioPath = path.join(projectDir, `audio_${i}.wav`);
 
-            // Run Image and Audio concurrently
+            // Run Visual and Audio concurrently
             await Promise.all([
-                // IMAGE TASK
+                // VISUAL TASK
                 (async () => {
-                    addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
-                    const imageUrl = await withRetry(async () => {
-                        const imgRes = await replicate.run(
-                            "black-forest-labs/flux-schnell",
-                            {
-                                input: {
-                                    prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
-                                    aspect_ratio: "16:9",
-                                    output_format: "webp",
-                                    num_outputs: 1
+                    if (visualSource === 'stock_videos') {
+                        const query = segment.searchQuery || segment.imagePrompt || "science";
+                        addLog(`[Segment ${i + 1}] Searching stock video for: ${query}...`);
+                        const videoUrl = await withRetry(() => fetchStockVideo(query), \`Stock Search \${i+1}\`);
+                        const videoBuffer = await withRetry(() => axios.get(videoUrl, { responseType: 'arraybuffer' }), \`Download Stock Video \${i+1}\`);
+                        fs.writeFileSync(visualPath, videoBuffer.data);
+                        addLog(`[Segment ${i + 1}] Stock Video downloaded.`);
+                    } else {
+                        addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
+                        const imageUrl = await withRetry(async () => {
+                            const imgRes = await replicate.run(
+                                "black-forest-labs/flux-schnell",
+                                {
+                                    input: {
+                                        prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
+                                        aspect_ratio: "16:9",
+                                        output_format: "webp",
+                                        num_outputs: 1
+                                    }
                                 }
-                            }
-                        );
-                        return imgRes[0];
-                    }, `Image Gen ${i+1}`);
-                    const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), `Download Image ${i+1}`);
-                    fs.writeFileSync(imgPath, imgBuffer.data);
-                    addLog(`[Segment ${i + 1}] Image downloaded.`);
+                            );
+                            return imgRes[0];
+                        }, \`Image Gen \${i+1}\`);
+                        const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), \`Download Image \${i+1}\`);
+                        fs.writeFileSync(visualPath, imgBuffer.data);
+                        addLog(`[Segment ${i + 1}] Image downloaded.`);
+                    }
                 })(),
 
                 // AUDIO TASK
@@ -260,14 +309,15 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                             }
                             throw ttsError;
                         }
-                    }, `Audio Gen ${i+1}`);
-                    const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer' }), `Download Audio ${i+1}`);
+                    }, \`Audio Gen \${i+1}\`);
+                    const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer' }), \`Download Audio \${i+1}\`);
                     fs.writeFileSync(audioPath, audioBuffer.data);
                     addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
                 })()
             ]);
 
-            clips[i] = { img: imgPath, audio: audioPath };
+            const audioDuration = await getAudioDuration(audioPath);
+            clips[i] = { visual: visualPath, audio: audioPath, text: segment.narration, duration: audioDuration };
         };
 
         // Process API generation in chunks of 5 for MAXIMUM speed (protected by our new exponential backoff)
@@ -282,7 +332,47 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        addLog("Assets generated. Stitching clips in parallel (Chunked) for maximum speed...");
+        // Subtitle Generator Function (Mathematical Word Timing)
+        function generateASS(text, durationSec, filepath) {
+            const words = text.replace(/\[.*?\]/g, '').trim().split(/\\s+/);
+            if (words.length === 0) words.push("...");
+            const timePerWord = durationSec / words.length;
+            
+            let ass = `[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,90,&H0000FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,3,2,10,10,120,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`;
+            
+            const formatASSTime = (sec) => {
+                const h = Math.floor(sec / 3600);
+                const m = Math.floor((sec % 3600) / 60);
+                const s = Math.floor(sec % 60);
+                const cs = Math.floor((sec % 1) * 100);
+                return \`\${h}:\${m.toString().padStart(2, '0')}:\${s.toString().padStart(2, '0')}.\${cs.toString().padStart(2, '0')}\`;
+            };
+
+            let currentStart = 0;
+            // Group into 3-word chunks for kinetic pacing
+            for (let i = 0; i < words.length; i += 3) {
+                const chunk = words.slice(i, i + 3).join(' ');
+                const chunkDuration = timePerWord * words.slice(i, i+3).length;
+                const end = currentStart + chunkDuration;
+                
+                ass += \`Dialogue: 0,\${formatASSTime(currentStart)},\${formatASSTime(end)},Default,,0,0,0,,{\\\\fad(100,100)}\${chunk}\\n\`;
+                currentStart = end;
+            }
+            fs.writeFileSync(filepath, ass);
+        }
+
+        addLog("Assets generated. Stitching clips with KINETIC SUBTITLES in parallel...");
         const clipPaths = new Array(clips.length);
         
         // Run FFmpeg processes in parallel chunks (safe for 8GB RAM)
@@ -293,20 +383,30 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             const chunk = [];
             for (let j = i; j < i + FFMPEG_CHUNK_SIZE && j < clips.length; j++) {
                 const clip = clips[j];
-                const clipPath = path.join(projectDir, `clip_${j}.mp4`);
+                const clipPath = path.join(projectDir, \`clip_\${j}.mp4\`);
                 clipPaths[j] = clipPath;
                 
+                const assPath = path.join(projectDir, \`sub_\${j}.ass\`);
+                generateASS(clip.text, clip.duration, assPath);
+                
+                // Escape paths for FFmpeg filter on Windows
+                const escapedAssPath = assPath.replace(/\\\\/g, '\\\\\\\\').replace(/:/g, '\\\\:');
+
                 chunk.push(new Promise((resolve, reject) => {
-                    ffmpeg()
-                        .input(clip.img)
-                        .loop()
-                        .input(clip.audio)
+                    let cmd = ffmpeg();
+                    if (visualSource === 'stock_videos') {
+                        cmd = cmd.input(clip.visual).inputOptions(['-stream_loop', '-1']);
+                    } else {
+                        cmd = cmd.input(clip.visual).loop();
+                    }
+                    
+                    cmd.input(clip.audio)
                         .videoCodec('libx264')
                         .audioCodec('aac')
                         .outputOptions([
                             '-shortest',
                             '-pix_fmt yuv420p',
-                            '-vf scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080',
+                            \`-vf scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,ass='\${escapedAssPath}'\`,
                             '-preset veryfast', // Drastically speeds up encoding
                             '-threads 2' // Balances CPU load across parallel processes
                         ])

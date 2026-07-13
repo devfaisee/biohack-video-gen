@@ -7,6 +7,7 @@ function App() {
   const [duration, setDuration] = useState(1);
   const [format, setFormat] = useState('horizontal');
   const [topic, setTopic] = useState('Psychology, Neuroscience & Biohacking');
+  const [visualSource, setVisualSource] = useState('ai_images');
   const [customTitle, setCustomTitle] = useState('');
   const [customDescription, setCustomDescription] = useState('');
   const [ideaLoading, setIdeaLoading] = useState(false);
@@ -94,6 +95,7 @@ function App() {
         durationMinutes: duration,
         format: format,
         topic: topic,
+        visualSource: visualSource,
         customTitle: customTitle,
         customDescription: customDescription
       });
@@ -122,6 +124,18 @@ function App() {
             <h1 className="title">NeuroGen Studio</h1>
             <p className="subtitle">AI Biohacking & Neuroscience Video Creator</p>
           </div>
+
+        <div className="form-group">
+          <label className="label">Visual Source</label>
+          <select 
+            className="select" 
+            value={visualSource} 
+            onChange={(e) => setVisualSource(e.target.value)}
+          >
+            <option value="ai_images">AI Generated Cinematic Images (Replicate Flux)</option>
+            <option value="stock_videos">Real Stock Footage (Pexels / Pixabay)</option>
+          </select>
+        </div>
 
         <div className="form-group">
           <label className="label">Video Topic or Niche</label>
