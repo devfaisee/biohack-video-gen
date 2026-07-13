@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Play, Video, Terminal } from 'lucide-react';
+import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Filter } from 'lucide-react';
 import axios from 'axios';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 
 const NICHES = {
   "Health & Science": ["Neuroscience & Biohacking", "Dopamine Detox", "Fitness & Diet", "Mental Health"],
@@ -9,7 +10,28 @@ const NICHES = {
   "Mystery & History": ["Unsolved Mysteries", "Ancient History", "Conspiracy Theories", "Lost Civilizations"]
 };
 
-function App() {
+const BASE_URL = 'https://biohack-video-gen-server-production.up.railway.app';
+
+function Navbar() {
+  const location = useLocation();
+  return (
+    <nav className="navbar">
+      <Link to="/" className="nav-brand">
+        <Sparkles size={24} color="#8b5cf6" /> NeuroGen Studio
+      </Link>
+      <div className="nav-links">
+        <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>
+          <LayoutDashboard size={18} /> Creator Studio
+        </Link>
+        <Link to="/library" className={`nav-link ${location.pathname === '/library' ? 'active' : ''}`}>
+          <Film size={18} /> Video Library
+        </Link>
+      </div>
+    </nav>
+  );
+}
+
+function CreatorStudio() {
   const [loading, setLoading] = useState(false);
   const [duration, setDuration] = useState(1);
   const [format, setFormat] = useState('horizontal');
@@ -25,28 +47,12 @@ function App() {
   const [logs, setLogs] = useState([]);
   const logsEndRef = useRef(null);
 
-  const [libraryVideos, setLibraryVideos] = useState([]);
-
-  const fetchLibrary = async () => {
-    try {
-      const res = await axios.get('https://biohack-video-gen-server-production.up.railway.app/api/videos');
-      setLibraryVideos(res.data);
-    } catch (e) {
-      console.error("Failed to fetch library", e);
-    }
-  };
-
   useEffect(() => {
-    fetchLibrary();
-    
-    // Check if a job is currently running on the server
-    axios.get('https://biohack-video-gen-server-production.up.railway.app/api/status')
-      .then(res => {
-        if (res.data.isRunning) setLoading(true);
-      })
+    axios.get(`${BASE_URL}/api/status`)
+      .then(res => { if (res.data.isRunning) setLoading(true); })
       .catch(e => console.error("Failed to fetch status", e));
 
-    const sse = new EventSource('https://biohack-video-gen-server-production.up.railway.app/api/logs');
+    const sse = new EventSource(`${BASE_URL}/api/logs`);
     sse.onmessage = (e) => {
       const data = JSON.parse(e.data);
       try {
@@ -56,16 +62,14 @@ function App() {
               title: parsedLog.title,
               description: parsedLog.description,
               tags: parsedLog.tags,
-              videoUrl: `https://biohack-video-gen-server-production.up.railway.app${parsedLog.videoUrl}`
+              videoUrl: `${BASE_URL}${parsedLog.videoUrl}`
            });
            setLoading(false);
-           fetchLibrary(); // Refresh library when a new video finishes!
            return;
         }
         if (parsedLog.event === "error") {
            alert("Generation failed: " + parsedLog.message);
            setLoading(false);
-           fetchLibrary(); // Refresh library to show the failed job in history
            return;
         }
       } catch(err) {
@@ -76,19 +80,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    if (logsEndRef.current) logsEndRef.current.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
   const generateIdea = async () => {
     setIdeaLoading(true);
     try {
-      const res = await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/idea', { 
-        topic: topic,
-        mainNiche: mainNiche,
-        subNiche: subNiche
-      });
+      const res = await axios.post(`${BASE_URL}/api/idea`, { topic, mainNiche, subNiche });
       setCustomTitle(res.data.title);
       setCustomDescription(res.data.description);
     } catch (error) {
@@ -100,30 +98,22 @@ function App() {
 
   const generateVideo = async () => {
     setLoading(true);
-    setLogs([]); // Clear previous logs
+    setLogs([]);
     setResult(null);
     try {
-      await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/generate', {
-        durationMinutes: duration,
-        format: format,
-        topic: topic,
-        mainNiche: mainNiche,
-        subNiche: subNiche,
-        visualSource: visualSource,
-        customTitle: customTitle,
-        customDescription: customDescription
+      await axios.post(`${BASE_URL}/api/generate`, {
+        durationMinutes: duration, format, topic, mainNiche, subNiche, visualSource, customTitle, customDescription
       });
-      // Generation continues in the background. Result is set via SSE 'complete' event.
     } catch (error) {
       console.error('Error generating video:', error);
-      alert('Failed to start video generation. Check console for details.');
+      alert('Failed to start video generation.');
       setLoading(false);
     }
   };
 
   const cancelGeneration = async () => {
     try {
-      await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/cancel');
+      await axios.post(`${BASE_URL}/api/cancel`);
       setLoading(false);
     } catch (error) {
       console.error('Error cancelling video:', error);
@@ -131,68 +121,43 @@ function App() {
   };
 
   return (
-    <div className="app-container" style={{ display: 'flex', gap: '2rem', maxWidth: '1400px', margin: '0 auto', alignItems: 'flex-start' }}>
-      <div style={{ flex: '1 1 70%', minWidth: 0 }}>
-        <div className="glass-card">
-          <div className="header">
-            <h1 className="title">NeuroGen Studio</h1>
-            <p className="subtitle">AI Biohacking & Neuroscience Video Creator</p>
+    <div className="app-container" style={{ maxWidth: '1000px', margin: '2rem auto' }}>
+      <div className="glass-card" style={{ width: '100%' }}>
+        <div className="header">
+          <h1 className="title">Create Masterpiece</h1>
+          <p className="subtitle">Universal AI Generation Pipeline</p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="label">Main Content Category</label>
+            <select className="select" value={mainNiche} onChange={(e) => { setMainNiche(e.target.value); setSubNiche(NICHES[e.target.value][0]); }}>
+              {Object.keys(NICHES).map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
           </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="label">Specific Sub-Niche</label>
+            <select className="select" value={subNiche} onChange={(e) => setSubNiche(e.target.value)}>
+              {NICHES[mainNiche].map(sub => <option key={sub} value={sub}>{sub}</option>)}
+            </select>
+          </div>
+        </div>
 
         <div className="form-group">
-          <label className="label">Visual Source</label>
-          <select 
-            className="select" 
-            value={visualSource} 
-            onChange={(e) => setVisualSource(e.target.value)}
-          >
+          <label className="label">Visual Source Engine</label>
+          <select className="select" value={visualSource} onChange={(e) => setVisualSource(e.target.value)}>
             <option value="ai_images">AI Generated Cinematic Images (Replicate Flux)</option>
             <option value="stock_videos">Real Stock Footage (Pexels / Pixabay)</option>
           </select>
         </div>
 
         <div className="form-group">
-          <label className="label">Main Content Category</label>
-          <select 
-            className="select" 
-            value={mainNiche} 
-            onChange={(e) => {
-              setMainNiche(e.target.value);
-              setSubNiche(NICHES[e.target.value][0]); // Auto-update sub-niche
-            }}
-          >
-            {Object.keys(NICHES).map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label className="label">Specific Sub-Niche (Top 50 Worldwide Niches)</label>
-          <select 
-            className="select" 
-            value={subNiche} 
-            onChange={(e) => setSubNiche(e.target.value)}
-          >
-            {NICHES[mainNiche].map(sub => <option key={sub} value={sub}>{sub}</option>)}
-          </select>
-        </div>
-
-        <div className="form-group">
           <label className="label">Custom Topic / Specific Idea (Optional)</label>
-          <input 
-            className="input" 
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder={`e.g. A highly specific idea within ${subNiche} (or leave blank to brainstorm)`}
-          />
+          <input className="input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={`e.g. A highly specific idea within ${subNiche} (or leave blank to brainstorm)`} />
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-          <button 
-            className="btn" 
-            onClick={generateIdea} 
-            disabled={ideaLoading || loading}
-            style={{ flex: 1, background: 'linear-gradient(135deg, #1e3a8a, #312e81)', padding: '0.8rem' }}
-          >
+          <button className="btn btn-secondary" onClick={generateIdea} disabled={ideaLoading || loading} style={{ flex: 1 }}>
             {ideaLoading ? <div className="loader"></div> : <Sparkles size={18} />}
             {ideaLoading ? ' Brainstorming...' : ' Generate Viral Idea First'}
           </button>
@@ -203,219 +168,128 @@ function App() {
             <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#cbd5e1', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Generated Idea (You can edit this)</h3>
             <div className="form-group">
               <label className="label">Viral Title</label>
-              <input 
-                className="input" 
-                value={customTitle}
-                onChange={(e) => setCustomTitle(e.target.value)}
-              />
+              <input className="input" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="label">Description / Concept</label>
-              <textarea 
-                className="input" 
-                value={customDescription}
-                onChange={(e) => setCustomDescription(e.target.value)}
-                rows={3}
-              />
+              <textarea className="input" value={customDescription} onChange={(e) => setCustomDescription(e.target.value)} rows={3} />
             </div>
           </div>
         )}
 
         <div className="form-group">
-          <label className="label">Video Format</label>
-          <select 
-            className="select" 
-            value={format} 
-            onChange={(e) => setFormat(e.target.value)}
-          >
-            <option value="horizontal">YouTube Horizontal (Long Form)</option>
-          </select>
-        </div>
-
-        <div className="form-group">
           <label className="label">Target Duration (Minutes)</label>
-          <input 
-            type="number" 
-            className="input" 
-            min="1" 
-            max="10" 
-            value={duration} 
-            onChange={(e) => setDuration(Number(e.target.value))}
-          />
+          <input type="number" className="input" min="1" max="10" value={duration} onChange={(e) => setDuration(Number(e.target.value))} />
         </div>
 
         <div style={{ display: 'flex', gap: '1rem' }}>
-            <button 
-            className="btn" 
-            onClick={generateVideo} 
-            disabled={loading}
-            style={{ flex: 1 }}
-            >
-            {loading ? (
-                <><div className="loader"></div> Generating Masterpiece...</>
-            ) : (
-                <><Play size={20} /> Generate Full Video</>
-            )}
+            <button className="btn" onClick={generateVideo} disabled={loading} style={{ flex: 1 }}>
+            {loading ? <><div className="loader"></div> Generating Masterpiece...</> : <><Play size={20} /> Generate Full Video</>}
             </button>
-
-            {loading && (
-            <button 
-                className="btn" 
-                onClick={cancelGeneration}
-                style={{ background: '#ef4444', color: '#fff', padding: '0 2rem' }}
-            >
-                Stop
-            </button>
-            )}
+            {loading && <button className="btn" onClick={cancelGeneration} style={{ background: '#ef4444', color: '#fff', padding: '0 2rem' }}>Stop</button>}
         </div>
 
         {/* Live Logs Terminal */}
-        <div className="terminal-container" style={{ marginTop: '2rem', background: '#000', borderRadius: '12px', overflow: 'hidden', border: '1px solid #333' }}>
-          <div className="terminal-header" style={{ background: '#111', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#888' }}>
-            <Terminal size={14} /> Server Logs Live
+        <div className="terminal-container" style={{ marginTop: '2rem', height: '250px', display: 'flex', flexDirection: 'column' }}>
+          <div className="terminal-header" style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#a1a1aa' }}>
+            <Terminal size={14} /> Pipeline Server Logs
           </div>
-          <div className="terminal-body" style={{ padding: '1rem', height: '200px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.85rem', color: '#0f0' }}>
-            {logs.map((log, i) => (
-              <div key={i} className="log-line" style={{ marginBottom: '0.25rem' }}>{`> ${log}`}</div>
-            ))}
-            {logs.length === 0 && <div style={{ color: '#555' }}>Waiting for logs...</div>}
+          <div style={{ padding: '1rem', flexGrow: 1, overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.85rem', color: '#4ade80' }}>
+            {logs.map((log, i) => <div key={i} style={{ marginBottom: '0.25rem' }}>{`> ${log}`}</div>)}
+            {logs.length === 0 && <div style={{ color: '#52525b' }}>System idle. Waiting for tasks...</div>}
             <div ref={logsEndRef} />
           </div>
         </div>
 
         {result && (
-          <div className="result-card">
-            <h2 className="result-title">{result.title}</h2>
-            <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.6' }}>{result.description}</p>
-            
-            <div className="tags">
-              {result.tags.map((tag, i) => (
-                <span key={i} className="tag">#{tag}</span>
-              ))}
+          <div style={{ marginTop: '3rem', padding: '2rem', background: 'rgba(0,0,0,0.4)', borderRadius: '16px', border: '1px solid rgba(139,92,246,0.3)' }}>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>{result.title}</h2>
+            <div className="tags" style={{ marginBottom: '1rem' }}>
+              {result.tags.map((tag, i) => <span key={i} className="tag">#{tag}</span>)}
             </div>
-
-            <div className="video-player" style={{ marginTop: '2rem', borderRadius: '16px', overflow: 'hidden', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <video 
-                controls 
-                width="100%" 
-                src={result.videoUrl}
-                style={{ display: 'block', maxHeight: '500px', width: '100%', objectFit: 'contain' }}
-              >
-                Your browser does not support the video tag.
-              </video>
-            </div>
-            
-            <a 
-              href={result.videoUrl} 
-              download={`NeuroGen_${(result.title || 'Video').substring(0,20).replace(/[^a-z0-9]/gi, '_')}.mp4`}
-              className="btn"
-              style={{ marginTop: '2rem', padding: '1.25rem', fontSize: '1.1rem', background: 'linear-gradient(135deg, #10b981, #059669)', textDecoration: 'none' }}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <video controls width="100%" src={result.videoUrl} style={{ borderRadius: '12px', background: '#000', border: '1px solid rgba(255,255,255,0.1)' }} />
+            <a href={result.videoUrl} download className="btn" style={{ marginTop: '1.5rem', width: '100%' }} target="_blank" rel="noreferrer">
               📥 Download Final Masterpiece (.mp4)
             </a>
           </div>
         )}
       </div>
+    </div>
+  );
+}
 
-      {/* Library Section */}
-      <div style={{ marginTop: '4rem' }}>
-        <h2 style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '2rem', textAlign: 'center', background: 'linear-gradient(135deg, #60a5fa, #c084fc)', WebkitBackgroundClip: 'text', color: 'transparent' }}>
-          Saved & Generated Videos
-        </h2>
-        {libraryVideos.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            {libraryVideos.map((video) => (
-              <div key={video.id} className="result-card" style={{ marginTop: 0, border: video.status === 'error' ? '1px solid rgba(239, 68, 68, 0.3)' : undefined, background: video.status === 'error' ? 'rgba(239, 68, 68, 0.05)' : undefined }}>
-                <h2 className="result-title">
-                  {video.status === 'error' ? '❌ ' : ''}{video.title}
-                </h2>
-                <p style={{ color: video.status === 'error' ? '#fca5a5' : '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.6' }}>
-                  {video.description}
-                </p>
-                
-                {video.status !== 'error' && (
-                  <>
-                    <div className="tags" style={{ marginBottom: '1rem' }}>
-                      {video.tags && video.tags.map((tag, i) => (
-                        <span key={i} className="tag">#{tag}</span>
-                      ))}
-                    </div>
+function Library() {
+  const [libraryVideos, setLibraryVideos] = useState([]);
+  const [filterNiche, setFilterNiche] = useState('All');
 
-                    <div style={{ display: 'inline-block', background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 'bold', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                      🖼️ {video.imageCount || 'Multiple'} Unique AI Images Generated
-                    </div>
+  useEffect(() => {
+    axios.get(`${BASE_URL}/api/videos`)
+      .then(res => setLibraryVideos(res.data))
+      .catch(e => console.error("Failed to fetch library", e));
+  }, []);
 
-                    <div className="video-player" style={{ marginTop: '2rem', borderRadius: '16px', overflow: 'hidden', background: '#000', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                      <video 
-                        controls 
-                        width="100%" 
-                        src={`https://biohack-video-gen-server-production.up.railway.app${video.videoUrl}`}
-                        style={{ display: 'block', maxHeight: '500px', width: '100%', objectFit: 'contain' }}
-                      >
-                      </video>
-                    </div>
-                    
-                    <a 
-                      href={`https://biohack-video-gen-server-production.up.railway.app${video.videoUrl}`} 
-                      download={`NeuroGen_${(video.title || 'Video').substring(0,20).replace(/[^a-z0-9]/gi, '_')}.mp4`}
-                      className="btn"
-                      style={{ marginTop: '2rem', padding: '1.25rem', fontSize: '1.1rem', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', textDecoration: 'none' }}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      📥 Download Video (.mp4)
-                    </a>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', color: '#888', padding: '3rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-            <Video size={48} style={{ margin: '0 auto 1rem', opacity: 0.5, display: 'block' }} />
-            <p style={{ fontSize: '1.1rem' }}>No videos generated yet.</p>
-            <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', opacity: 0.7 }}>Create your first masterpiece above, and it will appear here!</p>
-          </div>
-        )}
-      </div>
-      </div>
+  const filteredVideos = filterNiche === 'All' 
+    ? libraryVideos 
+    : libraryVideos.filter(v => v.mainNiche === filterNiche);
 
-      {/* Analytics Sidebar */}
-      <div style={{ flex: '1 1 30%', minWidth: '300px', position: 'sticky', top: '2rem' }}>
-        <div className="glass-card" style={{ padding: '1.5rem' }}>
-          <h3 style={{ marginTop: 0, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', color: '#a855f7', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            📊 Generation Stats
-          </h3>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem', maxHeight: '500px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-            {libraryVideos.map(vid => (
-              <div key={vid.id} style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {vid.status === 'error' ? '❌ ' : ''}{vid.title || 'Untitled Video'}
-                </div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: vid.status === 'error' ? '#ef4444' : '#10b981' }}>
-                  {vid.status === 'error' ? 'Failed Generation' : `🖼️ ${vid.imageCount || '?'} Images`}
-                </div>
-              </div>
-            ))}
-            {libraryVideos.length === 0 && (
-              <div style={{ color: '#64748b', fontSize: '0.9rem', textAlign: 'center', padding: '2rem 0' }}>
-                No stats available yet.
-              </div>
-            )}
-          </div>
-
-          <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ fontSize: '0.9rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Total AI Images Made</div>
-            <div style={{ fontSize: '3rem', fontWeight: '900', color: '#fff', textShadow: '0 0 20px rgba(168, 85, 247, 0.4)' }}>
-              {libraryVideos.reduce((acc, v) => acc + (v.imageCount || 0), 0)}
-            </div>
-          </div>
+  return (
+    <div className="app-container" style={{ flexDirection: 'column', width: '100%' }}>
+      <div className="filters-bar" style={{ width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#94a3b8' }}>
+          <Filter size={18} /> Filter by Niche:
+        </div>
+        <select className="select" style={{ width: 'auto', padding: '0.5rem 1rem' }} value={filterNiche} onChange={(e) => setFilterNiche(e.target.value)}>
+          <option value="All">All Categories</option>
+          {Object.keys(NICHES).map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+        <div style={{ marginLeft: 'auto', color: '#94a3b8', fontSize: '0.9rem' }}>
+          Showing {filteredVideos.length} videos
         </div>
       </div>
+
+      {filteredVideos.length > 0 ? (
+        <div className="video-grid" style={{ width: '100%' }}>
+          {filteredVideos.map((video) => (
+            <div key={video.id} className="video-card">
+              {video.status !== 'error' && (
+                <video src={`${BASE_URL}${video.videoUrl}`} controls style={{ width: '100%', height: '200px', objectFit: 'cover', background: '#000' }} />
+              )}
+              <div className="video-card-body">
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                  {video.mainNiche && <span className="badge badge-niche">{video.mainNiche}</span>}
+                  {video.subNiche && <span className="badge badge-sub">{video.subNiche}</span>}
+                  {video.imageCount && <span className="badge badge-img">🖼️ {video.imageCount} Assets</span>}
+                </div>
+                <h3>{video.status === 'error' ? '❌ ' : ''}{video.title || 'Untitled Video'}</h3>
+                {video.status !== 'error' && (
+                  <a href={`${BASE_URL}${video.videoUrl}`} download className="btn" style={{ width: '100%', padding: '0.75rem', fontSize: '0.9rem', marginTop: '1rem' }} target="_blank" rel="noreferrer">
+                    Download
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="glass-card" style={{ width: '100%', textAlign: 'center', padding: '4rem 2rem' }}>
+          <Video size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>No videos found</h2>
+          <p style={{ color: '#94a3b8' }}>Generate some masterpieces in this niche first!</p>
+        </div>
+      )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<CreatorStudio />} />
+        <Route path="/library" element={<Library />} />
+      </Routes>
+    </Router>
   );
 }
 

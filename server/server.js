@@ -469,6 +469,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             tags: scriptData.tags,
             videoUrl: finalUrl,
             imageCount: scriptData.segments.length,
+            mainNiche: mainNiche,
+            subNiche: subNiche,
             createdAt: new Date().toISOString()
         };
         fs.writeFileSync(path.join(outputDir, `${videoId}.json`), JSON.stringify(metadata, null, 2));
