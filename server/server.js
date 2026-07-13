@@ -79,11 +79,11 @@ async function withRetry(fn, operationName, maxRetries = 6, baseDelayMs = 4000) 
 }
 
 app.post('/api/generate', (req, res) => {
-    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'ai_images' } = req.body;
+    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'ai_images', mainNiche = 'Science', subNiche = 'General' } = req.body;
     addLog(`Starting generation for ${durationMinutes} minutes on topic: ${topic || 'Default'} [Visuals: ${visualSource}]...`);
     
     // Start background job to prevent Railway 100s timeout
-    generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource }).catch(err => {
+    generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche }).catch(err => {
         addLog(JSON.stringify({ event: "error", message: err.message }));
     });
     
@@ -92,10 +92,11 @@ app.post('/api/generate', (req, res) => {
 
 app.post('/api/idea', async (req, res) => {
     try {
-        const { topic } = req.body;
-        const prompt = `You are an elite YouTube strategist. The user's input is: "${topic || 'Psychology, Neuroscience, and Biohacking'}".
-CRITICAL INSTRUCTION: If the user's input is a broad umbrella term (like "Biohacking" or "Neuroscience"), do NOT make a video about the entire field. You MUST randomly select ONE highly specific, fascinating, and unique sub-topic or protocol from within that field (e.g., Andrew Huberman's morning sunlight protocol, the neuroscience of flow states, dopamine fasting dangers, cold plunge science, memory consolidation during REM sleep, etc.). 
-Every time you are called, pick a COMPLETELY DIFFERENT, highly specific sub-topic to ensure massive variety.
+        const { topic, mainNiche = "Science", subNiche = "General" } = req.body;
+        const prompt = `You are an elite YouTube strategist in the "${mainNiche}" niche, specifically focusing on "${subNiche}". 
+The user's specific idea/topic input is: "${topic || 'A generic video for this niche'}".
+CRITICAL INSTRUCTION: If the user's input is a broad umbrella term, you MUST randomly select ONE highly specific, fascinating, and unique sub-topic or story from within that field. 
+Every time you are called, pick a COMPLETELY DIFFERENT, highly specific angle to ensure massive variety.
 
 Generate a highly clickable, psychologically compelling YouTube title about this SPECIFIC sub-topic (clickbait but professional and true) and a short SEO-optimized description.
 Output ONLY pure JSON with no markdown formatting:
@@ -117,10 +118,9 @@ Output ONLY pure JSON with no markdown formatting:
     }
 });
 
-async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource }) {
+async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General" }) {
     try {
         const wordCount = durationMinutes * 130;
-        const targetNiche = topic || "Psychology, Neuroscience, and Biohacking";
         
         let specificIdeaInstruction = "";
         if (customTitle) {
@@ -132,25 +132,46 @@ User Description: "${customDescription || ''}"
 Do NOT generate a random topic. You MUST strictly follow and explore this exact topic, while still generating the final optimized JSON title/description.`;
         }
 
-        const visualInstruction = visualSource === 'stock_videos'
-            ? `"searchQuery": "A 1-3 word highly literal search query for a stock video API (e.g. 'brain mri', 'doctor lab', 'running snow'). Be extremely simple and literal."`
-            : `"imagePrompt": "A highly detailed visual prompt for an AI image generator. The aesthetic MUST wildly vary to match the context of the sentence (e.g., a photorealistic glowing brain synapse, a vintage 1990s VHS recording of an experiment, a minimalist corporate office, etc.). Do NOT use the exact same aesthetic for every image."`;
+        // --- UNIVERSAL NICHE PROMPTING ENGINE ---
+        let nicheRules = "";
+        if (mainNiche === "Stories & Fiction") {
+            nicheRules = `
+CRITICAL STORYTELLING RULES:
+1. NARRATIVE ARC: Write a highly engaging, emotional story with a hook, rising action, climax, and satisfying resolution.
+2. CONSISTENT CHARACTERS: If using AI Images, you MUST use the exact same detailed physical description for the main characters in EVERY SINGLE image prompt (e.g., "John, a tall 40-year-old man with a scarred cheek wearing a torn leather jacket"). Do NOT change their appearance between segments!
+3. PACING: Build suspense. Use the expressive voiceover tags [whispering], [shouting], [crying] to make it feel like an audiobook.`;
+        } else if (mainNiche === "Finance & Business") {
+            nicheRules = `
+CRITICAL FINANCE RULES:
+1. AUTHORITY: Sound like a high-level financial insider. Use authoritative, fast-paced delivery.
+2. VISUALS: Use luxury aesthetics, dynamic charts, wealthy environments, or abstract conceptual representations of money and markets.
+3. ACTIONABLE: Provide actual value, case studies, or step-by-step breakdowns.`;
+        } else {
+            nicheRules = `
+CRITICAL EDUCATIONAL RULES:
+1. AUTHORITY: Sound like a top-tier documentary narrator (e.g., Huberman Lab style).
+2. SCIENCE/FACTS: Provide deep, factual, fascinating insights. Do not just summarize; give specific actionable protocols or historical facts.
+3. VISUALS: Keep visuals highly relevant, cinematic, and perfectly tied to the educational concept being explained.`;
+        }
 
-        const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the ${targetNiche} niche (style of Huberman Lab mixed with high-retention cinematic documentaries). 
+        const visualInstruction = visualSource === 'stock_videos'
+            ? `"searchQuery": "A 1-3 word highly literal search query for a stock video API (e.g. 'dark alley', 'stock market crash', 'running snow'). Be extremely simple and literal."`
+            : `"imagePrompt": "A highly detailed visual prompt for an AI image generator. The aesthetic MUST wildly vary to match the context of the sentence unless it is a story that requires consistent characters. Describe the scene, lighting, and composition."`;
+
+        const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the "${mainNiche}" niche, specifically focusing on "${subNiche}". 
 Your goal is to write a highly viral, retention-optimized script for a horizontal YouTube video.
 ${specificIdeaInstruction}
+${nicheRules}
 
 CRITICAL DURATION REQUIREMENT:
-The user requested a ${durationMinutes}-minute video. At normal speaking pace, you MUST write AT LEAST ${wordCount} words of narration total. 
-Do NOT summarize. Do NOT finish early. You must dive deeply into the science, provide actionable protocols, cite specific (safe) scientific concepts, and give extensive examples to meet this exact length requirement. If you write less than ${wordCount} words, the output will be rejected.
+The user requested a ${durationMinutes}-minute video. At normal speaking pace, you MUST write AT LEAST ${wordCount} words of narration total. Do NOT summarize. Do NOT finish early.
 
 CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
 1. THE HOOK: The first 5 seconds MUST be an aggressive, curiosity-inducing hook that makes clicking off impossible.
-2. VISUAL PACING: Visuals must change RAPIDLY. Provide a new visual instruction for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking. Do NOT group multiple sentences into one segment.
-3. TITLE & SEO: The title must be highly clickable and psychologically compelling (clickbait but professional and true, e.g., "The 1 Habit That Rewires Your Brain In 24 Hours"). 
-4. TAGS/HASHTAGS: Provide highly targeted, algorithm-optimizing SEO tags used by top creators (e.g., "andrew huberman", "dopamine detox protocol", "peak cognitive performance"). Do NOT just use basic single words like "brain" or "science".
-5. TONE: Professional, authoritative, highly engaging, and intensely fascinating.
-6. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter and will instantly ban the generation if it detects ANY sensitive language. You MUST NOT use words like "hacking", "manipulating", "lying", "drug", "addiction", "kill", "harm", or "trick". Use perfectly safe, uplifting, and strictly scientific terminology (e.g., "optimizing", "understanding", "neuroplasticity"). Make it sound educational and safe for children.
+2. VISUAL PACING: Visuals must change RAPIDLY. Provide a new visual instruction for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking.
+3. TITLE & SEO: The title must be highly clickable and psychologically compelling. 
+4. TAGS/HASHTAGS: Provide highly targeted, algorithm-optimizing SEO tags used by top creators in this specific niche.
+5. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter. Even for True Crime or Horror, you MUST NOT use banned words like "kill", "murder", "rape", "drug", "suicide", "blood", or "gore". Use safe alternatives like "eliminated", "dark fate", "perished", "tragic end", "substance", or "mystery". If you use banned words, the generation will instantly fail.`;
 
 We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expressive capabilities!
 - Use inline tags inside the "narration" like [sigh], [laughing], [whispering], [shouting], [extremely fast], [short pause], [medium pause] to make it sound incredibly human and dynamic.

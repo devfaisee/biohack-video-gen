@@ -2,11 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Play, Video, Terminal } from 'lucide-react';
 import axios from 'axios';
 
+const NICHES = {
+  "Health & Science": ["Neuroscience & Biohacking", "Dopamine Detox", "Fitness & Diet", "Mental Health"],
+  "Stories & Fiction": ["True Crime", "Senior Revenge", "Horror / Paranormal", "Sci-Fi Short Stories"],
+  "Finance & Business": ["Crypto & Web3", "Personal Finance", "Entrepreneurship", "Real Estate", "Tech Startups"],
+  "Mystery & History": ["Unsolved Mysteries", "Ancient History", "Conspiracy Theories", "Lost Civilizations"]
+};
+
 function App() {
   const [loading, setLoading] = useState(false);
   const [duration, setDuration] = useState(1);
   const [format, setFormat] = useState('horizontal');
-  const [topic, setTopic] = useState('Psychology, Neuroscience & Biohacking');
+  const [mainNiche, setMainNiche] = useState(Object.keys(NICHES)[0]);
+  const [subNiche, setSubNiche] = useState(NICHES[Object.keys(NICHES)[0]][0]);
+  const [topic, setTopic] = useState('');
   const [visualSource, setVisualSource] = useState('ai_images');
   const [customTitle, setCustomTitle] = useState('');
   const [customDescription, setCustomDescription] = useState('');
@@ -73,10 +82,13 @@ function App() {
   }, [logs]);
 
   const generateIdea = async () => {
-    if (!topic.trim()) return alert("Please enter a topic first.");
     setIdeaLoading(true);
     try {
-      const res = await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/idea', { topic });
+      const res = await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/idea', { 
+        topic: topic,
+        mainNiche: mainNiche,
+        subNiche: subNiche
+      });
       setCustomTitle(res.data.title);
       setCustomDescription(res.data.description);
     } catch (error) {
@@ -95,6 +107,8 @@ function App() {
         durationMinutes: duration,
         format: format,
         topic: topic,
+        mainNiche: mainNiche,
+        subNiche: subNiche,
         visualSource: visualSource,
         customTitle: customTitle,
         customDescription: customDescription
@@ -138,12 +152,37 @@ function App() {
         </div>
 
         <div className="form-group">
-          <label className="label">Video Topic or Niche</label>
+          <label className="label">Main Content Category</label>
+          <select 
+            className="select" 
+            value={mainNiche} 
+            onChange={(e) => {
+              setMainNiche(e.target.value);
+              setSubNiche(NICHES[e.target.value][0]); // Auto-update sub-niche
+            }}
+          >
+            {Object.keys(NICHES).map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label className="label">Specific Sub-Niche (Top 50 Worldwide Niches)</label>
+          <select 
+            className="select" 
+            value={subNiche} 
+            onChange={(e) => setSubNiche(e.target.value)}
+          >
+            {NICHES[mainNiche].map(sub => <option key={sub} value={sub}>{sub}</option>)}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label className="label">Custom Topic / Specific Idea (Optional)</label>
           <input 
             className="input" 
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g. Psychology, Neuroscience, or a specific idea like 'Dopamine Detox'"
+            placeholder={`e.g. A highly specific idea within ${subNiche} (or leave blank to brainstorm)`}
           />
         </div>
 
