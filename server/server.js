@@ -224,8 +224,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             clips[i] = { img: imgPath, audio: audioPath };
         };
 
-        // Process API generation in chunks of 3 to avoid extreme rate limits
-        const CHUNK_SIZE = 3;
+        // Process API generation in chunks of 5 for MAXIMUM speed (protected by our new exponential backoff)
+        const CHUNK_SIZE = 5;
         for (let i = 0; i < scriptData.segments.length; i += CHUNK_SIZE) {
             const chunk = [];
             for (let j = i; j < i + CHUNK_SIZE && j < scriptData.segments.length; j++) {
