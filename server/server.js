@@ -93,8 +93,11 @@ app.post('/api/generate', (req, res) => {
 app.post('/api/idea', async (req, res) => {
     try {
         const { topic } = req.body;
-        const prompt = `You are an elite YouTube strategist. The user wants to make a highly viral video about: "${topic || 'A fascinating psychology, neuroscience, or biohacking concept'}".
-Generate a highly clickable, psychologically compelling YouTube title (clickbait but professional and true) and a short SEO-optimized description.
+        const prompt = `You are an elite YouTube strategist. The user's input is: "${topic || 'Psychology, Neuroscience, and Biohacking'}".
+CRITICAL INSTRUCTION: If the user's input is a broad umbrella term (like "Biohacking" or "Neuroscience"), do NOT make a video about the entire field. You MUST randomly select ONE highly specific, fascinating, and unique sub-topic or protocol from within that field (e.g., Andrew Huberman's morning sunlight protocol, the neuroscience of flow states, dopamine fasting dangers, cold plunge science, memory consolidation during REM sleep, etc.). 
+Every time you are called, pick a COMPLETELY DIFFERENT, highly specific sub-topic to ensure massive variety.
+
+Generate a highly clickable, psychologically compelling YouTube title about this SPECIFIC sub-topic (clickbait but professional and true) and a short SEO-optimized description.
 Output ONLY pure JSON with no markdown formatting:
 {
   "title": "The exact YouTube title",
@@ -158,7 +161,7 @@ Output pure JSON with the following structure:
     {
       "narration": "[extremely fast] Did you know that... [short pause] [whispering] your memory can be optimized?",
       "voicePrompt": "DIRECTOR'S NOTES: Intense, extremely fast-paced, dropping into a mysterious whisper at the end.",
-      "imagePrompt": "A highly detailed visual prompt for an AI image generator (flux-schnell). Instruct the AI to intelligently choose a highly professional, dynamic, and consistent cinematic documentary style (do not force 'neon' or any specific aesthetic unless highly relevant to the topic). Describe the scene, lighting, and composition. Must be perfectly relevant to the sentence."
+      "imagePrompt": "A highly detailed visual prompt for an AI image generator (flux-schnell). The aesthetic MUST wildly vary to match the context of the sentence (e.g., a photorealistic glowing brain synapse, a vintage 1990s VHS recording of an experiment, a minimalist corporate office, a cinematic wide shot of an athlete in the snow, a futuristic cyberpunk lab, etc.). Do NOT use the exact same aesthetic for every image. Make the scene, lighting, and composition highly diverse and engaging."
     }
   ]
 }
