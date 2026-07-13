@@ -93,14 +93,20 @@ app.post('/api/generate', (req, res) => {
 async function generateVideoJob(durationMinutes) {
     try {
         const wordCount = durationMinutes * 130;
-        const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the Psychology, Neuroscience, and Biohacking niche. 
+        const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the Psychology, Neuroscience, and Biohacking niche (style of Huberman Lab mixed with high-retention cinematic documentaries). 
 Your goal is to write a highly viral, retention-optimized script for a horizontal YouTube video.
-The script should be approximately ${wordCount} words total.
-CRITICAL RULES FOR FAST-PACED RETENTION:
-1. The first 5 seconds MUST be an aggressive, curiosity-inducing hook.
-2. Visuals must change RAPIDLY. Provide a new visual prompt for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking. Do NOT group multiple sentences into one segment.
-3. The tone should be punchy, mysterious, and highly engaging.
-4. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter and will instantly ban the generation if it detects ANY sensitive language. You MUST NOT use words like "hacking", "manipulating", "lying", "drug", "addiction", "kill", "harm", or "trick". Use perfectly safe, uplifting, and strictly scientific terminology (e.g., "optimizing", "understanding", "neuroplasticity"). Make it sound educational and safe for children.
+
+CRITICAL DURATION REQUIREMENT:
+The user requested a ${durationMinutes}-minute video. At normal speaking pace, you MUST write AT LEAST ${wordCount} words of narration total. 
+Do NOT summarize. Do NOT finish early. You must dive deeply into the science, provide actionable protocols, cite specific (safe) scientific concepts, and give extensive examples to meet this exact length requirement. If you write less than ${wordCount} words, the output will be rejected.
+
+CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
+1. THE HOOK: The first 5 seconds MUST be an aggressive, curiosity-inducing hook that makes clicking off impossible.
+2. VISUAL PACING: Visuals must change RAPIDLY. Provide a new visual prompt for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking. Do NOT group multiple sentences into one segment.
+3. TITLE & SEO: The title must be highly clickable and psychologically compelling (clickbait but professional and true, e.g., "The 1 Habit That Rewires Your Brain In 24 Hours"). 
+4. TAGS/HASHTAGS: Provide highly targeted, algorithm-optimizing SEO tags used by top creators (e.g., "andrew huberman", "dopamine detox protocol", "peak cognitive performance"). Do NOT just use basic single words like "brain" or "science".
+5. TONE: Professional, authoritative, highly engaging, and intensely fascinating.
+6. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter and will instantly ban the generation if it detects ANY sensitive language. You MUST NOT use words like "hacking", "manipulating", "lying", "drug", "addiction", "kill", "harm", or "trick". Use perfectly safe, uplifting, and strictly scientific terminology (e.g., "optimizing", "understanding", "neuroplasticity"). Make it sound educational and safe for children.
 
 We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expressive capabilities!
 - Use inline tags inside the "narration" like [sigh], [laughing], [whispering], [shouting], [extremely fast], [short pause], [medium pause] to make it sound incredibly human and dynamic.
@@ -109,8 +115,8 @@ We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expres
 Output pure JSON with the following structure:
 {
   "title": "A highly clickable, viral YouTube title",
-  "description": "YouTube video description optimized for SEO",
-  "tags": ["neuroscience", "optimization", "viral"],
+  "description": "YouTube video description optimized for SEO with chapters and engaging copy",
+  "tags": ["huberman lab", "neuroplasticity protocol", "dopamine optimization", "cognitive performance"],
   "segments": [
     {
       "narration": "[extremely fast] Did you know that... [short pause] [whispering] your memory can be optimized?",
