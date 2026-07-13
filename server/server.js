@@ -59,9 +59,9 @@ app.get('/api/logs', (req, res) => {
     req.on('close', () => logStreamSubscribers.delete(res));
 });
 
-// Robust Retry Logic
+// Robust Retry Logic with Exponential Backoff
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-async function withRetry(fn, operationName, maxRetries = 3, delayMs = 3000) {
+async function withRetry(fn, operationName, maxRetries = 6, baseDelayMs = 4000) {
     for (let i = 0; i < maxRetries; i++) {
         try {
             return await fn();
@@ -70,8 +70,10 @@ async function withRetry(fn, operationName, maxRetries = 3, delayMs = 3000) {
                 addLog(`[FATAL] ${operationName} failed after ${maxRetries} attempts.`);
                 throw err;
             }
-            addLog(`[WARN] ${operationName} failed: ${err.message}. Retrying in ${delayMs/1000}s... (Attempt ${i+1}/${maxRetries})`);
-            await sleep(delayMs);
+            // Exponential backoff: 4s, 6s, 9s, 13.5s, 20s...
+            const currentDelay = Math.round(baseDelayMs * Math.pow(1.5, i));
+            addLog(`[WARN] ${operationName} failed: ${err.message}. Retrying in ${Math.round(currentDelay/1000)}s... (Attempt ${i+1}/${maxRetries})`);
+            await sleep(currentDelay);
         }
     }
 }
@@ -222,8 +224,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             clips[i] = { img: imgPath, audio: audioPath };
         };
 
-        // Process API generation in chunks of 5
-        const CHUNK_SIZE = 5;
+        // Process API generation in chunks of 3 to avoid extreme rate limits
+        const CHUNK_SIZE = 3;
         for (let i = 0; i < scriptData.segments.length; i += CHUNK_SIZE) {
             const chunk = [];
             for (let j = i; j < i + CHUNK_SIZE && j < scriptData.segments.length; j++) {
