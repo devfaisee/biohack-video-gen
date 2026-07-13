@@ -6,6 +6,11 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [duration, setDuration] = useState(1);
   const [format, setFormat] = useState('horizontal');
+  const [topic, setTopic] = useState('Psychology, Neuroscience & Biohacking');
+  const [customTitle, setCustomTitle] = useState('');
+  const [customDescription, setCustomDescription] = useState('');
+  const [ideaLoading, setIdeaLoading] = useState(false);
+  
   const [result, setResult] = useState(null);
   const [logs, setLogs] = useState([]);
   const logsEndRef = useRef(null);
@@ -66,6 +71,20 @@ function App() {
     }
   }, [logs]);
 
+  const generateIdea = async () => {
+    if (!topic.trim()) return alert("Please enter a topic first.");
+    setIdeaLoading(true);
+    try {
+      const res = await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/idea', { topic });
+      setCustomTitle(res.data.title);
+      setCustomDescription(res.data.description);
+    } catch (error) {
+      console.error('Error generating idea:', error);
+      alert('Failed to generate idea. Check console.');
+    }
+    setIdeaLoading(false);
+  };
+
   const generateVideo = async () => {
     setLoading(true);
     setLogs([]); // Clear previous logs
@@ -73,7 +92,10 @@ function App() {
     try {
       await axios.post('https://biohack-video-gen-server-production.up.railway.app/api/generate', {
         durationMinutes: duration,
-        format: format
+        format: format,
+        topic: topic,
+        customTitle: customTitle,
+        customDescription: customDescription
       });
       // Generation continues in the background. Result is set via SSE 'complete' event.
     } catch (error) {
@@ -101,13 +123,49 @@ function App() {
         </div>
 
         <div className="form-group">
-          <label className="label">Content Niche</label>
+          <label className="label">Video Topic or Niche</label>
           <input 
             className="input" 
-            value="Psychology, Neuroscience & Biohacking" 
-            disabled 
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="e.g. Psychology, Neuroscience, or a specific idea like 'Dopamine Detox'"
           />
         </div>
+
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+          <button 
+            className="btn" 
+            onClick={generateIdea} 
+            disabled={ideaLoading || loading}
+            style={{ flex: 1, background: 'linear-gradient(135deg, #1e3a8a, #312e81)', padding: '0.8rem' }}
+          >
+            {ideaLoading ? <div className="loader"></div> : <Sparkles size={18} />}
+            {ideaLoading ? ' Brainstorming...' : ' Generate Viral Idea First'}
+          </button>
+        </div>
+
+        {(customTitle || customDescription) && (
+          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1.5rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#cbd5e1', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Generated Idea (You can edit this)</h3>
+            <div className="form-group">
+              <label className="label">Viral Title</label>
+              <input 
+                className="input" 
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="label">Description / Concept</label>
+              <textarea 
+                className="input" 
+                value={customDescription}
+                onChange={(e) => setCustomDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="form-group">
           <label className="label">Video Format</label>
@@ -142,7 +200,7 @@ function App() {
             {loading ? (
                 <><div className="loader"></div> Generating Masterpiece...</>
             ) : (
-                <><Sparkles size={20} /> Find Idea & Generate</>
+                <><Play size={20} /> Generate Full Video</>
             )}
             </button>
 

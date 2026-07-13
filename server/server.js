@@ -79,22 +79,59 @@ async function withRetry(fn, operationName, maxRetries = 6, baseDelayMs = 4000) 
 }
 
 app.post('/api/generate', (req, res) => {
-    const { durationMinutes = 1 } = req.body;
-    addLog(`Starting generation for ${durationMinutes} minutes...`);
+    const { durationMinutes = 1, topic, customTitle, customDescription } = req.body;
+    addLog(`Starting generation for ${durationMinutes} minutes on topic: ${topic || 'Default'}...`);
     
     // Start background job to prevent Railway 100s timeout
-    generateVideoJob(durationMinutes).catch(err => {
+    generateVideoJob({ durationMinutes, topic, customTitle, customDescription }).catch(err => {
         addLog(JSON.stringify({ event: "error", message: err.message }));
     });
     
     res.json({ message: "Generation started in the background" });
 });
 
-async function generateVideoJob(durationMinutes) {
+app.post('/api/idea', async (req, res) => {
+    try {
+        const { topic } = req.body;
+        const prompt = `You are an elite YouTube strategist. The user wants to make a highly viral video about: "${topic || 'A fascinating psychology, neuroscience, or biohacking concept'}".
+Generate a highly clickable, psychologically compelling YouTube title (clickbait but professional and true) and a short SEO-optimized description.
+Output ONLY pure JSON with no markdown formatting:
+{
+  "title": "The exact YouTube title",
+  "description": "A short, engaging description for the video"
+}`;
+        const chatCompletion = await openai.chat.completions.create({
+            model: "x-ai/grok-4.5",
+            messages: [{ role: "user", content: prompt }]
+        });
+        let jsonStr = chatCompletion.choices[0].message.content;
+        if (jsonStr.startsWith('\`\`\`')) {
+            jsonStr = jsonStr.replace(/^\`\`\`json\n?/, '').replace(/\n?\`\`\`$/, '');
+        }
+        res.json(JSON.parse(jsonStr));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription }) {
     try {
         const wordCount = durationMinutes * 130;
-        const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the Psychology, Neuroscience, and Biohacking niche (style of Huberman Lab mixed with high-retention cinematic documentaries). 
+        const targetNiche = topic || "Psychology, Neuroscience, and Biohacking";
+        
+        let specificIdeaInstruction = "";
+        if (customTitle) {
+            specificIdeaInstruction = `
+CRITICAL TOPIC REQUIREMENT:
+The user has provided a SPECIFIC title and concept for this video. You MUST base the entire script exactly on this idea:
+User Title: "${customTitle}"
+User Description: "${customDescription || ''}"
+Do NOT generate a random topic. You MUST strictly follow and explore this exact topic, while still generating the final optimized JSON title/description.`;
+        }
+
+        const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the ${targetNiche} niche (style of Huberman Lab mixed with high-retention cinematic documentaries). 
 Your goal is to write a highly viral, retention-optimized script for a horizontal YouTube video.
+${specificIdeaInstruction}
 
 CRITICAL DURATION REQUIREMENT:
 The user requested a ${durationMinutes}-minute video. At normal speaking pace, you MUST write AT LEAST ${wordCount} words of narration total. 
