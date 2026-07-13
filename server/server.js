@@ -175,7 +175,8 @@ CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
 3. TITLE & SEO: The title must be highly clickable and psychologically compelling, MrBeast or Ali Abdaal level of clickbait but factual. 
 4. TAGS/HASHTAGS: Provide 10-15 highly targeted, algorithm-optimizing SEO long-tail keywords used by top creators.
 5. DESCRIPTION: Write a very engaging, long SEO description with emojis and timestamps.
-5. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter. Even for True Crime or Horror, you MUST NOT use banned words like "kill", "murder", "rape", "drug", "suicide", "blood", or "gore". Use safe alternatives like "eliminated", "dark fate", "perished", "tragic end", "substance", or "mystery". If you use banned words, the generation will instantly fail.
+6. CONTEXT-AWARE EDITING: For every segment, you MUST act as the video editor. Choose a "transition" ("none", "fade_in", or "glitch") and a "camera_motion" ("static" or "zoom_in"). Use "glitch" for shocking/scary moments, "fade_in" for tone shifts, and "zoom_in" for intense focus. Keep most transitions as "none" to avoid overwhelming the viewer.
+7. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter. Even for True Crime or Horror, you MUST NOT use banned words like "kill", "murder", "rape", "drug", "suicide", "blood", or "gore". Use safe alternatives like "eliminated", "dark fate", "perished", "tragic end", "substance", or "mystery". If you use banned words, the generation will instantly fail.
 
 We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expressive capabilities!
 - Use inline tags inside the "narration" like [sigh], [laughing], [whispering], [shouting], [extremely fast], [short pause], [medium pause] to make it sound incredibly human and dynamic.
@@ -190,6 +191,8 @@ Output pure JSON with the following structure:
     {
       "narration": "[extremely fast] Did you know that... [short pause] [whispering] your memory can be optimized?",
       "voicePrompt": "DIRECTOR'S NOTES: Intense, extremely fast-paced, dropping into a mysterious whisper at the end.",
+      "transition": "glitch",
+      "camera_motion": "zoom_in",
       ${visualInstruction}
     }
   ]
@@ -342,7 +345,14 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             ]);
 
             const audioDuration = await getAudioDuration(audioPath);
-            clips[i] = { visual: visualPath, audio: audioPath, text: segment.narration, duration: audioDuration };
+            clips[i] = { 
+                visual: visualPath, 
+                audio: audioPath, 
+                text: segment.narration, 
+                duration: audioDuration,
+                transition: segment.transition || "none",
+                camera_motion: segment.camera_motion || "static"
+            };
         };
 
         // Process API generation in chunks of 5 for MAXIMUM speed (protected by our new exponential backoff)
@@ -433,6 +443,25 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 // Escape paths for FFmpeg filter on Windows
                 const escapedAssPath = assPath.replace(/\\\\/g, '\\\\\\\\').replace(/:/g, '\\\\:');
 
+                // Build Dynamic Filter Chain for Context-Aware Editing
+                let vfFilters = `scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB`;
+                
+                // Ken Burns Zoom In (Only applied to AI Images to prevent stock video distortion)
+                if (visualSource !== 'stock_videos' && clip.camera_motion === "zoom_in") {
+                    vfFilters += `,zoompan=z='min(zoom+0.0015,1.5)':d=${Math.ceil(clip.duration * 25)}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080`;
+                }
+                
+                // Smart Transitions
+                if (clip.transition === "fade_in") {
+                    vfFilters += `,fade=t=in:st=0:d=0.5`;
+                } else if (clip.transition === "glitch") {
+                    // Intense inverted flash for 0.1 seconds
+                    vfFilters += `,negate=enable='between(t,0,0.1)'`;
+                }
+                
+                // Add Kinetic Subtitles
+                vfFilters += `,ass='${escapedAssPath}'`;
+
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
                     if (visualSource === 'stock_videos') {
@@ -449,7 +478,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                             '-map 1:a:0', // Only take audio from input 1
                             '-shortest',
                             '-pix_fmt yuv420p',
-                            `-vf scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB,ass='${escapedAssPath}'`,
+                            `-vf ${vfFilters}`,
                             '-preset veryfast', // Drastically speeds up encoding
                             '-threads 2' // Balances CPU load across parallel processes
                         ])
