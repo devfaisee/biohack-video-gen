@@ -100,11 +100,12 @@ The user's specific idea/topic input is: "${topic || 'A generic video for this n
 CRITICAL INSTRUCTION: If the user's input is a broad umbrella term, you MUST randomly select ONE highly specific, fascinating, and unique sub-topic or story from within that field. 
 Every time you are called, pick a COMPLETELY DIFFERENT, highly specific angle to ensure massive variety.
 
-Generate a highly clickable, psychologically compelling YouTube title about this SPECIFIC sub-topic (clickbait but professional and true) and a short SEO-optimized description.
+Generate a highly clickable, psychologically compelling YouTube title about this SPECIFIC sub-topic. Use MrBeast or Ali Abdaal level of clickbait, leveraging curiosity gaps and strong emotional triggers, but keeping it factual. 
+Also generate a highly engaging, long, and SEO-optimized YouTube description with emojis, bullet points, and related hashtags.
 Output ONLY pure JSON with no markdown formatting:
 {
-  "title": "The exact YouTube title",
-  "description": "A short, engaging description for the video"
+  "title": "The ultimate viral YouTube title",
+  "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
         const chatCompletion = await openai.chat.completions.create({
             model: "x-ai/grok-4.5",
@@ -171,8 +172,9 @@ The user requested a ${durationMinutes}-minute video. At normal speaking pace, y
 CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
 1. THE HOOK: The first 5 seconds MUST be an aggressive, curiosity-inducing hook that makes clicking off impossible.
 2. VISUAL PACING: Visuals must change RAPIDLY. Provide a new visual instruction for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking.
-3. TITLE & SEO: The title must be highly clickable and psychologically compelling. 
-4. TAGS/HASHTAGS: Provide highly targeted, algorithm-optimizing SEO tags used by top creators in this specific niche.
+3. TITLE & SEO: The title must be highly clickable and psychologically compelling, MrBeast or Ali Abdaal level of clickbait but factual. 
+4. TAGS/HASHTAGS: Provide 10-15 highly targeted, algorithm-optimizing SEO long-tail keywords used by top creators.
+5. DESCRIPTION: Write a very engaging, long SEO description with emojis and timestamps.
 5. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter. Even for True Crime or Horror, you MUST NOT use banned words like "kill", "murder", "rape", "drug", "suicide", "blood", or "gore". Use safe alternatives like "eliminated", "dark fate", "perished", "tragic end", "substance", or "mystery". If you use banned words, the generation will instantly fail.
 
 We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expressive capabilities!
@@ -357,7 +359,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         // Subtitle Generator Function (Mathematical Word Timing)
         function generateASS(text, durationSec, filepath) {
-            const words = text.replace(/\[.*?\]/g, '').trim().split(/\\s+/);
+            const words = text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
             if (words.length === 0) words.push("...");
             const timePerWord = durationSec / words.length;
             
@@ -383,13 +385,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             };
 
             let currentStart = 0;
-            // Group into 3-word chunks for kinetic pacing
-            for (let i = 0; i < words.length; i += 3) {
-                const chunk = words.slice(i, i + 3).join(' ');
-                const chunkDuration = timePerWord * words.slice(i, i+3).length;
+            // Group into 2-word chunks for fast-paced kinetic Hormozi style
+            for (let i = 0; i < words.length; i += 2) {
+                const chunk = words.slice(i, i + 2).join(' ');
+                const chunkDuration = timePerWord * words.slice(i, i+2).length;
                 const end = currentStart + chunkDuration;
                 
-                ass += `Dialogue: 0,${formatASSTime(currentStart)},${formatASSTime(end)},Default,,0,0,0,,{\\fad(100,100)}${chunk}\n`;
+                ass += `Dialogue: 0,${formatASSTime(currentStart)},${formatASSTime(end)},Default,,0,0,0,,{\\fad(50,50)}${chunk}\n`;
                 currentStart = end;
             }
             fs.writeFileSync(filepath, ass);
