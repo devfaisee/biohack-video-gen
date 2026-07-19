@@ -532,10 +532,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         addLog("Mixing Background Music at 12% Volume...");
         const finalVideoPath = path.join(outputDir, `${videoId}.mp4`);
         
-        let bgmFilename = 'bgm.mp3'; // Lofi default
-        if (mainNiche.includes("Mystery") || mainNiche.includes("Psychology") || mainNiche.includes("Conspiracies")) {
+        let bgmFilename = 'bgm.mp3'; // Lofi default for Tech, Finance, Health, Biohacking, Food Science, Money Psychology
+        const suspenseNiches = ["Psychology", "Conspiracies", "True Crime", "Horror", "Creepypasta", "Revenge", "Unethical", "Grey Area", "Survival", "Disaster"];
+        const cinematicNiches = ["Luxury", "History", "Civilizations", "Space", "Universe", "Military", "Warfare", "Nature", "Wildlife", "Geography", "Architecture", "Stoicism", "Philosophy", "Rise & Fall", "Geopolitics", "Science"];
+        if (suspenseNiches.some(n => mainNiche.includes(n))) {
             bgmFilename = 'bgm_suspense.mp3';
-        } else if (mainNiche.includes("Luxury") || mainNiche.includes("History") || mainNiche.includes("Space")) {
+        } else if (cinematicNiches.some(n => mainNiche.includes(n))) {
             bgmFilename = 'bgm_cinematic.mp3';
         }
         const bgmPath = path.join(__dirname, 'assets', bgmFilename);
