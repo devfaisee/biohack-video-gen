@@ -111,6 +111,11 @@ Output ONLY pure JSON with no markdown formatting:
             model: "x-ai/grok-4.5",
             messages: [{ role: "user", content: prompt }]
         });
+        
+        if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0) {
+            throw new Error("AI API failed to return a valid response for the idea. Please try again.");
+        }
+
         let jsonStr = chatCompletion.choices[0].message.content;
         if (jsonStr.startsWith('\`\`\`')) {
             jsonStr = jsonStr.replace(/^\`\`\`json\n?/, '').replace(/\n?\`\`\`$/, '');
@@ -207,6 +212,10 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             });
         }, "Script Generation (Grok)");
 
+        if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0) {
+            throw new Error("AI Scriptwriter failed to return a response. This may be due to a rate limit or content filter.");
+        }
+
         let jsonStr = chatCompletion.choices[0].message.content;
         if (jsonStr.startsWith('```')) {
             jsonStr = jsonStr.replace(/^```json\n/, '').replace(/\n```$/, '');
@@ -252,6 +261,13 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             } catch (e) {
                 console.warn("Pixabay failed", e.message);
             }
+            
+            // Ultimate fallback to guarantee the pipeline never crashes
+            if (query !== "abstract background") {
+                addLog(`No video found for "${query}", using generic fallback...`);
+                return fetchStockVideo("abstract background");
+            }
+            
             throw new Error(`No stock videos found for query: ${query}`);
         }
 
@@ -499,16 +515,91 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         const listContent = clipPaths.map(p => `file '${p}'`).join('\n');
         fs.writeFileSync(listPath, listContent);
 
-        const finalVideoPath = path.join(outputDir, `${videoId}.mp4`);
+        const stitchedVideoPath = path.join(projectDir, 'stitched.mp4');
         await new Promise((resolve, reject) => {
             ffmpeg()
                 .input(listPath)
                 .inputOptions(['-f concat', '-safe 0'])
                 .outputOptions('-c copy')
-                .save(finalVideoPath)
+                .save(stitchedVideoPath)
                 .on('end', resolve)
                 .on('error', reject);
         });
+        
+        // -------------------------
+        // Mix Background Music
+        // -------------------------
+        addLog("Mixing Background Music at 12% Volume...");
+        const finalVideoPath = path.join(outputDir, `${videoId}.mp4`);
+        const bgmPath = path.join(__dirname, 'assets', 'bgm.mp3');
+        
+        if (fs.existsSync(bgmPath)) {
+            await new Promise((resolve, reject) => {
+                ffmpeg(stitchedVideoPath)
+                    .input(bgmPath)
+                    .inputOptions(['-stream_loop', '-1']) // Loop BGM infinitely
+                    .complexFilter([
+                        '[0:a][1:a]amix=inputs=2:duration=first:weights=1 0.12[a]'
+                    ])
+                    .outputOptions([
+                        '-map 0:v:0', // Keep original video stream
+                        '-map [a]',   // Use mixed audio stream
+                        '-c:v copy',  // Instant video copy
+                        '-c:a aac',
+                        '-b:a 192k'
+                    ])
+                    .save(finalVideoPath)
+                    .on('end', resolve)
+                    .on('error', reject);
+            });
+        } else {
+            // Fallback if BGM doesn't exist
+            fs.copyFileSync(stitchedVideoPath, finalVideoPath);
+        }
+
+        // -------------------------
+        // Generate YouTube Thumbnail
+        // -------------------------
+        addLog("Generating Viral YouTube Thumbnail...");
+        const thumbUrlPath = `/output/${videoId}_thumb.jpg`;
+        const thumbLocalPath = path.join(outputDir, `${videoId}_thumb.jpg`);
+        try {
+            const thumbPrompt = `A high contrast, ultra-vibrant YouTube thumbnail background representing ${subNiche}, cinematic lighting, wide angle, incredibly eye-catching, empty space in center for text`;
+            const thumbUrl = await withRetry(async () => {
+                return await replicate.run(
+                    "black-forest-labs/flux-schnell",
+                    {
+                        input: {
+                            prompt: thumbPrompt,
+                            go_fast: true,
+                            megapixels: "1",
+                            num_outputs: 1,
+                            output_format: "jpg",
+                            output_quality: 90,
+                            aspect_ratio: "16:9"
+                        }
+                    }
+                );
+            }, "Thumbnail Gen");
+            
+            const thumbBuffer = await withRetry(() => axios.get(thumbUrl[0], { responseType: 'arraybuffer' }), "Download Thumbnail");
+            const rawThumbPath = path.join(projectDir, "raw_thumb.jpg");
+            fs.writeFileSync(rawThumbPath, thumbBuffer.data);
+            
+            const titleWords = scriptData.title.split(' ').slice(0, 3).join(' ').toUpperCase().replace(/'/g, ""); 
+            await new Promise((resolve, reject) => {
+                ffmpeg(rawThumbPath)
+                    .outputOptions([
+                        `-vf drawtext=text='${titleWords}':fontcolor=yellow:fontsize=120:x=(w-text_w)/2:y=(h-text_h)/2:borderw=8:bordercolor=black`
+                    ])
+                    .save(thumbLocalPath)
+                    .on('end', resolve)
+                    .on('error', reject);
+            });
+            addLog("Thumbnail Generated Successfully!");
+        } catch (e) {
+            console.warn("Thumbnail generation failed:", e.message);
+        }
 
         const finalUrl = `/output/${videoId}.mp4`;
         
@@ -519,6 +610,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             description: scriptData.description,
             tags: scriptData.tags,
             videoUrl: finalUrl,
+            thumbnailUrl: fs.existsSync(thumbLocalPath) ? thumbUrlPath : null,
             imageCount: scriptData.segments.length,
             mainNiche: mainNiche,
             subNiche: subNiche,
