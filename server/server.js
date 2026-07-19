@@ -531,7 +531,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         // -------------------------
         addLog("Mixing Background Music at 12% Volume...");
         const finalVideoPath = path.join(outputDir, `${videoId}.mp4`);
-        const bgmPath = path.join(__dirname, 'assets', 'bgm.mp3');
+        
+        let bgmFilename = 'bgm.mp3'; // Lofi default
+        if (mainNiche.includes("Mystery") || mainNiche.includes("Psychology") || mainNiche.includes("Conspiracies")) {
+            bgmFilename = 'bgm_suspense.mp3';
+        } else if (mainNiche.includes("Luxury") || mainNiche.includes("History") || mainNiche.includes("Space")) {
+            bgmFilename = 'bgm_cinematic.mp3';
+        }
+        const bgmPath = path.join(__dirname, 'assets', bgmFilename);
         
         if (fs.existsSync(bgmPath)) {
             await new Promise((resolve, reject) => {
