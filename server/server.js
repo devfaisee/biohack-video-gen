@@ -283,8 +283,8 @@ CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
 1. THE HOOK: The first 5 seconds MUST be an aggressive, curiosity-inducing hook that makes clicking off impossible.
 2. VISUAL PACING: Visuals must change RAPIDLY. Provide a new visual instruction for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking.
 3. TITLE & SEO: The title must be highly clickable and psychologically compelling, MrBeast or Ali Abdaal level of clickbait but factual. 
-4. TAGS/HASHTAGS: Provide 10-15 highly targeted, algorithm-optimizing SEO long-tail keywords used by top creators.
-5. DESCRIPTION: Write a very engaging, long SEO description with emojis and timestamps.
+4. TAGS/KEYWORDS: Provide 20-30 highly targeted, algorithm-optimizing SEO tags. You MUST include a mix of short-tail (1 word), medium-tail (2-3 words), and very long-tail phrases (4-6 words) that people actually search for in this specific niche.
+5. DESCRIPTION: Write a very engaging, long SEO description with emojis, timestamps, and a dedicated "Keywords" paragraph at the bottom.
 6. CONTEXT-AWARE EDITING: For every segment, you MUST act as the video editor. Choose a "transition" ("none", "fade_in", or "glitch") and a "camera_motion" ("static" or "zoom_in"). Use "glitch" for shocking/scary moments, "fade_in" for tone shifts, and "zoom_in" for intense focus. Keep most transitions as "none" to avoid overwhelming the viewer.
 7. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter. Even for True Crime or Horror, you MUST NOT use banned words like "kill", "murder", "rape", "drug", "suicide", "blood", or "gore". Use safe alternatives like "eliminated", "dark fate", "perished", "tragic end", "substance", or "mystery". If you use banned words, the generation will instantly fail.
 
@@ -295,8 +295,8 @@ We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expres
 Output pure JSON with the following structure:
 {
   "title": "A highly clickable, viral YouTube title",
-  "description": "YouTube video description optimized for SEO with chapters and engaging copy",
-  "tags": ["huberman lab", "neuroplasticity protocol", "dopamine optimization", "cognitive performance"],
+  "description": "YouTube video description optimized for SEO with chapters, engaging copy, and a keyword dump at the bottom",
+  "tags": ["huberman lab", "neuroplasticity protocol for focus", "dopamine optimization", "cognitive performance", "how to improve memory 2024", "brain"],
   "segments": [
     {
       "narration": "[extremely fast] Did you know that... [short pause] [whispering] your memory can be optimized?",
@@ -337,17 +337,30 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         
         // Expose a global abort controller for the current job
         const abortController = new AbortController();
-        global.currentJob = { id: videoId, abort: () => abortController.abort() };
+        global.currentJob = { 
+            id: videoId, 
+            abort: () => {
+                abortController.abort();
+                if (global.currentJob.ffmpegProcesses) {
+                    for (const cmd of global.currentJob.ffmpegProcesses) {
+                        try { cmd.kill('SIGKILL'); } catch(e) {}
+                    }
+                }
+            },
+            ffmpegProcesses: []
+        };
 
         addLog(`Starting parallel generation of ${scriptData.segments.length} segments...`);
 
-        const pexelsKey = "vGnr3wLcpfgybFLKKXjcPcqMOPc4MM89JJA1j2WpGfrKNh29XTHVualY";
-        const pixabayKey = "54069102-5cb5de9252e9808a1e0d5f201";
+        const pexelsKey = process.env.PEXELS_API_KEY || "vGnr3wLcpfgybFLKKXjcPcqMOPc4MM89JJA1j2WpGfrKNh29XTHVualY";
+        const pixabayKey = process.env.PIXABAY_API_KEY || "54069102-5cb5de9252e9808a1e0d5f201";
 
         async function fetchStockVideo(query) {
             try {
                 const res = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`, {
-                    headers: { Authorization: pexelsKey }
+                    headers: { Authorization: pexelsKey },
+                    timeout: 8000,
+                    signal: abortController.signal
                 });
                 if (res.data.videos && res.data.videos.length > 0) {
                     const video = res.data.videos[0];
@@ -358,7 +371,10 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 console.warn("Pexels failed, falling back to Pixabay", e.message);
             }
             try {
-                const res = await axios.get(`https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodeURIComponent(query)}&video_type=film&orientation=horizontal`);
+                const res = await axios.get(`https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodeURIComponent(query)}&video_type=film&orientation=horizontal`, {
+                    timeout: 8000,
+                    signal: abortController.signal
+                });
                 if (res.data.hits && res.data.hits.length > 0) {
                     const video = res.data.hits[0];
                     return video.videos.large.url || video.videos.medium.url || video.videos.small.url;
@@ -401,7 +417,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                         const query = segment.searchQuery || segment.imagePrompt || "science";
                         addLog(`[Segment ${i + 1}] Searching stock video for: ${query}...`);
                         const videoUrl = await withRetry(() => fetchStockVideo(query), `Stock Search ${i+1}`);
-                        const videoBuffer = await withRetry(() => axios.get(videoUrl, { responseType: 'arraybuffer' }), `Download Stock Video ${i+1}`);
+                        const videoBuffer = await withRetry(() => axios.get(videoUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Stock Video ${i+1}`);
                         fs.writeFileSync(visualPath, videoBuffer.data);
                         addLog(`[Segment ${i + 1}] Stock Video downloaded.`);
                     } else {
@@ -420,7 +436,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                             );
                             return imgRes[0];
                         }, `Image Gen ${i+1}`);
-                        const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer' }), `Download Image ${i+1}`);
+                        const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Image ${i+1}`);
                         fs.writeFileSync(visualPath, imgBuffer.data);
                         addLog(`[Segment ${i + 1}] Image downloaded.`);
                     }
@@ -459,7 +475,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                             throw ttsError;
                         }
                     }, `Audio Gen ${i+1}`);
-                    const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer' }), `Download Audio ${i+1}`);
+                    const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Audio ${i+1}`);
                     fs.writeFileSync(audioPath, audioBuffer.data);
                     addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
                 })()
@@ -607,6 +623,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         .save(clipPath)
                         .on('end', resolve)
                         .on('error', reject);
+                    global.currentJob.ffmpegProcesses.push(cmd);
                 }));
             }
             
@@ -623,13 +640,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         const stitchedVideoPath = path.join(projectDir, 'stitched.mp4');
         await new Promise((resolve, reject) => {
-            ffmpeg()
+            const cmd = ffmpeg()
                 .input(listPath)
                 .inputOptions(['-f concat', '-safe 0'])
                 .outputOptions('-c copy')
                 .save(stitchedVideoPath)
                 .on('end', resolve)
                 .on('error', reject);
+            global.currentJob.ffmpegProcesses.push(cmd);
         });
         
         // -------------------------
@@ -650,7 +668,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         
         if (fs.existsSync(bgmPath)) {
             await new Promise((resolve, reject) => {
-                ffmpeg(stitchedVideoPath)
+                const cmd = ffmpeg(stitchedVideoPath)
                     .input(bgmPath)
                     .inputOptions(['-stream_loop', '-1']) // Loop BGM infinitely
                     .complexFilter([
@@ -666,6 +684,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     .save(finalVideoPath)
                     .on('end', resolve)
                     .on('error', reject);
+                global.currentJob.ffmpegProcesses.push(cmd);
             });
         } else {
             // Fallback if BGM doesn't exist
@@ -702,14 +721,19 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             fs.writeFileSync(rawThumbPath, thumbBuffer.data);
             
             const titleWords = scriptData.title.split(' ').slice(0, 3).join(' ').toUpperCase().replace(/'/g, ""); 
+            const titleTxtPath = path.join(projectDir, "title.txt");
+            fs.writeFileSync(titleTxtPath, titleWords);
+            const escapedTitleTxtPath = titleTxtPath.replace(/\\/g, '\\\\\\\\').replace(/:/g, '\\\\:');
+
             await new Promise((resolve, reject) => {
-                ffmpeg(rawThumbPath)
+                const cmd = ffmpeg(rawThumbPath)
                     .outputOptions([
-                        `-vf drawtext=text='${titleWords}':fontcolor=yellow:fontsize=120:x=(w-text_w)/2:y=(h-text_h)/2:borderw=8:bordercolor=black`
+                        `-vf drawtext=textfile='${escapedTitleTxtPath}':fontcolor=yellow:fontsize=120:x=(w-text_w)/2:y=(h-text_h)/2:borderw=8:bordercolor=black`
                     ])
                     .save(thumbLocalPath)
                     .on('end', resolve)
                     .on('error', reject);
+                global.currentJob.ffmpegProcesses.push(cmd);
             });
             addLog("Thumbnail Generated Successfully!");
         } catch (e) {
