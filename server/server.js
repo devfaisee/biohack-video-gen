@@ -150,37 +150,49 @@ Do NOT generate a random topic. You MUST strictly follow and explore this exact 
         // --- UNIVERSAL NICHE PROMPTING ENGINE ---
         // --- EXPANDED NICHE-SPECIFIC PROMPTING ENGINE (24 Categories) ---
         let nicheRules = "";
+        let voiceId = "Charon";
+        let voicePrompt = "Professional, authoritative documentary narrator. Consistent and perfectly paced.";
+        
         const nicheKey = mainNiche.toLowerCase();
         if (nicheKey.includes("revenge") || nicheKey.includes("justice")) {
+            voiceId = "Algenib";
+            voicePrompt = "Grave, serious narrator recounting a dark tale. Steady, deliberate pacing.";
             nicheRules = `
 CRITICAL STORYTELLING RULES FOR REVENGE/JUSTICE STORIES:
 1. NARRATIVE ARC: Write an emotionally gripping story with a clear victim, villain, build-up, and SATISFYING payback at the climax.
 2. CONSISTENT CHARACTERS: Use the EXACT SAME detailed physical description for recurring characters in EVERY image prompt.
-3. EMOTIONAL PEAKS: Use [whispering], [shouting], [short pause] at tension points. Make the listener feel the injustice AND the satisfaction of revenge.
-4. PACING: Start with the outrageous offense, build frustration, then deliver the sweet revenge slowly.`;
+3. PACING: Start with the outrageous offense, build frustration, then deliver the sweet revenge slowly.`;
         } else if (nicheKey.includes("true crime") || nicheKey.includes("criminal")) {
+            voiceId = "Algenib";
+            voicePrompt = "Seasoned crime documentary narrator. Grave, measured, and highly authoritative.";
             nicheRules = `
 CRITICAL TRUE CRIME RULES:
 1. TONE: Sound like a seasoned crime documentary narrator — grave, measured, and authoritative.
-2. SUSPENSE: Build tension methodically. Use [whispering] for chilling details, [short pause] before reveals.
+2. SUSPENSE: Build tension methodically through story structure.
 3. FACTS: Include specific dates, locations, and investigator names when possible to build credibility.
 4. VISUALS: Use dark, moody, noir-style imagery — dimly lit streets, evidence boards, courtrooms, shadowy figures.
 5. SAFETY: Use safe alternatives for violent words: "eliminated", "tragic end", "perished", "vanished".`;
         } else if (nicheKey.includes("horror") || nicheKey.includes("creepypasta")) {
+            voiceId = "Enceladus"; // Breathy
+            voicePrompt = "Ominous, dread-inducing narrator. Calm but incredibly unsettling.";
             nicheRules = `
 CRITICAL HORROR RULES:
 1. ATMOSPHERE: Build dread slowly. Start normal, then let wrongness creep in gradually.
-2. SOUND DESIGN: Use [whispering] extensively. Use [extremely fast] for panic moments. Use [medium pause] to let silence create tension.
+2. SOUND DESIGN: Use descriptive pacing. Do not use inline tags.
 3. VISUALS: Dark, unsettling, liminal space imagery. Empty hallways, fog, distorted faces, eerie landscapes.
 4. NEVER RESOLVE FULLY: Leave a lingering sense of unease. The best horror doesn't fully explain everything.`;
         } else if (nicheKey.includes("psychology") || nicheKey.includes("dark")) {
+            voiceId = "Charon";
+            voicePrompt = "Knowledgeable insider revealing hidden truths. Confident, slightly conspiratorial, but professional.";
             nicheRules = `
 CRITICAL DARK PSYCHOLOGY RULES:
-1. TONE: Sound like a knowledgeable insider revealing hidden truths — confident, slightly conspiratorial.
+1. TONE: Sound like a knowledgeable insider revealing hidden truths.
 2. EXAMPLES: Every concept MUST include a vivid real-world example or scenario the viewer can relate to.
 3. STRUCTURE: Present each tactic/concept as a numbered "law" or "technique" for maximum retention.
 4. VISUALS: Use shadowy corporate settings, chess pieces, puppet strings, maze imagery, people in crowds.`;
         } else if (nicheKey.includes("stoicism") || nicheKey.includes("philosophy")) {
+            voiceId = "Schedar"; // Even
+            voicePrompt = "Wise, contemplative, and profound. Slow, deliberate, and calming delivery.";
             nicheRules = `
 CRITICAL PHILOSOPHY RULES:
 1. TONE: Sound wise, contemplative, and profound — like Marcus Aurelius speaking to a student.
@@ -188,6 +200,8 @@ CRITICAL PHILOSOPHY RULES:
 3. APPLICATION: Every philosophical concept MUST be connected to a modern-day practical application.
 4. VISUALS: Ancient marble statues, mountain landscapes, forests, rain, campfires, ancient libraries, scrolls.`;
         } else if (nicheKey.includes("military") || nicheKey.includes("warfare")) {
+            voiceId = "Orus"; // Firm
+            voicePrompt = "Military analyst briefing. Authoritative, tactical, precise, no-nonsense.";
             nicheRules = `
 CRITICAL MILITARY RULES:
 1. TONE: Sound like a military analyst briefing — authoritative, tactical, precise.
@@ -195,20 +209,26 @@ CRITICAL MILITARY RULES:
 3. DRAMA: Highlight the human element — soldiers' decisions under pressure, turning points in battles.
 4. VISUALS: Tanks, aircraft, naval vessels, maps with arrows, military formations, explosions, uniforms.`;
         } else if (nicheKey.includes("unethical") || nicheKey.includes("grey")) {
+            voiceId = "Sadaltager"; // Knowledgeable
+            voicePrompt = "Investigative journalist exposing hidden systems. Knowledgeable and fast-paced.";
             nicheRules = `
 CRITICAL GREY AREA RULES:
-1. TONE: Sound like an investigative journalist exposing hidden systems — knowledgeable, slightly outraged.
+1. TONE: Sound like an investigative journalist exposing hidden systems.
 2. FRAMING: Always frame as EDUCATIONAL — "Here's how this works so you can PROTECT YOURSELF."
 3. EVIDENCE: Cite specific companies, laws, or case studies to build credibility.
 4. VISUALS: Corporate boardrooms, fine print documents, bank vaults, surveillance cameras, courtrooms.`;
         } else if (nicheKey.includes("space") || nicheKey.includes("universe") || nicheKey.includes("science")) {
+            voiceId = "Charon"; // Informative
+            voicePrompt = "Top-tier documentary narrator. Epic, expansive, and awe-inspiring.";
             nicheRules = `
 CRITICAL SCIENCE/SPACE RULES:
-1. TONE: Sound like a top-tier documentary narrator — Huberman Lab meets Neil deGrasse Tyson.
+1. TONE: Sound like a top-tier documentary narrator.
 2. SCALE: Emphasize mind-blowing scale comparisons ("If Earth were a grain of sand...").
 3. FACTS: Provide deep, specific, fascinating insights with exact numbers and recent discoveries.
 4. VISUALS: Nebulas, galaxies, microscopic cells, laboratory equipment, scientific diagrams, DNA strands.`;
         } else if (nicheKey.includes("history") || nicheKey.includes("civiliz") || nicheKey.includes("geopolit")) {
+            voiceId = "Rasalgethi"; // Informative
+            voicePrompt = "Epic documentary narrator. Dramatic, grand, painting vast historical canvases.";
             nicheRules = `
 CRITICAL HISTORY RULES:
 1. TONE: Sound like an epic documentary narrator — dramatic, grand, painting vast historical canvases.
@@ -216,6 +236,8 @@ CRITICAL HISTORY RULES:
 3. DETAILS: Include specific dates, names of key figures, and cause-effect chains.
 4. VISUALS: Ancient ruins, battle paintings, maps, period-appropriate architecture, crowns, scrolls, armor.`;
         } else if (nicheKey.includes("rise") || nicheKey.includes("fall")) {
+            voiceId = "Charon";
+            voicePrompt = "Business documentary narrator. Professional, engaging, and analytical.";
             nicheRules = `
 CRITICAL RISE & FALL RULES:
 1. STRUCTURE: Follow the classic arc — humble beginnings, meteoric rise, fatal flaw, spectacular collapse.
@@ -223,19 +245,24 @@ CRITICAL RISE & FALL RULES:
 3. LESSONS: End with clear takeaways the viewer can apply to their own life or business.
 4. VISUALS: Corporate offices, product shots, stock charts going up then crashing, empty buildings, headlines.`;
         } else if (nicheKey.includes("luxury") || nicheKey.includes("motivation")) {
+            voiceId = "Puck"; // Upbeat
+            voicePrompt = "High-level mentor. Authoritative, intense, fast-paced, high energy.";
             nicheRules = `
 CRITICAL LUXURY/MOTIVATION RULES:
 1. TONE: Sound like a high-level mentor — authoritative, intense, fast-paced, no fluff.
 2. VISUALS: Supercars, penthouses, yachts, watches, private jets, city skylines at night, gym sessions.
-3. STRUCTURE: Open with a powerful quote or shocking fact, then deliver rapid-fire value.
-4. ENERGY: Maintain relentless intensity. Use [extremely fast] for key sections.`;
+3. STRUCTURE: Open with a powerful quote or shocking fact, then deliver rapid-fire value.`;
         } else if (nicheKey.includes("finance") || nicheKey.includes("wealth") || nicheKey.includes("money")) {
+            voiceId = "Charon";
+            voicePrompt = "High-level financial insider. Authoritative, fast-paced delivery.";
             nicheRules = `
 CRITICAL FINANCE RULES:
 1. AUTHORITY: Sound like a high-level financial insider. Use authoritative, fast-paced delivery.
 2. VISUALS: Luxury aesthetics, dynamic charts, wealthy environments, abstract money representations.
 3. ACTIONABLE: Provide actual value, case studies, or step-by-step breakdowns.`;
         } else if (nicheKey.includes("survival") || nicheKey.includes("disaster")) {
+            voiceId = "Algenib";
+            voicePrompt = "Grave, serious narrator detailing a timeline of events.";
             nicheRules = `
 CRITICAL SURVIVAL/DISASTER RULES:
 1. TONE: Start calm, then escalate urgency as the disaster unfolds.
@@ -243,18 +270,24 @@ CRITICAL SURVIVAL/DISASTER RULES:
 3. HUMAN STORIES: Focus on individual survivors' decisions and experiences.
 4. VISUALS: Devastated landscapes, rescue operations, emergency shelters, cracked earth, flooding, rubble.`;
         } else if (nicheKey.includes("nature") || nicheKey.includes("wildlife")) {
+            voiceId = "Achird"; // Friendly
+            voicePrompt = "Warm, awestruck, deeply respectful of nature. Calm and inviting.";
             nicheRules = `
 CRITICAL NATURE RULES:
-1. TONE: Sound like David Attenborough — warm, awestruck, deeply respectful of nature.
+1. TONE: Warm, awestruck, deeply respectful of nature.
 2. FACTS: Include specific species names, behaviors, and fascinating biological adaptations.
 3. VISUALS: Stunning wildlife footage, underwater scenes, aerial landscapes, close-up animal faces, jungles.`;
         } else if (nicheKey.includes("food")) {
+            voiceId = "Zubenelgenubi"; // Casual
+            voicePrompt = "Investigative journalist meets food scientist. Curious and engaging.";
             nicheRules = `
 CRITICAL FOOD SCIENCE RULES:
 1. TONE: Investigative journalist meets food scientist — curious, slightly outraged at industry practices.
 2. CHEMISTRY: Explain the actual chemical or biological mechanisms behind food topics.
 3. VISUALS: Close-up food shots, factory production lines, molecular diagrams, grocery store aisles.`;
         } else if (nicheKey.includes("relationship") || nicheKey.includes("social")) {
+            voiceId = "Sulafat"; // Warm (Female)
+            voicePrompt = "Wise, experienced therapist. Empathetic, warm, and direct.";
             nicheRules = `
 CRITICAL RELATIONSHIP RULES:
 1. TONE: Sound like a wise, experienced therapist — empathetic but direct.
@@ -262,9 +295,11 @@ CRITICAL RELATIONSHIP RULES:
 3. EXAMPLES: Use relatable scenarios the viewer has likely experienced.
 4. VISUALS: People in conversation, couples, city streets, coffee shops, silhouettes, rain on windows.`;
         } else {
+            voiceId = "Charon";
+            voicePrompt = "Top-tier documentary narrator. Factual, professional, and fascinating.";
             nicheRules = `
 CRITICAL EDUCATIONAL RULES:
-1. AUTHORITY: Sound like a top-tier documentary narrator (e.g., Huberman Lab style).
+1. AUTHORITY: Sound like a top-tier documentary narrator.
 2. SCIENCE/FACTS: Provide deep, factual, fascinating insights with specific numbers and protocols.
 3. VISUALS: Keep visuals highly relevant, cinematic, and perfectly tied to the concept being explained.`;
         }
@@ -295,9 +330,10 @@ CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
 7. CONTEXT-AWARE EDITING: For every segment, you MUST act as the video editor. Choose a "transition" ("none", "fade_in", "glitch", or "blackout") and a "camera_motion" ("static" or "zoom_in"). Use "glitch" for shocking/scary moments, "fade_in" for tone shifts, "blackout" for pattern interrupts, and "zoom_in" for intense focus. Keep most transitions as "none" to avoid overwhelming the viewer.
 7. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter. Even for True Crime or Horror, you MUST NOT use banned words like "kill", "murder", "rape", "drug", "suicide", "blood", or "gore". Use safe alternatives like "eliminated", "dark fate", "perished", "tragic end", "substance", or "mystery". If you use banned words, the generation will instantly fail.
 
-We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expressive capabilities!
-- Use inline tags inside the "narration" like [sigh], [laughing], [whispering], [shouting], [extremely fast], [short pause], [medium pause] to make it sound incredibly human and dynamic.
-- Provide a "voicePrompt" for each segment describing the exact style, tone, pace, and emotion for that specific sentence.
+We are using Gemini 3.1 Flash TTS for the voiceover.
+- DO NOT use inline expressive tags like [whispering] or [fast]. The delivery MUST be professional, consistent, and perfectly paced.
+- DO NOT change the tone wildly between segments. The voiceover should sound like a premium, steady, professional documentary narrator.
+- Write pure, clean narration text.
 
 Output pure JSON with the following structure:
 {
@@ -306,8 +342,7 @@ Output pure JSON with the following structure:
   "tags": ["huberman lab", "neuroplasticity protocol for focus", "dopamine optimization", "cognitive performance", "how to improve memory 2024", "brain"],
   "segments": [
     {
-      "narration": "[extremely fast] Did you know that... [short pause] [whispering] your memory can be optimized?",
-      "voicePrompt": "DIRECTOR'S NOTES: Intense, extremely fast-paced, dropping into a mysterious whisper at the end.",
+      "narration": "Did you know that your memory can be mathematically optimized? The science behind it is shocking.",
       "transition": "glitch",
       "camera_motion": "zoom_in",
       ${visualInstruction}
@@ -451,29 +486,29 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
                 // AUDIO TASK
                 (async () => {
-                    addLog(`[Segment ${i + 1}] Requesting voiceover from Gemini 3.1 Flash TTS...`);
+                    addLog(`[Segment ${i + 1}] Requesting voiceover (${voiceId}) from Gemini 3.1 Flash TTS...`);
                     const audioUrl = await withRetry(async () => {
                         try {
                             return await replicate.run(
                                 "google/gemini-3.1-flash-tts",
                                 {
                                     input: {
-                                        text: segment.narration,
-                                        voice: "Charon", 
-                                        prompt: segment.voicePrompt,
+                                        text: segment.narration.replace(/\[.*?\]/g, '').trim(), // Force strip any hallucinated tags
+                                        voice: voiceId, 
+                                        prompt: voicePrompt,
                                         language_code: "en-US"
                                     }
                                 }
                             );
                         } catch (ttsError) {
                             if (ttsError.message.includes("sensitive") || ttsError.message.includes("E005")) {
-                                addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized, prompt-less fallback...`);
+                                addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized fallback...`);
                                 return await replicate.run(
                                     "google/gemini-3.1-flash-tts",
                                     {
                                         input: {
                                             text: segment.narration.replace(/\[.*?\]/g, '').trim(),
-                                            voice: "Charon",
+                                            voice: voiceId,
                                             language_code: "en-US"
                                         }
                                     }
