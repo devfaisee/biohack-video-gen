@@ -81,6 +81,11 @@ async function withRetry(fn, operationName, maxRetries = 6, baseDelayMs = 4000) 
 }
 
 app.post('/api/generate', (req, res) => {
+    // GUARD: Prevent duplicate concurrent generations
+    if (global.currentJob) {
+        return res.status(409).json({ error: "A generation is already in progress. Please wait or cancel it first." });
+    }
+
     const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'ai_images', mainNiche = 'Science', subNiche = 'General' } = req.body;
     addLog(`Starting generation for ${durationMinutes} minutes on topic: ${topic || 'Default'} [Visuals: ${visualSource}]...`);
     
@@ -141,25 +146,125 @@ Do NOT generate a random topic. You MUST strictly follow and explore this exact 
         }
 
         // --- UNIVERSAL NICHE PROMPTING ENGINE ---
+        // --- EXPANDED NICHE-SPECIFIC PROMPTING ENGINE (24 Categories) ---
         let nicheRules = "";
-        if (mainNiche === "Stories & Fiction") {
+        const nicheKey = mainNiche.toLowerCase();
+        if (nicheKey.includes("revenge") || nicheKey.includes("justice")) {
             nicheRules = `
-CRITICAL STORYTELLING RULES:
-1. NARRATIVE ARC: Write a highly engaging, emotional story with a hook, rising action, climax, and satisfying resolution.
-2. CONSISTENT CHARACTERS: If using AI Images, you MUST use the exact same detailed physical description for the main characters in EVERY SINGLE image prompt (e.g., "John, a tall 40-year-old man with a scarred cheek wearing a torn leather jacket"). Do NOT change their appearance between segments!
-3. PACING: Build suspense. Use the expressive voiceover tags [whispering], [shouting], [crying] to make it feel like an audiobook.`;
-        } else if (mainNiche === "Finance & Business") {
+CRITICAL STORYTELLING RULES FOR REVENGE/JUSTICE STORIES:
+1. NARRATIVE ARC: Write an emotionally gripping story with a clear victim, villain, build-up, and SATISFYING payback at the climax.
+2. CONSISTENT CHARACTERS: Use the EXACT SAME detailed physical description for recurring characters in EVERY image prompt.
+3. EMOTIONAL PEAKS: Use [whispering], [shouting], [short pause] at tension points. Make the listener feel the injustice AND the satisfaction of revenge.
+4. PACING: Start with the outrageous offense, build frustration, then deliver the sweet revenge slowly.`;
+        } else if (nicheKey.includes("true crime") || nicheKey.includes("criminal")) {
+            nicheRules = `
+CRITICAL TRUE CRIME RULES:
+1. TONE: Sound like a seasoned crime documentary narrator — grave, measured, and authoritative.
+2. SUSPENSE: Build tension methodically. Use [whispering] for chilling details, [short pause] before reveals.
+3. FACTS: Include specific dates, locations, and investigator names when possible to build credibility.
+4. VISUALS: Use dark, moody, noir-style imagery — dimly lit streets, evidence boards, courtrooms, shadowy figures.
+5. SAFETY: Use safe alternatives for violent words: "eliminated", "tragic end", "perished", "vanished".`;
+        } else if (nicheKey.includes("horror") || nicheKey.includes("creepypasta")) {
+            nicheRules = `
+CRITICAL HORROR RULES:
+1. ATMOSPHERE: Build dread slowly. Start normal, then let wrongness creep in gradually.
+2. SOUND DESIGN: Use [whispering] extensively. Use [extremely fast] for panic moments. Use [medium pause] to let silence create tension.
+3. VISUALS: Dark, unsettling, liminal space imagery. Empty hallways, fog, distorted faces, eerie landscapes.
+4. NEVER RESOLVE FULLY: Leave a lingering sense of unease. The best horror doesn't fully explain everything.`;
+        } else if (nicheKey.includes("psychology") || nicheKey.includes("dark")) {
+            nicheRules = `
+CRITICAL DARK PSYCHOLOGY RULES:
+1. TONE: Sound like a knowledgeable insider revealing hidden truths — confident, slightly conspiratorial.
+2. EXAMPLES: Every concept MUST include a vivid real-world example or scenario the viewer can relate to.
+3. STRUCTURE: Present each tactic/concept as a numbered "law" or "technique" for maximum retention.
+4. VISUALS: Use shadowy corporate settings, chess pieces, puppet strings, maze imagery, people in crowds.`;
+        } else if (nicheKey.includes("stoicism") || nicheKey.includes("philosophy")) {
+            nicheRules = `
+CRITICAL PHILOSOPHY RULES:
+1. TONE: Sound wise, contemplative, and profound — like Marcus Aurelius speaking to a student.
+2. QUOTES: Weave in actual philosophical quotes from original texts, then explain them in modern language.
+3. APPLICATION: Every philosophical concept MUST be connected to a modern-day practical application.
+4. VISUALS: Ancient marble statues, mountain landscapes, forests, rain, campfires, ancient libraries, scrolls.`;
+        } else if (nicheKey.includes("military") || nicheKey.includes("warfare")) {
+            nicheRules = `
+CRITICAL MILITARY RULES:
+1. TONE: Sound like a military analyst briefing — authoritative, tactical, precise.
+2. TECHNICAL DETAIL: Include specific equipment specs, troop numbers, tactical formations when relevant.
+3. DRAMA: Highlight the human element — soldiers' decisions under pressure, turning points in battles.
+4. VISUALS: Tanks, aircraft, naval vessels, maps with arrows, military formations, explosions, uniforms.`;
+        } else if (nicheKey.includes("unethical") || nicheKey.includes("grey")) {
+            nicheRules = `
+CRITICAL GREY AREA RULES:
+1. TONE: Sound like an investigative journalist exposing hidden systems — knowledgeable, slightly outraged.
+2. FRAMING: Always frame as EDUCATIONAL — "Here's how this works so you can PROTECT YOURSELF."
+3. EVIDENCE: Cite specific companies, laws, or case studies to build credibility.
+4. VISUALS: Corporate boardrooms, fine print documents, bank vaults, surveillance cameras, courtrooms.`;
+        } else if (nicheKey.includes("space") || nicheKey.includes("universe") || nicheKey.includes("science")) {
+            nicheRules = `
+CRITICAL SCIENCE/SPACE RULES:
+1. TONE: Sound like a top-tier documentary narrator — Huberman Lab meets Neil deGrasse Tyson.
+2. SCALE: Emphasize mind-blowing scale comparisons ("If Earth were a grain of sand...").
+3. FACTS: Provide deep, specific, fascinating insights with exact numbers and recent discoveries.
+4. VISUALS: Nebulas, galaxies, microscopic cells, laboratory equipment, scientific diagrams, DNA strands.`;
+        } else if (nicheKey.includes("history") || nicheKey.includes("civiliz") || nicheKey.includes("geopolit")) {
+            nicheRules = `
+CRITICAL HISTORY RULES:
+1. TONE: Sound like an epic documentary narrator — dramatic, grand, painting vast historical canvases.
+2. STORYTELLING: Frame history as a STORY with characters, motivations, betrayals, and consequences.
+3. DETAILS: Include specific dates, names of key figures, and cause-effect chains.
+4. VISUALS: Ancient ruins, battle paintings, maps, period-appropriate architecture, crowns, scrolls, armor.`;
+        } else if (nicheKey.includes("rise") || nicheKey.includes("fall")) {
+            nicheRules = `
+CRITICAL RISE & FALL RULES:
+1. STRUCTURE: Follow the classic arc — humble beginnings, meteoric rise, fatal flaw, spectacular collapse.
+2. HUMAN ELEMENT: Focus on the specific decisions and people that caused the rise AND the fall.
+3. LESSONS: End with clear takeaways the viewer can apply to their own life or business.
+4. VISUALS: Corporate offices, product shots, stock charts going up then crashing, empty buildings, headlines.`;
+        } else if (nicheKey.includes("luxury") || nicheKey.includes("motivation")) {
+            nicheRules = `
+CRITICAL LUXURY/MOTIVATION RULES:
+1. TONE: Sound like a high-level mentor — authoritative, intense, fast-paced, no fluff.
+2. VISUALS: Supercars, penthouses, yachts, watches, private jets, city skylines at night, gym sessions.
+3. STRUCTURE: Open with a powerful quote or shocking fact, then deliver rapid-fire value.
+4. ENERGY: Maintain relentless intensity. Use [extremely fast] for key sections.`;
+        } else if (nicheKey.includes("finance") || nicheKey.includes("wealth") || nicheKey.includes("money")) {
             nicheRules = `
 CRITICAL FINANCE RULES:
 1. AUTHORITY: Sound like a high-level financial insider. Use authoritative, fast-paced delivery.
-2. VISUALS: Use luxury aesthetics, dynamic charts, wealthy environments, or abstract conceptual representations of money and markets.
+2. VISUALS: Luxury aesthetics, dynamic charts, wealthy environments, abstract money representations.
 3. ACTIONABLE: Provide actual value, case studies, or step-by-step breakdowns.`;
+        } else if (nicheKey.includes("survival") || nicheKey.includes("disaster")) {
+            nicheRules = `
+CRITICAL SURVIVAL/DISASTER RULES:
+1. TONE: Start calm, then escalate urgency as the disaster unfolds.
+2. TIMELINE: Present events chronologically with specific times and dates for maximum immersion.
+3. HUMAN STORIES: Focus on individual survivors' decisions and experiences.
+4. VISUALS: Devastated landscapes, rescue operations, emergency shelters, cracked earth, flooding, rubble.`;
+        } else if (nicheKey.includes("nature") || nicheKey.includes("wildlife")) {
+            nicheRules = `
+CRITICAL NATURE RULES:
+1. TONE: Sound like David Attenborough — warm, awestruck, deeply respectful of nature.
+2. FACTS: Include specific species names, behaviors, and fascinating biological adaptations.
+3. VISUALS: Stunning wildlife footage, underwater scenes, aerial landscapes, close-up animal faces, jungles.`;
+        } else if (nicheKey.includes("food")) {
+            nicheRules = `
+CRITICAL FOOD SCIENCE RULES:
+1. TONE: Investigative journalist meets food scientist — curious, slightly outraged at industry practices.
+2. CHEMISTRY: Explain the actual chemical or biological mechanisms behind food topics.
+3. VISUALS: Close-up food shots, factory production lines, molecular diagrams, grocery store aisles.`;
+        } else if (nicheKey.includes("relationship") || nicheKey.includes("social")) {
+            nicheRules = `
+CRITICAL RELATIONSHIP RULES:
+1. TONE: Sound like a wise, experienced therapist — empathetic but direct.
+2. PSYCHOLOGY: Back every point with psychological research or attachment theory.
+3. EXAMPLES: Use relatable scenarios the viewer has likely experienced.
+4. VISUALS: People in conversation, couples, city streets, coffee shops, silhouettes, rain on windows.`;
         } else {
             nicheRules = `
 CRITICAL EDUCATIONAL RULES:
 1. AUTHORITY: Sound like a top-tier documentary narrator (e.g., Huberman Lab style).
-2. SCIENCE/FACTS: Provide deep, factual, fascinating insights. Do not just summarize; give specific actionable protocols or historical facts.
-3. VISUALS: Keep visuals highly relevant, cinematic, and perfectly tied to the educational concept being explained.`;
+2. SCIENCE/FACTS: Provide deep, factual, fascinating insights with specific numbers and protocols.
+3. VISUALS: Keep visuals highly relevant, cinematic, and perfectly tied to the concept being explained.`;
         }
 
         const visualInstruction = visualSource === 'stock_videos'
@@ -481,7 +586,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
                     if (visualSource === 'stock_videos') {
-                        cmd = cmd.input(clip.visual).inputOptions(['-stream_loop', '-1']);
+                        // FIX: Force-limit stock video to exact audio duration to prevent freeze/desync
+                        cmd = cmd.input(clip.visual).inputOptions(['-stream_loop', '-1', '-t', String(clip.duration)]);
                     } else {
                         cmd = cmd.input(clip.visual).loop();
                     }
@@ -651,7 +757,20 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         fs.writeFileSync(path.join(outputDir, `${errorId}_error.json`), JSON.stringify(errorMetadata, null, 2));
 
     } finally {
+        // DISK CLEANUP: Remove all temp files for this generation (success or failure)
+        const jobId = global.currentJob?.id;
         global.currentJob = null;
+        if (jobId) {
+            const cleanupDir = path.join(tmpDir, jobId);
+            if (fs.existsSync(cleanupDir)) {
+                try {
+                    fs.rmSync(cleanupDir, { recursive: true, force: true });
+                    console.log(`[CLEANUP] Removed temp directory: ${cleanupDir}`);
+                } catch (cleanupErr) {
+                    console.warn(`[CLEANUP] Failed to remove ${cleanupDir}:`, cleanupErr.message);
+                }
+            }
+        }
     }
 }
 
