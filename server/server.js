@@ -106,10 +106,12 @@ CRITICAL INSTRUCTION: If the user's input is a broad umbrella term, you MUST ran
 Every time you are called, pick a COMPLETELY DIFFERENT, highly specific angle to ensure massive variety.
 
 Generate a highly clickable, psychologically compelling YouTube title about this SPECIFIC sub-topic. Use MrBeast or Ali Abdaal level of clickbait, leveraging curiosity gaps and strong emotional triggers, but keeping it factual. 
+Generate a 'thumbnailText' (1-3 words max). This MUST NOT repeat the main title. It should be a Curiosity Gap (e.g., if title is 'The Dark Psychology of Cults', thumbnail text should be 'They Know...').
 Also generate a highly engaging, long, and SEO-optimized YouTube description with emojis, bullet points, and related hashtags.
 Output ONLY pure JSON with no markdown formatting:
 {
   "title": "The ultimate viral YouTube title",
+  "thumbnailText": "They Know...",
   "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
         const chatCompletion = await openai.chat.completions.create({
@@ -280,12 +282,17 @@ CRITICAL DURATION REQUIREMENT:
 The user requested a ${durationMinutes}-minute video. At normal speaking pace, you MUST write AT LEAST ${wordCount} words of narration total. Do NOT summarize. Do NOT finish early.
 
 CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
-1. THE HOOK: The first 5 seconds MUST be an aggressive, curiosity-inducing hook that makes clicking off impossible.
-2. VISUAL PACING: Visuals must change RAPIDLY. Provide a new visual instruction for EVERY SINGLE SENTENCE or every 3-5 seconds of speaking.
-3. TITLE & SEO: The title must be highly clickable and psychologically compelling, MrBeast or Ali Abdaal level of clickbait but factual. 
-4. TAGS/KEYWORDS: Provide 20-30 highly targeted, algorithm-optimizing SEO tags. You MUST include a mix of short-tail (1 word), medium-tail (2-3 words), and very long-tail phrases (4-6 words) that people actually search for in this specific niche.
-5. DESCRIPTION: Write a very engaging, long SEO description with emojis, timestamps, and a dedicated "Keywords" paragraph at the bottom.
-6. CONTEXT-AWARE EDITING: For every segment, you MUST act as the video editor. Choose a "transition" ("none", "fade_in", or "glitch") and a "camera_motion" ("static" or "zoom_in"). Use "glitch" for shocking/scary moments, "fade_in" for tone shifts, and "zoom_in" for intense focus. Keep most transitions as "none" to avoid overwhelming the viewer.
+CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
+1. PSYCHOLOGICAL HOOK: The first 5 seconds MUST use one of these hook frameworks: 
+   - The Contrarian Hook: "Everything you've been told about X is a lie."
+   - The Negative Hook: "Do not do X until you understand this dark reality."
+   - In-Media-Res: Start exactly at the climax of the story, then rewind.
+2. OPEN LOOPS: You MUST plant a massive, unanswered question or mystery in the first 60 seconds and explicitly promise the payoff at the end.
+3. VISUAL PACING & PATTERN INTERRUPTS: Visuals must change RAPIDLY. Provide a new visual instruction every sentence. Use a "blackout" transition for a sudden 1-second black screen during a whispered secret.
+4. TITLE & SEO: The title must be highly clickable and psychologically compelling, MrBeast or Ali Abdaal level of clickbait but factual. 
+5. TAGS/KEYWORDS: Provide 20-30 highly targeted, algorithm-optimizing SEO tags. You MUST include a mix of short-tail (1 word), medium-tail (2-3 words), and very long-tail phrases (4-6 words) that people actually search for in this specific niche.
+6. DESCRIPTION: Write a very engaging, long SEO description with emojis, timestamps, and a dedicated "Keywords" paragraph at the bottom.
+7. CONTEXT-AWARE EDITING: For every segment, you MUST act as the video editor. Choose a "transition" ("none", "fade_in", "glitch", or "blackout") and a "camera_motion" ("static" or "zoom_in"). Use "glitch" for shocking/scary moments, "fade_in" for tone shifts, "blackout" for pattern interrupts, and "zoom_in" for intense focus. Keep most transitions as "none" to avoid overwhelming the viewer.
 7. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter. Even for True Crime or Horror, you MUST NOT use banned words like "kill", "murder", "rape", "drug", "suicide", "blood", or "gore". Use safe alternatives like "eliminated", "dark fate", "perished", "tragic end", "substance", or "mystery". If you use banned words, the generation will instantly fail.
 
 We are using Gemini 3.1 Flash TTS for the voiceover. You MUST utilize its expressive capabilities!
@@ -583,21 +590,41 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 // Build Dynamic Filter Chain for Context-Aware Editing
                 let vfFilters = `scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB`;
                 
+                let sfxInputs = [];
+                let filterComplex = '';
+
                 // Ken Burns Zoom In (Only applied to AI Images to prevent stock video distortion)
                 if (visualSource !== 'stock_videos' && clip.camera_motion === "zoom_in") {
                     vfFilters += `,zoompan=z='min(zoom+0.0015,1.5)':d=${Math.ceil(clip.duration * 25)}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080`;
+                    const sfxPath = path.join(__dirname, 'assets', 'sfx_boom.mp3');
+                    if (fs.existsSync(sfxPath)) sfxInputs.push(sfxPath);
                 }
                 
-                // Smart Transitions
+                // Smart Transitions & Pattern Interrupts
                 if (clip.transition === "fade_in") {
                     vfFilters += `,fade=t=in:st=0:d=0.5`;
                 } else if (clip.transition === "glitch") {
                     // Intense inverted flash for 0.1 seconds
                     vfFilters += `,negate=enable='between(t,0,0.1)'`;
+                    const sfxPath = path.join(__dirname, 'assets', 'sfx_glitch.mp3');
+                    if (fs.existsSync(sfxPath)) sfxInputs.push(sfxPath);
+                } else if (clip.transition === "blackout") {
+                    // Pattern Interrupt: Complete black screen for 1 second
+                    vfFilters += `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,0,1)'`;
+                    const sfxPath = path.join(__dirname, 'assets', 'sfx_whoosh.mp3');
+                    if (fs.existsSync(sfxPath)) sfxInputs.push(sfxPath);
                 }
                 
                 // Add Kinetic Subtitles
                 vfFilters += `,ass='${escapedAssPath}'`;
+
+                if (sfxInputs.length > 0) {
+                    let amixParts = '[1:a]';
+                    for (let k = 0; k < sfxInputs.length; k++) {
+                        amixParts += `[${k+2}:a]`;
+                    }
+                    filterComplex = `${amixParts}amix=inputs=${sfxInputs.length + 1}:duration=first:dropout_transition=0[aout]`;
+                }
 
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
@@ -608,18 +635,30 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         cmd = cmd.input(clip.visual).loop();
                     }
                     
-                    cmd.input(clip.audio)
-                        .videoCodec('libx264')
+                    cmd.input(clip.audio);
+                    for (const sfx of sfxInputs) {
+                        cmd.input(sfx);
+                    }
+                    
+                    const outputOpts = [
+                        '-map 0:v:0', // Only take video from input 0
+                        '-shortest',
+                        '-pix_fmt yuv420p',
+                        `-vf ${vfFilters}`,
+                        '-preset veryfast', // Drastically speeds up encoding
+                        '-threads 2' // Balances CPU load across parallel processes
+                    ];
+
+                    if (sfxInputs.length > 0) {
+                        outputOpts.push(`-filter_complex ${filterComplex}`);
+                        outputOpts.push('-map [aout]');
+                    } else {
+                        outputOpts.push('-map 1:a:0'); // Just original audio
+                    }
+
+                    cmd.videoCodec('libx264')
                         .audioCodec('aac')
-                        .outputOptions([
-                            '-map 0:v:0', // Only take video from input 0
-                            '-map 1:a:0', // Only take audio from input 1
-                            '-shortest',
-                            '-pix_fmt yuv420p',
-                            `-vf ${vfFilters}`,
-                            '-preset veryfast', // Drastically speeds up encoding
-                            '-threads 2' // Balances CPU load across parallel processes
-                        ])
+                        .outputOptions(outputOpts)
                         .save(clipPath)
                         .on('end', resolve)
                         .on('error', reject);
