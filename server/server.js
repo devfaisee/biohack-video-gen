@@ -588,18 +588,18 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             
             const n = (nicheName || "").toLowerCase();
             if (n.includes("true crime") || n.includes("criminal") || n.includes("horror") || n.includes("revenge") || n.includes("survival")) {
-                fontName = "Courier New";
+                fontName = "Liberation Mono"; // Railway-safe Typewriter substitute
                 highlightColor = "&H000000FF&"; // Blood Red
                 backColor = "&HC0000000&"; // Darker black box
             } else if (n.includes("finance") || n.includes("wealth") || n.includes("luxury") || n.includes("business") || n.includes("motivation")) {
-                fontName = "Impact";
+                fontName = "DejaVu Sans"; // Railway-safe Bold substitute
                 highlightColor = "&H0000FF00&"; // Money Green
                 fontSize = 120;
             } else if (n.includes("space") || n.includes("science") || n.includes("technology")) {
-                fontName = "Trebuchet MS";
+                fontName = "Liberation Sans";
                 highlightColor = "&H00FFFF00&"; // Cyan
             } else if (n.includes("history") || n.includes("stoicism") || n.includes("philosophy") || n.includes("military")) {
-                fontName = "Times New Roman";
+                fontName = "Liberation Serif"; // Railway-safe Times New Roman substitute
                 highlightColor = "&H0000D7FF&"; // Gold
             }
             
@@ -814,7 +814,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     .input(finalBgmToMix)
                     .inputOptions(['-stream_loop', '-1']) // Loop BGM infinitely
                     .complexFilter([
-                        '[1:a]volume=0.06[bgm];[0:a][bgm]amix=inputs=2:duration=first[a]'
+                        '[1:a]volume=0.25[bgm];[0:a][bgm]amix=inputs=2:duration=first[a]'
                     ])
                     .outputOptions([
                         '-map 0:v:0', // Keep original video stream
@@ -859,25 +859,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             }, "Thumbnail Gen");
             
             const thumbBuffer = await withRetry(() => axios.get(thumbUrl[0], { responseType: 'arraybuffer' }), "Download Thumbnail");
-            const rawThumbPath = path.join(projectDir, "raw_thumb.jpg");
-            fs.writeFileSync(rawThumbPath, thumbBuffer.data);
+            fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
             
-            // Aggressively strip special chars to prevent FFmpeg filter chain crashes (commas break it)
-            const titleWords = scriptData.title.split(' ').slice(0, 3).join(' ').toUpperCase().replace(/[^a-zA-Z0-9\s]/g, ""); 
-            const titleTxtPath = path.join(projectDir, "title.txt");
-            fs.writeFileSync(titleTxtPath, titleWords);
-            const escapedTitleTxtPath = titleTxtPath.replace(/\\/g, '\\\\\\\\').replace(/:/g, '\\\\:');
-
-            await new Promise((resolve, reject) => {
-                const cmd = ffmpeg(rawThumbPath)
-                    .outputOptions([
-                        `-vf drawtext=textfile='${escapedTitleTxtPath}':fontcolor=yellow:fontsize=120:x=(w-text_w)/2:y=(h-text_h)/2:borderw=8:bordercolor=black`
-                    ])
-                    .save(thumbLocalPath)
-                    .on('end', resolve)
-                    .on('error', reject);
-                global.currentJob.ffmpegProcesses.push(cmd);
-            });
             addLog("Thumbnail Generated Successfully!");
         } catch (e) {
             console.warn("Thumbnail generation failed:", e.message);

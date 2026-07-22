@@ -3,6 +3,7 @@ node = true
 
 [phases.setup]
 aptPkgs = ["ffmpeg", "fontconfig", "fonts-liberation", "fonts-dejavu", "fonts-noto"]
+cmds = ["fc-cache -fv"]
 
 [phases.install]
 cmds = ["cd server && npm install"]
