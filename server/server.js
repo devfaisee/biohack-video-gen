@@ -845,16 +845,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             const thumbPrompt = `A high contrast, ultra-vibrant YouTube thumbnail background representing ${subNiche}, cinematic lighting, wide angle, incredibly eye-catching, empty space in center for text`;
             const thumbUrl = await withRetry(async () => {
                 return await replicate.run(
-                    "black-forest-labs/flux-schnell",
+                    "bytedance/seedream-4.5",
                     {
                         input: {
                             prompt: thumbPrompt,
-                            go_fast: true,
-                            megapixels: "1",
-                            num_outputs: 1,
-                            output_format: "jpg",
-                            output_quality: 90,
-                            aspect_ratio: "16:9"
+                            size: "2K",
+                            aspect_ratio: "16:9",
+                            sequential_image_generation: "disabled"
                         }
                     }
                 );
