@@ -2,7 +2,7 @@
 node = true
 
 [phases.setup]
-aptPkgs = ["...", "ffmpeg"]
+aptPkgs = ["ffmpeg", "fontconfig", "fonts-liberation", "fonts-dejavu", "fonts-noto"]
 
 [phases.install]
 cmds = ["cd server && npm install"]

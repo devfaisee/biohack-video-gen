@@ -821,8 +821,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         '-map [a]',   // Use mixed audio stream
                         '-c:v copy',  // Instant video copy
                         '-c:a aac',
-                        '-b:a 192k',
-                        '-shortest' // CRITICAL: Prevent infinite hangs during mixing
+                        '-b:a 192k'
                     ])
                     .save(finalVideoPath)
                     .on('end', resolve)
@@ -863,7 +862,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             const rawThumbPath = path.join(projectDir, "raw_thumb.jpg");
             fs.writeFileSync(rawThumbPath, thumbBuffer.data);
             
-            const titleWords = scriptData.title.split(' ').slice(0, 3).join(' ').toUpperCase().replace(/'/g, ""); 
+            // Aggressively strip special chars to prevent FFmpeg filter chain crashes (commas break it)
+            const titleWords = scriptData.title.split(' ').slice(0, 3).join(' ').toUpperCase().replace(/[^a-zA-Z0-9\s]/g, ""); 
             const titleTxtPath = path.join(projectDir, "title.txt");
             fs.writeFileSync(titleTxtPath, titleWords);
             const escapedTitleTxtPath = titleTxtPath.replace(/\\/g, '\\\\\\\\').replace(/:/g, '\\\\:');
