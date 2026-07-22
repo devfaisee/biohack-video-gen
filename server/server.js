@@ -6,10 +6,15 @@ const Replicate = require('replicate');
 const fs = require('fs');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
-const ffmpegStatic = require('ffmpeg-static');
-const ffprobeStatic = require('ffprobe-static');
-ffmpeg.setFfmpegPath(ffmpegStatic);
-ffmpeg.setFfprobePath(ffprobeStatic.path);
+// Only use static binaries locally. On Railway/Linux production, use the system FFmpeg installed via nixpacks aptPkgs for proper Fontconfig/Subtitle support.
+if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME) {
+    try {
+        const ffmpegStatic = require('ffmpeg-static');
+        const ffprobeStatic = require('ffprobe-static');
+        ffmpeg.setFfmpegPath(ffmpegStatic);
+        ffmpeg.setFfprobePath(ffprobeStatic.path);
+    } catch(e) {}
+}
 const crypto = require('crypto');
 const axios = require('axios');
 
@@ -145,6 +150,12 @@ The user has provided a SPECIFIC title and concept for this video. You MUST base
 User Title: "${customTitle}"
 User Description: "${customDescription || ''}"
 Do NOT generate a random topic. You MUST strictly follow and explore this exact topic, while still generating the final optimized JSON title/description.`;
+        } else {
+            specificIdeaInstruction = `
+CRITICAL TOPIC REQUIREMENT:
+The user has NOT provided a specific topic, only the broad subNiche "${subNiche}". 
+You MUST completely randomize the topic. Pick ONE highly specific, unheard-of, fascinating, or controversial micro-story/angle within "${subNiche}". 
+DO NOT write a generic overview. DO NOT repeat common topics. Force extreme creativity and randomness to ensure the output is wildly different every single time.`;
         }
 
         // --- UNIVERSAL NICHE PROMPTING ENGINE ---
@@ -780,7 +791,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         // -------------------------
         // Mix Background Music
         // -------------------------
-        addLog("Mixing Background Music at 6% Volume...");
+        addLog("Mixing Background Music at 25% Volume...");
         
         await bgmPromise; // Ensure Lyria-3 generation is complete
         const finalVideoPath = path.join(outputDir, `${videoId}.mp4`);
