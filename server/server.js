@@ -340,6 +340,7 @@ Output pure JSON with the following structure:
   "title": "A highly clickable, viral YouTube title",
   "description": "YouTube video description optimized for SEO with chapters, engaging copy, and a keyword dump at the bottom",
   "tags": ["huberman lab", "neuroplasticity protocol for focus", "dopamine optimization", "cognitive performance", "how to improve memory 2024", "brain"],
+  "bgmPrompt": "A highly specific 1-2 sentence prompt for an AI music generator (Google Lyria-3). Describe the genre, instruments, mood, tempo, and style perfectly suited for this video's tone. MUST end with: 'Instrumental only, no vocals.'",
   "segments": [
     {
       "narration": "Did you know that your memory can be mathematically optimized? The science behind it is shocking.",
@@ -391,6 +392,31 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             },
             ffmpegProcesses: []
         };
+
+        let lyriaBgmPath = null;
+        const bgmPromise = (async () => {
+            try {
+                addLog("Starting Lyria-3 AI Background Music Generation...");
+                const bgmPrompt = scriptData.bgmPrompt || "A calm atmospheric ambient track. Instrumental only, no vocals.";
+                const lyriaAudioUrl = await withRetry(async () => {
+                    return await replicate.run(
+                        "google/lyria-3",
+                        {
+                            input: {
+                                prompt: bgmPrompt
+                            }
+                        }
+                    );
+                }, "Lyria-3 BGM Generation");
+                
+                const bgmBuffer = await withRetry(() => axios.get(lyriaAudioUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Lyria BGM`);
+                lyriaBgmPath = path.join(projectDir, `lyria_bgm.mp3`);
+                fs.writeFileSync(lyriaBgmPath, bgmBuffer.data);
+                addLog("AI Background Music generated successfully via Lyria-3.");
+            } catch (e) {
+                addLog(`[WARN] Lyria-3 Generation failed: ${e.message}. Falling back to local files.`);
+            }
+        })();
 
         addLog(`Starting parallel generation of ${scriptData.segments.length} segments...`);
 
@@ -753,33 +779,39 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         // Mix Background Music
         // -------------------------
         addLog("Mixing Background Music at 6% Volume...");
+        
+        await bgmPromise; // Ensure Lyria-3 generation is complete
         const finalVideoPath = path.join(outputDir, `${videoId}.mp4`);
         
-        let bgmCategory = 'neutral';
-        const suspenseNiches = ["Psychology", "Conspiracies", "True Crime", "Horror", "Creepypasta", "Revenge", "Unethical", "Grey Area", "Survival", "Disaster"];
-        const cinematicNiches = ["Luxury", "History", "Civilizations", "Space", "Universe", "Military", "Warfare", "Nature", "Wildlife", "Geography", "Architecture", "Stoicism", "Philosophy", "Rise & Fall", "Geopolitics", "Science"];
-        if (suspenseNiches.some(n => mainNiche.includes(n))) bgmCategory = 'suspense';
-        else if (cinematicNiches.some(n => mainNiche.includes(n))) bgmCategory = 'cinematic';
-        
-        let bgmPath = path.join(__dirname, 'assets', `bgm_${bgmCategory}.mp3`); // fallback
-        const categoryDir = path.join(__dirname, 'assets', 'bgm', bgmCategory);
-        
-        // Randomize track if a folder exists for this niche
-        if (fs.existsSync(categoryDir)) {
-            const files = fs.readdirSync(categoryDir).filter(f => f.endsWith('.mp3') || f.endsWith('.wav'));
-            if (files.length > 0) {
-                const randomBgm = files[Math.floor(Math.random() * files.length)];
-                bgmPath = path.join(categoryDir, randomBgm);
+        let finalBgmToMix = null;
+        if (lyriaBgmPath && fs.existsSync(lyriaBgmPath)) {
+            finalBgmToMix = lyriaBgmPath;
+        } else {
+            let bgmCategory = 'neutral';
+            const suspenseNiches = ["Psychology", "Conspiracies", "True Crime", "Horror", "Creepypasta", "Revenge", "Unethical", "Grey Area", "Survival", "Disaster"];
+            const cinematicNiches = ["Luxury", "History", "Civilizations", "Space", "Universe", "Military", "Warfare", "Nature", "Wildlife", "Geography", "Architecture", "Stoicism", "Philosophy", "Rise & Fall", "Geopolitics", "Science"];
+            if (suspenseNiches.some(n => mainNiche.includes(n))) bgmCategory = 'suspense';
+            else if (cinematicNiches.some(n => mainNiche.includes(n))) bgmCategory = 'cinematic';
+            
+            let bgmPath = path.join(__dirname, 'assets', `bgm_${bgmCategory}.mp3`); // fallback
+            const categoryDir = path.join(__dirname, 'assets', 'bgm', bgmCategory);
+            
+            if (fs.existsSync(categoryDir)) {
+                const files = fs.readdirSync(categoryDir).filter(f => f.endsWith('.mp3') || f.endsWith('.wav'));
+                if (files.length > 0) {
+                    const randomBgm = files[Math.floor(Math.random() * files.length)];
+                    bgmPath = path.join(categoryDir, randomBgm);
+                }
+            } else if (!fs.existsSync(bgmPath)) {
+                bgmPath = path.join(__dirname, 'assets', 'bgm.mp3');
             }
-        } else if (!fs.existsSync(bgmPath)) {
-            // Global fallback
-            bgmPath = path.join(__dirname, 'assets', 'bgm.mp3');
+            if (fs.existsSync(bgmPath)) finalBgmToMix = bgmPath;
         }
         
-        if (fs.existsSync(bgmPath)) {
+        if (finalBgmToMix) {
             await new Promise((resolve, reject) => {
                 const cmd = ffmpeg(stitchedVideoPath)
-                    .input(bgmPath)
+                    .input(finalBgmToMix)
                     .inputOptions(['-stream_loop', '-1']) // Loop BGM infinitely
                     .complexFilter([
                         '[1:a]volume=0.06[bgm];[0:a][bgm]amix=inputs=2:duration=first[a]'
