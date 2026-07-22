@@ -373,6 +373,7 @@ function VideoModal({ video, onClose }) {
           </div>
           <div className="modal-actions">
             <a href={`${BASE_URL}${video.videoUrl}`} download className="btn btn-primary"><Download size={16} /> Download MP4</a>
+            {video.thumbnailUrl && <a href={`${BASE_URL}${video.thumbnailUrl}`} download className="btn btn-secondary"><Download size={16} /> Thumbnail</a>}
             <button className="btn btn-ghost" onClick={() => { const all = `Title: ${video.title}\n\nDescription:\n${video.description}\n\nTags: ${(video.tags||[]).map(t=>'#'+t).join(' ')}`; copy(all, 'mall'); }}>
               {copied === 'mall' ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy All</>}
             </button>

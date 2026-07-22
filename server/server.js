@@ -578,7 +578,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             if (words.length === 0) words.push("...");
             const timePerWord = durationSec / words.length;
             
-            let fontName = "Arial";
+            let fontName = "Oswald";
             let primaryColor = "&H00FFFFFF&"; // White
             let highlightColor = "&H0000FFFF&"; // Yellow
             let outlineColor = "&H00000000&"; // Black
@@ -588,18 +588,18 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             
             const n = (nicheName || "").toLowerCase();
             if (n.includes("true crime") || n.includes("criminal") || n.includes("horror") || n.includes("revenge") || n.includes("survival")) {
-                fontName = "Liberation Mono"; // Railway-safe Typewriter substitute
+                fontName = "Roboto Mono";
                 highlightColor = "&H000000FF&"; // Blood Red
                 backColor = "&HC0000000&"; // Darker black box
             } else if (n.includes("finance") || n.includes("wealth") || n.includes("luxury") || n.includes("business") || n.includes("motivation")) {
-                fontName = "DejaVu Sans"; // Railway-safe Bold substitute
+                fontName = "Oswald";
                 highlightColor = "&H0000FF00&"; // Money Green
                 fontSize = 120;
             } else if (n.includes("space") || n.includes("science") || n.includes("technology")) {
-                fontName = "Liberation Sans";
+                fontName = "Oswald";
                 highlightColor = "&H00FFFF00&"; // Cyan
             } else if (n.includes("history") || n.includes("stoicism") || n.includes("philosophy") || n.includes("military")) {
-                fontName = "Liberation Serif"; // Railway-safe Times New Roman substitute
+                fontName = "Oswald";
                 highlightColor = "&H0000D7FF&"; // Gold
             }
             
@@ -702,7 +702,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 }
                 
                 // Add Kinetic Subtitles
-                vfFilters += `,ass='${escapedAssPath}'`;
+                const fontsDir = path.join(__dirname, 'assets', 'fonts');
+                const escapedFontsDir = fontsDir.replace(/\\/g, '\\\\\\\\').replace(/:/g, '\\\\:');
+                vfFilters += `,ass='${escapedAssPath}':fontsdir='${escapedFontsDir}'`;
 
                 if (sfxInputs.length > 0) {
                     let amixParts = '[1:a]';
