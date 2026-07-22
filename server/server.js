@@ -6,13 +6,16 @@ const Replicate = require('replicate');
 const fs = require('fs');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
-// Only use static binaries locally. On Railway/Linux production, use the system FFmpeg installed via nixpacks aptPkgs for proper Fontconfig/Subtitle support.
+const ffprobeStatic = require('ffprobe-static');
+
+// Unconditionally use static ffprobe to guarantee audio duration checks work safely everywhere
+ffmpeg.setFfprobePath(ffprobeStatic.path);
+
+// Only use static ffmpeg locally. On Railway/Linux production, use the system FFmpeg installed via nixpacks aptPkgs for proper Fontconfig/Subtitle support.
 if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME) {
     try {
         const ffmpegStatic = require('ffmpeg-static');
-        const ffprobeStatic = require('ffprobe-static');
         ffmpeg.setFfmpegPath(ffmpegStatic);
-        ffmpeg.setFfprobePath(ffprobeStatic.path);
     } catch(e) {}
 }
 const crypto = require('crypto');
