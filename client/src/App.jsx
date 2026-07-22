@@ -370,6 +370,11 @@ function VideoModal({ video, onClose }) {
             <span className="meta-chip"><Clock size={12} /> {new Date(video.createdAt).toLocaleDateString()}</span>
             {video.mainNiche && <span className="meta-chip"><TrendingUp size={12} /> {video.mainNiche}</span>}
             {video.subNiche && <span className="meta-chip">{video.subNiche}</span>}
+            {video.thumbnailQA && video.thumbnailQA !== "N/A" && (
+              <span className="meta-chip" style={{background: 'rgba(255, 215, 0, 0.1)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.3)'}}>
+                <Zap size={12} /> AI QA: {video.thumbnailQA}
+              </span>
+            )}
           </div>
           <div className="modal-actions">
             <a href={`${BASE_URL}${video.videoUrl}`} download className="btn btn-primary"><Download size={16} /> Download MP4</a>

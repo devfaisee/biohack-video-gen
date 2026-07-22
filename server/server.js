@@ -85,21 +85,39 @@ async function withRetry(fn, operationName, maxRetries = 6, baseDelayMs = 4000) 
     }
 }
 
-app.post('/api/generate', (req, res) => {
-    // GUARD: Prevent duplicate concurrent generations
-    if (global.currentJob) {
-        return res.status(409).json({ error: "A generation is already in progress. Please wait or cancel it first." });
-    }
+global.jobQueue = [];
+global.currentJob = null;
 
+async function processQueue() {
+    if (global.currentJob || global.jobQueue.length === 0) return;
+    
+    const jobData = global.jobQueue.shift();
+    const { durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, jobId } = jobData;
+    
+    addLog(`[QUEUE] Starting generation job ${jobId}. Remaining in queue: ${global.jobQueue.length}`);
+    
+    try {
+        await generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, jobId });
+    } catch (err) {
+        addLog(JSON.stringify({ event: "error", message: err.message, id: jobId }));
+    }
+    
+    // Once finished (success or failure), process the next job
+    setTimeout(processQueue, 1000);
+}
+
+app.post('/api/generate', (req, res) => {
     const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'ai_images', mainNiche = 'Science', subNiche = 'General' } = req.body;
-    addLog(`Starting generation for ${durationMinutes} minutes on topic: ${topic || 'Default'} [Visuals: ${visualSource}]...`);
+    const jobId = crypto.randomUUID();
     
-    // Start background job to prevent Railway 100s timeout
-    generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche }).catch(err => {
-        addLog(JSON.stringify({ event: "error", message: err.message }));
-    });
+    global.jobQueue.push({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, jobId });
     
-    res.json({ message: "Generation started in the background" });
+    addLog(`Job ${jobId} added to queue. Position: ${global.jobQueue.length}`);
+    
+    // Trigger queue processing asynchronously
+    processQueue().catch(err => console.error("Queue processor error:", err));
+    
+    res.json({ message: "Job added to queue", jobId, position: global.jobQueue.length });
 });
 
 app.post('/api/idea', async (req, res) => {
@@ -138,7 +156,7 @@ Output ONLY pure JSON with no markdown formatting:
     }
 });
 
-async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General" }) {
+async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", jobId }) {
     try {
         const wordCount = durationMinutes * 130;
         
@@ -383,7 +401,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         const scriptData = JSON.parse(jsonStr);
         addLog(`Script generated successfully. Total segments: ${scriptData.segments.length}`);
 
-        const videoId = crypto.randomUUID();
+        const videoId = jobId || crypto.randomUUID();
         const projectDir = path.join(tmpDir, videoId);
         fs.mkdirSync(projectDir);
 
@@ -872,6 +890,29 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
             
             addLog("Thumbnail Generated Successfully!");
+            
+            // --- AI VISION QA LAYER (Phase 3) ---
+            addLog("Running AI Vision QA on Thumbnail...");
+            try {
+                const base64Image = Buffer.from(thumbBuffer.data).toString('base64');
+                const qaResponse = await openai.chat.completions.create({
+                    model: "google/gemini-flash-1.5",
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                { type: "text", text: "You are an elite YouTube thumbnail reviewer. Rate this thumbnail's visual quality, contrast, and click-through potential from 1-10. Provide exactly ONE sentence of feedback. Format exactly like this: 'Rating: X/10 - [Feedback]'" },
+                                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+                            ]
+                        }
+                    ]
+                });
+                const qaResult = qaResponse.choices[0]?.message?.content || "QA Failed";
+                scriptData.thumbnailQA = qaResult;
+                addLog(`Vision QA Result: ${qaResult.replace(/\n/g, ' ')}`);
+            } catch (qaErr) {
+                addLog(`[WARN] Vision QA failed: ${qaErr.message}`);
+            }
         } catch (e) {
             console.warn("Thumbnail generation failed:", e.message);
         }
@@ -886,6 +927,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             tags: scriptData.tags,
             videoUrl: finalUrl,
             thumbnailUrl: fs.existsSync(thumbLocalPath) ? thumbUrlPath : null,
+            thumbnailQA: scriptData.thumbnailQA || "N/A",
             imageCount: scriptData.segments.length,
             mainNiche: mainNiche,
             subNiche: subNiche,
@@ -945,9 +987,17 @@ app.post('/api/cancel', (req, res) => {
 });
 
 app.get('/api/status', (req, res) => {
-    res.json({ isRunning: !!global.currentJob, currentJobId: global.currentJob?.id || null });
+    res.json({ 
+        isRunning: !!global.currentJob, 
+        currentJobId: global.currentJob?.id || null,
+        queueLength: global.jobQueue ? global.jobQueue.length : 0
+    });
 });
 
+app.post('/api/queue/clear', (req, res) => {
+    global.jobQueue = [];
+    res.json({ message: "Queue cleared." });
+});
 // Endpoint to fetch all previously generated videos
 app.get('/api/videos', (req, res) => {
     try {
