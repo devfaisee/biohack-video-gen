@@ -546,11 +546,36 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        // Subtitle Generator Function (Mathematical Word Timing)
-        function generateASS(text, durationSec, filepath) {
+        // Subtitle Generator Function (Mathematical Word Timing & Niche Styling)
+        function generateASS(text, durationSec, filepath, nicheName) {
             const words = text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
             if (words.length === 0) words.push("...");
             const timePerWord = durationSec / words.length;
+            
+            let fontName = "Arial";
+            let primaryColor = "&H00FFFFFF&"; // White
+            let highlightColor = "&H0000FFFF&"; // Yellow
+            let outlineColor = "&H00000000&"; // Black
+            let backColor = "&H80000000&"; // Transparent Black Box
+            let borderStyle = 3; // 3 = Opaque Box (Great for AI/Stock readability)
+            let fontSize = 110;
+            
+            const n = (nicheName || "").toLowerCase();
+            if (n.includes("true crime") || n.includes("criminal") || n.includes("horror") || n.includes("revenge") || n.includes("survival")) {
+                fontName = "Courier New";
+                highlightColor = "&H000000FF&"; // Blood Red
+                backColor = "&HC0000000&"; // Darker black box
+            } else if (n.includes("finance") || n.includes("wealth") || n.includes("luxury") || n.includes("business") || n.includes("motivation")) {
+                fontName = "Impact";
+                highlightColor = "&H0000FF00&"; // Money Green
+                fontSize = 120;
+            } else if (n.includes("space") || n.includes("science") || n.includes("technology")) {
+                fontName = "Trebuchet MS";
+                highlightColor = "&H00FFFF00&"; // Cyan
+            } else if (n.includes("history") || n.includes("stoicism") || n.includes("philosophy") || n.includes("military")) {
+                fontName = "Times New Roman";
+                highlightColor = "&H0000D7FF&"; // Gold
+            }
             
             let ass = `[Script Info]
 ScriptType: v4.00+
@@ -559,7 +584,7 @@ PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,90,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,3,2,10,10,120,1
+Style: Default,${fontName},${fontSize},${primaryColor},&H000000FF,${outlineColor},${backColor},-1,0,0,0,100,100,0,0,${borderStyle},5,3,2,10,10,140,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -588,9 +613,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     let highlightedText = "";
                     for (let j = 0; j < chunkWords.length; j++) {
                         if (j === w) {
-                            highlightedText += `{\\c&H0000FFFF&}${chunkWords[j]} `; // Highlight Yellow
+                            highlightedText += `{\\c${highlightColor}}${chunkWords[j]} `; 
                         } else {
-                            highlightedText += `{\\c&H00FFFFFF&}${chunkWords[j]} `; // Default White
+                            highlightedText += `{\\c${primaryColor}}${chunkWords[j]} `; 
                         }
                     }
                     
@@ -617,7 +642,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 clipPaths[j] = clipPath;
                 
                 const assPath = path.join(projectDir, `sub_${j}.ass`);
-                generateASS(clip.text, clip.duration, assPath);
+                generateASS(clip.text, clip.duration, assPath, mainNiche);
                 
                 // Escape paths for FFmpeg filter on Windows
                 const escapedAssPath = assPath.replace(/\\\\/g, '\\\\\\\\').replace(/:/g, '\\\\:');
@@ -727,18 +752,29 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         // -------------------------
         // Mix Background Music
         // -------------------------
-        addLog("Mixing Background Music at 12% Volume...");
+        addLog("Mixing Background Music at 6% Volume...");
         const finalVideoPath = path.join(outputDir, `${videoId}.mp4`);
         
-        let bgmFilename = 'bgm.mp3'; // Lofi default for Tech, Finance, Health, Biohacking, Food Science, Money Psychology
+        let bgmCategory = 'neutral';
         const suspenseNiches = ["Psychology", "Conspiracies", "True Crime", "Horror", "Creepypasta", "Revenge", "Unethical", "Grey Area", "Survival", "Disaster"];
         const cinematicNiches = ["Luxury", "History", "Civilizations", "Space", "Universe", "Military", "Warfare", "Nature", "Wildlife", "Geography", "Architecture", "Stoicism", "Philosophy", "Rise & Fall", "Geopolitics", "Science"];
-        if (suspenseNiches.some(n => mainNiche.includes(n))) {
-            bgmFilename = 'bgm_suspense.mp3';
-        } else if (cinematicNiches.some(n => mainNiche.includes(n))) {
-            bgmFilename = 'bgm_cinematic.mp3';
+        if (suspenseNiches.some(n => mainNiche.includes(n))) bgmCategory = 'suspense';
+        else if (cinematicNiches.some(n => mainNiche.includes(n))) bgmCategory = 'cinematic';
+        
+        let bgmPath = path.join(__dirname, 'assets', `bgm_${bgmCategory}.mp3`); // fallback
+        const categoryDir = path.join(__dirname, 'assets', 'bgm', bgmCategory);
+        
+        // Randomize track if a folder exists for this niche
+        if (fs.existsSync(categoryDir)) {
+            const files = fs.readdirSync(categoryDir).filter(f => f.endsWith('.mp3') || f.endsWith('.wav'));
+            if (files.length > 0) {
+                const randomBgm = files[Math.floor(Math.random() * files.length)];
+                bgmPath = path.join(categoryDir, randomBgm);
+            }
+        } else if (!fs.existsSync(bgmPath)) {
+            // Global fallback
+            bgmPath = path.join(__dirname, 'assets', 'bgm.mp3');
         }
-        const bgmPath = path.join(__dirname, 'assets', bgmFilename);
         
         if (fs.existsSync(bgmPath)) {
             await new Promise((resolve, reject) => {
@@ -746,14 +782,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     .input(bgmPath)
                     .inputOptions(['-stream_loop', '-1']) // Loop BGM infinitely
                     .complexFilter([
-                        '[0:a][1:a]amix=inputs=2:duration=first:weights=1 0.12[a]'
+                        '[1:a]volume=0.06[bgm];[0:a][bgm]amix=inputs=2:duration=first[a]'
                     ])
                     .outputOptions([
                         '-map 0:v:0', // Keep original video stream
                         '-map [a]',   // Use mixed audio stream
                         '-c:v copy',  // Instant video copy
                         '-c:a aac',
-                        '-b:a 192k'
+                        '-b:a 192k',
+                        '-shortest' // CRITICAL: Prevent infinite hangs during mixing
                     ])
                     .save(finalVideoPath)
                     .on('end', resolve)
