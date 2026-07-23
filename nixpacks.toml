@@ -2,11 +2,16 @@
 node = true
 
 [phases.setup]
-aptPkgs = ["ffmpeg", "fontconfig", "fonts-liberation", "fonts-dejavu", "fonts-noto"]
-cmds = ["fc-cache -fv"]
+nixPkgs = ["ffmpeg"]
+aptPkgs = ["fontconfig", "fonts-liberation", "fonts-dejavu", "fonts-noto"]
 
 [phases.install]
-cmds = ["cd server && npm install"]
+cmds = [
+  "cd server && npm install",
+  "mkdir -p ~/.local/share/fonts",
+  "cp server/assets/fonts/*.ttf ~/.local/share/fonts/ || true",
+  "fc-cache -fv"
+]
 
 [start]
 cmd = "cd server && node server.js"

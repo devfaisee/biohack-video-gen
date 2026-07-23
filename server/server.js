@@ -706,6 +706,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         }
 
         addLog("Assets generated. Stitching clips with KINETIC SUBTITLES in parallel...");
+        
+        // Log FFmpeg binary environment for debugging subtitle rendering
+        if (hasSystemFfmpeg && (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT_NAME)) {
+            addLog("[SYSTEM] Using native Nixpacks FFmpeg (Fontconfig/Subtitles perfectly supported)");
+        } else {
+            addLog("[WARNING] Using ffmpeg-static fallback. Captions might fail if fontconfig is not supported.");
+        }
+        
         const clipPaths = new Array(clips.length);
         
         // Run FFmpeg processes sequentially to prevent libass fontconfig deadlocks and CPU starvation
