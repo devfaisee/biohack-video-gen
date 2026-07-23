@@ -524,7 +524,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                         addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
                         const imageUrl = await withRetry(async () => {
                             const imgRes = await replicate.run(
-                                "black-forest-labs/flux-schnell",
+                                "black-forest-labs/flux-schnell:c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
                                 {
                                     input: {
                                         prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
