@@ -11,12 +11,25 @@ const ffprobeStatic = require('ffprobe-static');
 // Unconditionally use static ffprobe to guarantee audio duration checks work safely everywhere
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
-// Only use static ffmpeg locally. On Railway/Linux production, use the system FFmpeg installed via nixpacks aptPkgs for proper Fontconfig/Subtitle support.
-if (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME) {
+// Dynamically test if system ffmpeg is executable (best for Fontconfig/Subtitles)
+let hasSystemFfmpeg = false;
+try {
+    const { execSync } = require('child_process');
+    execSync('ffmpeg -version', { stdio: 'ignore' });
+    hasSystemFfmpeg = true;
+    console.log("[INFO] System ffmpeg successfully detected and works.");
+} catch (e) {
+    console.warn("[WARN] System ffmpeg not detected or failed to run due to shared lib errors. Falling back to ffmpeg-static.");
+}
+
+// Only use static ffmpeg locally or if system ffmpeg is broken on Railway
+if (!hasSystemFfmpeg || (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME)) {
     try {
         const ffmpegStatic = require('ffmpeg-static');
         ffmpeg.setFfmpegPath(ffmpegStatic);
-    } catch(e) {}
+    } catch(e) {
+        console.error("Failed to load ffmpeg-static", e);
+    }
 }
 const crypto = require('crypto');
 const axios = require('axios');
