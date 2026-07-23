@@ -386,6 +386,7 @@ Output pure JSON with the following structure:
   "description": "YouTube video description optimized for SEO with chapters, engaging copy, and a keyword dump at the bottom",
   "tags": ["huberman lab", "neuroplasticity protocol for focus", "dopamine optimization", "cognitive performance", "how to improve memory 2024", "brain"],
   "bgmPrompt": "A highly specific 1-2 sentence prompt for an AI music generator (Google Lyria-3). Describe the genre, instruments, mood, tempo, and style perfectly suited for this video's tone. MUST end with: 'Instrumental only, no vocals.'",
+  "thumbnailPrompt": "A highly detailed, 1-2 sentence visual prompt for an AI image generator to create the YouTube thumbnail background. It MUST NOT ask for any text, letters, or words in the image itself. The visual must be ultra-vibrant, high-contrast, cinematic, and perfectly represent the video's core hook or mystery. Ensure it has dramatic lighting and some empty space.",
   "segments": [
     {
       "narration": "Did you know that your memory can be mathematically optimized? The science behind it is shocking.",
@@ -892,7 +893,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         const thumbUrlPath = `/output/${videoId}_thumb.jpg`;
         const thumbLocalPath = path.join(outputDir, `${videoId}_thumb.jpg`);
         try {
-            const thumbPrompt = `A high contrast, ultra-vibrant YouTube thumbnail background representing ${subNiche}, cinematic lighting, wide angle, incredibly eye-catching, empty space in center for text`;
+            const thumbPrompt = scriptData.thumbnailPrompt || `A high contrast, ultra-vibrant YouTube thumbnail background representing ${subNiche}, cinematic lighting, wide angle, incredibly eye-catching, empty space in center for text`;
             const thumbUrl = await withRetry(async () => {
                 return await replicate.run(
                     "bytedance/seedream-4.5",
