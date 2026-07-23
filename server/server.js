@@ -688,8 +688,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         addLog("Assets generated. Stitching clips with KINETIC SUBTITLES in parallel...");
         const clipPaths = new Array(clips.length);
         
-        // Run FFmpeg processes in parallel chunks (safe for 8GB RAM)
-        const FFMPEG_CHUNK_SIZE = 4; 
+        // Run FFmpeg processes sequentially to prevent libass fontconfig deadlocks and CPU starvation
+        const FFMPEG_CHUNK_SIZE = 1; 
         for (let i = 0; i < clips.length; i += FFMPEG_CHUNK_SIZE) {
             if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
             
@@ -781,7 +781,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         .outputOptions(outputOpts)
                         .save(clipPath)
                         .on('end', resolve)
-                        .on('error', reject);
+                        .on('error', (err, stdout, stderr) => {
+                            console.error(`[FFMPEG ERROR on Clip ${j}]`, err.message);
+                            console.error(`[FFMPEG STDERR]`, stderr);
+                            addLog(`[FATAL] Encoding failed on Clip ${j+1}: ${err.message}. Check Railway logs for exact stderr.`);
+                            reject(err);
+                        });
                     global.currentJob.ffmpegProcesses.push(cmd);
                 }));
             }
