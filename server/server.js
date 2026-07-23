@@ -625,8 +625,10 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             const timePerWord = durationSec / words.length;
             
             let fontName = "Oswald";
-            let primaryColor = "&H00FFFFFF&"; // White
-            let highlightColor = "&H0000FFFF&"; // Yellow
+            let primaryColor = "&H00FFFFFF&"; // White (Style)
+            let cPrimary = "&HFFFFFF&"; // White (Inline)
+            let highlightColor = "&H0000FFFF&"; // Yellow (Style)
+            let cHighlight = "&H00FFFF&"; // Yellow (Inline)
             let outlineColor = "&H00000000&"; // Black
             let backColor = "&H80000000&"; // Transparent Black Box
             let borderStyle = 3; // 3 = Opaque Box (Great for AI/Stock readability)
@@ -636,17 +638,21 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             if (n.includes("true crime") || n.includes("criminal") || n.includes("horror") || n.includes("revenge") || n.includes("survival")) {
                 fontName = "Roboto Mono";
                 highlightColor = "&H000000FF&"; // Blood Red
+                cHighlight = "&H0000FF&"; // Blood Red (Inline BBGGRR)
                 backColor = "&HC0000000&"; // Darker black box
             } else if (n.includes("finance") || n.includes("wealth") || n.includes("luxury") || n.includes("business") || n.includes("motivation")) {
                 fontName = "Oswald";
                 highlightColor = "&H0000FF00&"; // Money Green
+                cHighlight = "&H00FF00&"; // Money Green (Inline BBGGRR)
                 fontSize = 120;
             } else if (n.includes("space") || n.includes("science") || n.includes("technology")) {
                 fontName = "Oswald";
                 highlightColor = "&H00FFFF00&"; // Cyan
+                cHighlight = "&HFFFF00&"; // Cyan (Inline BBGGRR)
             } else if (n.includes("history") || n.includes("stoicism") || n.includes("philosophy") || n.includes("military")) {
                 fontName = "Oswald";
                 highlightColor = "&H0000D7FF&"; // Gold
+                cHighlight = "&H00D7FF&"; // Gold (Inline BBGGRR)
             }
             
             let ass = `[Script Info]
@@ -685,9 +691,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     let highlightedText = "";
                     for (let j = 0; j < chunkWords.length; j++) {
                         if (j === w) {
-                            highlightedText += `{\\c${highlightColor}}${chunkWords[j]} `; 
+                            highlightedText += `{\\c${cHighlight}}${chunkWords[j]} `; 
                         } else {
-                            highlightedText += `{\\c${primaryColor}}${chunkWords[j]} `; 
+                            highlightedText += `{\\c${cPrimary}}${chunkWords[j]} `; 
                         }
                     }
                     
