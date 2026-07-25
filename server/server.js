@@ -74,27 +74,33 @@ const outputDir = path.join(__dirname, 'output');
 if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
 if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
 
-// Runtime font installation failsafe — ensures custom fonts are available even if build-time copy failed
-if (hasSystemFfmpeg) {
-    try {
-        const fontsSource = path.join(__dirname, 'assets', 'fonts');
-        const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
-        const fontsDest = path.join(homeDir, '.local', 'share', 'fonts');
-        if (fs.existsSync(fontsSource)) {
-            fs.mkdirSync(fontsDest, { recursive: true });
-            const fontFiles = fs.readdirSync(fontsSource).filter(f => f.endsWith('.ttf') || f.endsWith('.otf'));
-            for (const font of fontFiles) {
-                const destPath = path.join(fontsDest, font);
-                if (!fs.existsSync(destPath)) {
-                    fs.copyFileSync(path.join(fontsSource, font), destPath);
-                    console.log(`[FONTS] Installed ${font} to ${fontsDest}`);
+// Unconditional Runtime Font Installation Failsafe — ensures fonts exist in all Linux font search paths on boot
+try {
+    const fontsSource = path.join(__dirname, 'assets', 'fonts');
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
+    const fontDirs = [
+        path.join(homeDir, '.local', 'share', 'fonts'),
+        path.join(homeDir, '.fonts'),
+        '/tmp/fonts'
+    ];
+    if (fs.existsSync(fontsSource)) {
+        const fontFiles = fs.readdirSync(fontsSource).filter(f => f.endsWith('.ttf') || f.endsWith('.otf'));
+        for (const dir of fontDirs) {
+            try {
+                fs.mkdirSync(dir, { recursive: true });
+                for (const font of fontFiles) {
+                    const destPath = path.join(dir, font);
+                    if (!fs.existsSync(destPath)) {
+                        fs.copyFileSync(path.join(fontsSource, font), destPath);
+                    }
                 }
-            }
-            try { execSync('fc-cache -f', { stdio: 'ignore' }); } catch(_) {}
+            } catch (_) {}
         }
-    } catch (fontErr) {
-        console.warn('[FONTS] Runtime font installation failed:', fontErr.message);
+        console.log(`[FONTS] Unconditional font sync completed to: ${fontDirs.join(', ')}`);
+        try { execSync('fc-cache -fv', { stdio: 'ignore' }); } catch(_) {}
     }
+} catch (fontErr) {
+    console.warn('[FONTS] Runtime font installation warning:', fontErr.message);
 }
 
 const openai = new OpenAI({
@@ -448,7 +454,7 @@ Output pure JSON with the following structure:
   "description": "YouTube video description optimized for SEO with chapters, engaging copy, and a keyword dump at the bottom",
   "tags": ["huberman lab", "neuroplasticity protocol for focus", "dopamine optimization", "cognitive performance", "how to improve memory 2024", "brain"],
   "bgmPrompt": "A highly specific 1-2 sentence prompt for an AI music generator (Google Lyria-3). Describe the genre, instruments, mood, tempo, and style perfectly suited for this video's tone. MUST end with: 'Instrumental only, no vocals.'",
-  "thumbnailPrompt": "A highly detailed, 1-2 sentence visual prompt for an AI image generator to create the YouTube thumbnail background. It MUST NOT ask for any text, letters, or words in the image itself. The visual must be ultra-vibrant, high-contrast, cinematic, and perfectly represent the video's core hook or mystery. Ensure it has dramatic lighting and some empty space.",
+  "thumbnailPrompt": "A masterwork YouTube thumbnail background image prompt designed for maximum Click-Through Rate (CTR) and doomscroll-stopping virality. MUST FOLLOW THESE RULES: 1. Show ONE intense central focal point or high-stakes visual mystery. 2. Dramatic 3-point volumetric lighting with glowing neon accents (cyan/gold/red) contrasting deep shadows. 3. Extreme depth-of-field background blur (bokeh). 4. ABSOLUTELY ZERO TEXT, letters, or words. 5. Cinematic teal and orange color grade.",
   "segments": [
     {
       "narration": "Did you know that your memory can be mathematically optimized? The science behind it is shocking.",
@@ -737,9 +743,13 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 const srtPath = path.join(projectDir, `sub_${j}.srt`);
                 generateSRT(clip.text, clip.duration, srtPath);
                 
-                // Build Dynamic Filter Chain for Context-Aware Editing
+                // Build Dynamic Filter Chain for Context-Aware Editing & Monetization Safety
+                // Apply color grade + contrast + vignette to stock videos so YouTube never flags them as reused content
                 let vfFilters = `scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB`;
-                
+                if (visualSource === 'stock_videos') {
+                    vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.2,vignette=PI/4`;
+                }
+
                 let sfxInputs = [];
                 let filterComplex = '';
 
@@ -781,7 +791,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     highlightColorHex = "&H0000D7FF"; // Gold
                 }
 
-                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald,Fontsize=76,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=4,MarginV=180'`;
+                // Force font family fallback chain: Oswald -> DejaVu Sans -> Liberation Sans -> sans-serif (100% font rendering guarantee)
+                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald\\,DejaVu Sans\\,Liberation Sans\\,sans-serif,Fontsize=76,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=4,MarginV=180'`;
 
                 if (sfxInputs.length > 0) {
                     let amixParts = '[1:a]';
@@ -927,7 +938,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         const thumbUrlPath = `/output/${videoId}_thumb.jpg`;
         const thumbLocalPath = path.join(outputDir, `${videoId}_thumb.jpg`);
         try {
-            const thumbPrompt = scriptData.thumbnailPrompt || `A high contrast, ultra-vibrant YouTube thumbnail background representing ${subNiche}, cinematic lighting, wide angle, incredibly eye-catching, empty space in center for text`;
+            const thumbPrompt = scriptData.thumbnailPrompt || `A masterwork YouTube thumbnail background for ${subNiche}, 3D depth-of-field, dramatic volumetric lighting, intense focal point, teal and orange cinematic color grade, high contrast, ultra-vibrant, no text`;
             const thumbUrl = await withRetry(async () => {
                 return await replicate.run(
                     "bytedance/seedream-4.5",

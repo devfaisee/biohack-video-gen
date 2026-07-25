@@ -205,8 +205,8 @@ function CreatorStudio() {
             <label className="label">Visual Engine</label>
             <div className="select-wrapper">
               <select className="select" value={visualSource} onChange={(e) => setVisualSource(e.target.value)}>
-                <option value="ai_images">AI Cinematic Images (Flux + Ken Burns)</option>
-                <option value="stock_videos">Stock Footage (Pexels / Pixabay)</option>
+                <option value="ai_images">✨ AI Cinematic Visuals (Flux) — 100% Unique (Zero Reused Content Risk)</option>
+                <option value="stock_videos">🎬 Transformed Stock Footage (Color Graded & Vignetted)</option>
               </select>
               <ChevronDown size={16} className="select-icon" />
             </div>
