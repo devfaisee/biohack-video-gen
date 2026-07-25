@@ -17,7 +17,9 @@ try {
     const { execSync } = require('child_process');
     execSync('ffmpeg -version', { stdio: 'ignore' });
     hasSystemFfmpeg = true;
-    console.log("[INFO] System ffmpeg successfully detected and works.");
+    const sysPath = execSync('which ffmpeg').toString().trim();
+    ffmpeg.setFfmpegPath(sysPath);
+    console.log(`[INFO] System ffmpeg successfully detected at ${sysPath} and works.`);
 } catch (e) {
     console.warn("[WARN] System ffmpeg not detected or failed to run due to shared lib errors. Falling back to ffmpeg-static.");
 }

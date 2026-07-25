@@ -2,14 +2,14 @@
 node = true
 
 [phases.setup]
-nixPkgs = ["ffmpeg"]
-aptPkgs = ["fontconfig", "fonts-liberation", "fonts-dejavu", "fonts-noto"]
+nixPkgs = ["ffmpeg", "fontconfig", "coreutils"]
+aptPkgs = ["fonts-liberation", "fonts-dejavu", "fonts-noto"]
 
 [phases.install]
 cmds = [
   "cd server && npm install",
-  "mkdir -p ~/.local/share/fonts",
-  "cp server/assets/fonts/*.ttf ~/.local/share/fonts/ || true",
+  "mkdir -p /usr/share/fonts/truetype/custom",
+  "cp server/assets/fonts/*.ttf /usr/share/fonts/truetype/custom/ || true",
   "fc-cache -fv"
 ]
 
