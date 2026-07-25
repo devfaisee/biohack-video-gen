@@ -688,57 +688,46 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        // FreeType Pixel-Burn Subtitle Generator (Direct fontfile binding, zero libass/fontconfig dependency)
-        function buildDrawtextFilterChain(text, durationSec, fontPath, mainNiche) {
-            const cleanText = text.replace(/\[.*?\]/g, '').trim();
-            const words = cleanText.split(/\s+/).filter(w => w.length > 0);
-            if (words.length === 0) return '';
-            
+        // Universal SRT Subtitle Generator (Mathematical Word Timing, 3-Word Kinetic Chunks & Niche Styling)
+        function generateSRT(text, durationSec, srtPath) {
+            const words = text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
+            if (words.length === 0) words.push("...");
             const timePerWord = durationSec / words.length;
 
-            let highlightColor = "yellow";
-            const n = (mainNiche || "").toLowerCase();
-            if (n.includes("crime") || n.includes("horror") || n.includes("revenge") || n.includes("survival")) {
-                highlightColor = "red";
-            } else if (n.includes("finance") || n.includes("wealth") || n.includes("luxury") || n.includes("business") || n.includes("motivation")) {
-                highlightColor = "green";
-            } else if (n.includes("space") || n.includes("science") || n.includes("tech")) {
-                highlightColor = "cyan";
-            } else if (n.includes("history") || n.includes("stoicism") || n.includes("philosophy") || n.includes("military")) {
-                highlightColor = "gold";
-            }
+            const formatSRTTime = (sec) => {
+                const h = Math.floor(sec / 3600);
+                const m = Math.floor((sec % 3600) / 60);
+                const s = Math.floor(sec % 60);
+                const ms = Math.floor((sec % 1) * 1000);
+                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+            };
 
-            const escapedFont = fontPath.replace(/\\/g, '/').replace(/:/g, '\\:');
-            let drawtextFilters = [];
-
+            let srtContent = "";
+            let srtIndex = 1;
             let currentStart = 0;
+
             for (let i = 0; i < words.length; i += 3) {
                 const chunkWords = words.slice(i, i + 3);
                 const chunkDuration = timePerWord * chunkWords.length;
                 const chunkEnd = currentStart + chunkDuration;
 
-                const chunkStr = chunkWords.join(" ").toUpperCase();
-                const escapedText = chunkStr
-                    .replace(/\\/g, '\\\\')
-                    .replace(/'/g, "'\\\\''")
-                    .replace(/:/g, '\\:')
-                    .replace(/%/g, '\\%');
+                const startTimeStr = formatSRTTime(currentStart);
+                const endTimeStr = formatSRTTime(chunkEnd);
+                const chunkText = chunkWords.join(" ").toUpperCase();
 
-                const startSec = currentStart.toFixed(2);
-                const endSec = chunkEnd.toFixed(2);
-
-                drawtextFilters.push(`drawtext=fontfile='${escapedFont}':text='${escapedText}':fontsize=38:fontcolor=${highlightColor}:borderw=3:bordercolor=black:box=1:boxcolor=black@0.75:boxborderw=12:x=(w-text_w)/2:y=h-140:enable='between(t,${startSec},${endSec})'`);
+                srtContent += `${srtIndex}\n${startTimeStr} --> ${endTimeStr}\n${chunkText}\n\n`;
+                srtIndex++;
 
                 currentStart = chunkEnd;
             }
 
-            return drawtextFilters.join(',');
+            fs.writeFileSync(srtPath, srtContent);
         }
 
-        addLog("Assets generated. Stitching clips with FREETYPE PIXEL-BURNED KINETIC CAPTIONS in parallel...");
+        addLog("Assets generated. Stitching clips with UNIVERSAL KINETIC SUBTITLES in parallel...");
         const activeFfmpegPath = ffmpeg.path || detectedFfmpeg || "ffmpeg";
         addLog(`[PRODUCTION LOG] Active FFmpeg Binary: ${activeFfmpegPath}`);
-        addLog(`[SUBTITLE ENGINE] FreeType Direct DrawText Engine Active (Font: Oswald-Bold, Sleek 38px, Dynamic Colors)`);
+        addLog(`[SUBTITLE ENGINE] Universal SRT Subtitle Engine Active (Font: Oswald-Bold, Sleek 38px, Dynamic Colors)`);
         
         const clipPaths = new Array(clips.length);
         
@@ -752,6 +741,9 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 const clip = clips[j];
                 const clipPath = path.join(projectDir, `clip_${j}.mp4`);
                 clipPaths[j] = clipPath;
+
+                const srtPath = path.join(projectDir, `sub_${j}.srt`);
+                generateSRT(clip.text, clip.duration, srtPath);
                 
                 // Build Dynamic Filter Chain for Context-Aware Editing & Monetization Safety
                 let vfFilters = `scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB`;
@@ -770,12 +762,23 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     vfFilters += `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,0,1)'`;
                 }
 
-                // Append Direct FreeType DrawText Kinetic Captions (Bakes text directly onto frame pixels)
-                const fontFile = path.join(__dirname, 'assets', 'fonts', 'Oswald-Bold.ttf');
-                const dtFilterStr = buildDrawtextFilterChain(clip.text, clip.duration, fontFile, mainNiche);
-                if (dtFilterStr) {
-                    vfFilters += `,${dtFilterStr}`;
+                const escapedSrtPath = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+                const fontsDir = path.join(__dirname, 'assets', 'fonts');
+                const escapedFontsDir = fontsDir.replace(/\\/g, '/').replace(/:/g, '\\:');
+
+                let highlightColorHex = "&H0000FFFF"; // Yellow (Default)
+                const n = (mainNiche || "").toLowerCase();
+                if (n.includes("crime") || n.includes("horror") || n.includes("revenge") || n.includes("survival")) {
+                    highlightColorHex = "&H000000FF"; // Blood Red
+                } else if (n.includes("finance") || n.includes("wealth") || n.includes("luxury") || n.includes("business") || n.includes("motivation")) {
+                    highlightColorHex = "&H0000FF00"; // Money Green
+                } else if (n.includes("space") || n.includes("science") || n.includes("tech")) {
+                    highlightColorHex = "&H00FFFF00"; // Cyan
+                } else if (n.includes("history") || n.includes("stoicism") || n.includes("philosophy") || n.includes("military")) {
+                    highlightColorHex = "&H0000D7FF"; // Gold
                 }
+
+                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald,Fontsize=38,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=3,MarginV=140'`;
 
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
@@ -786,21 +789,19 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     }
                     cmd.input(clip.audio);
 
-                    const outputOpts = [
-                        '-map 0:v:0', // Only take video from input 0
-                        '-map 1:a:0', // Take voiceover audio from input 1
-                        '-shortest',
-                        '-r 30', // Force uniform 30fps for all clips (prevents concat desync)
-                        '-ar 44100', // Force uniform 44.1kHz audio (prevents concat desync)
-                        '-pix_fmt yuv420p',
-                        `-vf ${vfFilters}`,
-                        '-preset veryfast', // Drastically speeds up encoding
-                        '-threads 2' // Balances CPU load across parallel processes
-                    ];
-
                     cmd.videoCodec('libx264')
                         .audioCodec('aac')
-                        .outputOptions(outputOpts)
+                        .videoFilters(vfFilters)
+                        .outputOptions([
+                            '-map 0:v:0', // Only take video from input 0
+                            '-map 1:a:0', // Take voiceover audio from input 1
+                            '-shortest',
+                            '-r 30', // Force uniform 30fps for all clips (prevents concat desync)
+                            '-ar 44100', // Force uniform 44.1kHz audio (prevents concat desync)
+                            '-pix_fmt yuv420p',
+                            '-preset veryfast', // Drastically speeds up encoding
+                            '-threads 2' // Balances CPU load across parallel processes
+                        ])
                         .save(clipPath)
                         .on('end', resolve)
                         .on('error', (err, stdout, stderr) => {
