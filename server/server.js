@@ -781,7 +781,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     highlightColorHex = "&H0000D7FF"; // Gold
                 }
 
-                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald,Fontsize=26,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BorderStyle=3,Outline=5,MarginV=140'`;
+                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald,Fontsize=76,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=4,MarginV=180'`;
 
                 if (sfxInputs.length > 0) {
                     let amixParts = '[1:a]';
