@@ -12,25 +12,33 @@ const ffprobeStatic = require('ffprobe-static');
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 // Dynamically test if system ffmpeg is executable (best for Fontconfig/Subtitles)
+const { execSync } = require('child_process');
 let hasSystemFfmpeg = false;
 try {
-    const { execSync } = require('child_process');
     execSync('ffmpeg -version', { stdio: 'ignore' });
     hasSystemFfmpeg = true;
-    const sysPath = execSync('which ffmpeg').toString().trim();
-    ffmpeg.setFfmpegPath(sysPath);
-    console.log(`[INFO] System ffmpeg successfully detected at ${sysPath} and works.`);
+    // Use POSIX 'command -v' (works on all Linux/Nix). 'which' is NOT installed in Nixpacks.
+    try {
+        const sysPath = execSync('command -v ffmpeg', { shell: '/bin/sh' }).toString().trim();
+        ffmpeg.setFfmpegPath(sysPath);
+        console.log(`[INFO] System ffmpeg detected at: ${sysPath}`);
+    } catch (_) {
+        // 'command -v' failed but ffmpeg -version worked, so it's in PATH — just use 'ffmpeg'
+        ffmpeg.setFfmpegPath('ffmpeg');
+        console.log(`[INFO] System ffmpeg detected in PATH.`);
+    }
 } catch (e) {
-    console.warn("[WARN] System ffmpeg not detected or failed to run due to shared lib errors. Falling back to ffmpeg-static.");
+    console.warn("[WARN] System ffmpeg not found. Falling back to ffmpeg-static.");
 }
 
-// Only use static ffmpeg locally or if system ffmpeg is broken on Railway
-if (!hasSystemFfmpeg || (process.env.NODE_ENV !== 'production' && !process.env.RAILWAY_ENVIRONMENT_NAME)) {
+// ONLY use ffmpeg-static as a last resort when system ffmpeg is genuinely missing
+if (!hasSystemFfmpeg) {
     try {
         const ffmpegStatic = require('ffmpeg-static');
         ffmpeg.setFfmpegPath(ffmpegStatic);
+        console.log(`[INFO] Using ffmpeg-static fallback: ${ffmpegStatic}`);
     } catch(e) {
-        console.error("Failed to load ffmpeg-static", e);
+        console.error("[FATAL] No ffmpeg binary available at all!", e);
     }
 }
 const crypto = require('crypto');
@@ -47,6 +55,29 @@ const tmpDir = path.join(__dirname, 'tmp');
 const outputDir = path.join(__dirname, 'output');
 if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
 if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
+
+// Runtime font installation failsafe — ensures custom fonts are available even if build-time copy failed
+if (hasSystemFfmpeg) {
+    try {
+        const fontsSource = path.join(__dirname, 'assets', 'fonts');
+        const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
+        const fontsDest = path.join(homeDir, '.local', 'share', 'fonts');
+        if (fs.existsSync(fontsSource)) {
+            fs.mkdirSync(fontsDest, { recursive: true });
+            const fontFiles = fs.readdirSync(fontsSource).filter(f => f.endsWith('.ttf') || f.endsWith('.otf'));
+            for (const font of fontFiles) {
+                const destPath = path.join(fontsDest, font);
+                if (!fs.existsSync(destPath)) {
+                    fs.copyFileSync(path.join(fontsSource, font), destPath);
+                    console.log(`[FONTS] Installed ${font} to ${fontsDest}`);
+                }
+            }
+            try { execSync('fc-cache -f', { stdio: 'ignore' }); } catch(_) {}
+        }
+    } catch (fontErr) {
+        console.warn('[FONTS] Runtime font installation failed:', fontErr.message);
+    }
+}
 
 const openai = new OpenAI({
     apiKey: process.env.OPENROUTER_API_KEY || "dummy_key_to_prevent_crash_on_boot",
@@ -732,8 +763,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 const assPath = path.join(projectDir, `sub_${j}.ass`);
                 generateASS(clip.text, clip.duration, assPath, mainNiche);
                 
-                // Escape paths for FFmpeg filter on Windows
-                const escapedAssPath = assPath.replace(/\\\\/g, '\\\\\\\\').replace(/:/g, '\\\\:');
+                // Escape paths for FFmpeg ASS filter (must escape \ and : for libass)
+                // On Linux (Railway): paths are /app/server/tmp/... — no escaping needed
+                // On Windows: paths have \ and : — must be escaped for FFmpeg filter syntax
+                const escapedAssPath = assPath.replace(/\\/g, '/').replace(/:/g, '\\:');
 
                 // Build Dynamic Filter Chain for Context-Aware Editing
                 let vfFilters = `scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB`;
@@ -765,7 +798,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 
                 // Add Kinetic Subtitles
                 const fontsDir = path.join(__dirname, 'assets', 'fonts');
-                const escapedFontsDir = fontsDir.replace(/\\/g, '\\\\\\\\').replace(/:/g, '\\\\:');
+                const escapedFontsDir = fontsDir.replace(/\\/g, '/').replace(/:/g, '\\:');
                 vfFilters += `,ass='${escapedAssPath}':fontsdir='${escapedFontsDir}'`;
 
                 if (sfxInputs.length > 0) {
@@ -782,7 +815,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         // FIX: Force-limit stock video to exact audio duration to prevent freeze/desync
                         cmd = cmd.input(clip.visual).inputOptions(['-stream_loop', '-1', '-t', String(clip.duration)]);
                     } else {
-                        cmd = cmd.input(clip.visual).loop();
+                        cmd = cmd.input(clip.visual).inputOptions(['-loop', '1', '-t', String(clip.duration)]);
                     }
                     
                     cmd.input(clip.audio);
@@ -793,6 +826,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     const outputOpts = [
                         '-map 0:v:0', // Only take video from input 0
                         '-shortest',
+                        '-r 30', // Force uniform 30fps for all clips (prevents concat desync)
+                        '-ar 44100', // Force uniform 44.1kHz audio (prevents concat desync)
                         '-pix_fmt yuv420p',
                         `-vf ${vfFilters}`,
                         '-preset veryfast', // Drastically speeds up encoding
@@ -829,7 +864,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         addLog("Concatenating clips into final video...");
         const listPath = path.join(projectDir, 'list.txt');
-        const listContent = clipPaths.map(p => `file '${p}'`).join('\n');
+        // Use forward slashes in concat list for cross-platform compatibility
+        const listContent = clipPaths.map(p => `file '${p.replace(/\\/g, '/')}'`).join('\n');
         fs.writeFileSync(listPath, listContent);
 
         const stitchedVideoPath = path.join(projectDir, 'stitched.mp4');
@@ -934,7 +970,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             try {
                 const base64Image = Buffer.from(thumbBuffer.data).toString('base64');
                 const qaResponse = await openai.chat.completions.create({
-                    model: "google/gemini-flash-1.5",
+                    model: "google/gemini-2.0-flash-001",
                     messages: [
                         {
                             role: "user",

@@ -8,9 +8,9 @@ aptPkgs = ["fonts-liberation", "fonts-dejavu", "fonts-noto"]
 [phases.install]
 cmds = [
   "cd server && npm install",
-  "mkdir -p /usr/share/fonts/truetype/custom",
-  "cp server/assets/fonts/*.ttf /usr/share/fonts/truetype/custom/ || true",
-  "fc-cache -fv"
+  "mkdir -p $HOME/.local/share/fonts",
+  "cp server/assets/fonts/*.ttf $HOME/.local/share/fonts/ 2>/dev/null; true",
+  "fc-cache -fv || true"
 ]
 
 [start]
