@@ -780,7 +780,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 }
 
                 // Clean force_style key-value pairs (No escaped commas inside Fontname key)
-                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald,Fontsize=76,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=4,MarginV=180'`;
+                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald,Fontsize=38,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=3,MarginV=140'`;
 
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
