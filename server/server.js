@@ -688,50 +688,61 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        // Universal SRT Subtitle Generator (Mathematical Word Timing, 3-Word Kinetic Chunks & Niche Styling)
-        function generateSRT(text, durationSec, srtPath) {
-            const words = text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
-            if (words.length === 0) words.push("...");
+        // FreeType Pixel-Burn Subtitle Generator (Direct fontfile binding, zero libass/fontconfig dependency)
+        function buildDrawtextFilterChain(text, durationSec, fontPath, mainNiche) {
+            const cleanText = text.replace(/\[.*?\]/g, '').trim();
+            const words = cleanText.split(/\s+/).filter(w => w.length > 0);
+            if (words.length === 0) return '';
+            
             const timePerWord = durationSec / words.length;
 
-            const formatSRTTime = (sec) => {
-                const h = Math.floor(sec / 3600);
-                const m = Math.floor((sec % 3600) / 60);
-                const s = Math.floor(sec % 60);
-                const ms = Math.floor((sec % 1) * 1000);
-                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
-            };
+            let highlightColor = "yellow";
+            const n = (mainNiche || "").toLowerCase();
+            if (n.includes("crime") || n.includes("horror") || n.includes("revenge") || n.includes("survival")) {
+                highlightColor = "red";
+            } else if (n.includes("finance") || n.includes("wealth") || n.includes("luxury") || n.includes("business") || n.includes("motivation")) {
+                highlightColor = "green";
+            } else if (n.includes("space") || n.includes("science") || n.includes("tech")) {
+                highlightColor = "cyan";
+            } else if (n.includes("history") || n.includes("stoicism") || n.includes("philosophy") || n.includes("military")) {
+                highlightColor = "gold";
+            }
 
-            let srtContent = "";
-            let srtIndex = 1;
+            const escapedFont = fontPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+            let drawtextFilters = [];
+
             let currentStart = 0;
-
             for (let i = 0; i < words.length; i += 3) {
                 const chunkWords = words.slice(i, i + 3);
                 const chunkDuration = timePerWord * chunkWords.length;
                 const chunkEnd = currentStart + chunkDuration;
 
-                const startTimeStr = formatSRTTime(currentStart);
-                const endTimeStr = formatSRTTime(chunkEnd);
-                const chunkText = chunkWords.join(" ").toUpperCase();
+                const chunkStr = chunkWords.join(" ").toUpperCase();
+                const escapedText = chunkStr
+                    .replace(/\\/g, '\\\\')
+                    .replace(/'/g, "'\\\\''")
+                    .replace(/:/g, '\\:')
+                    .replace(/%/g, '\\%');
 
-                srtContent += `${srtIndex}\n${startTimeStr} --> ${endTimeStr}\n${chunkText}\n\n`;
-                srtIndex++;
+                const startSec = currentStart.toFixed(2);
+                const endSec = chunkEnd.toFixed(2);
+
+                drawtextFilters.push(`drawtext=fontfile='${escapedFont}':text='${escapedText}':fontsize=38:fontcolor=${highlightColor}:borderw=3:bordercolor=black:box=1:boxcolor=black@0.75:boxborderw=12:x=(w-text_w)/2:y=h-140:enable='between(t,${startSec},${endSec})'`);
 
                 currentStart = chunkEnd;
             }
 
-            fs.writeFileSync(srtPath, srtContent);
+            return drawtextFilters.join(',');
         }
 
-        addLog("Assets generated. Stitching clips with UNIVERSAL KINETIC SUBTITLES in parallel...");
+        addLog("Assets generated. Stitching clips with FREETYPE PIXEL-BURNED KINETIC CAPTIONS in parallel...");
         const activeFfmpegPath = ffmpeg.path || detectedFfmpeg || "ffmpeg";
         addLog(`[PRODUCTION LOG] Active FFmpeg Binary: ${activeFfmpegPath}`);
-        addLog(`[SUBTITLE ENGINE] Universal SRT Engine Active (Font: Oswald-Bold, Opaque Box, Dynamic Niche Colors)`);
+        addLog(`[SUBTITLE ENGINE] FreeType Direct DrawText Engine Active (Font: Oswald-Bold, Sleek 38px, Dynamic Colors)`);
         
         const clipPaths = new Array(clips.length);
         
-        // Run FFmpeg processes sequentially to prevent libass fontconfig deadlocks and CPU starvation
+        // Run FFmpeg processes sequentially to prevent CPU starvation
         const FFMPEG_CHUNK_SIZE = 1; 
         for (let i = 0; i < clips.length; i += FFMPEG_CHUNK_SIZE) {
             if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
@@ -742,11 +753,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 const clipPath = path.join(projectDir, `clip_${j}.mp4`);
                 clipPaths[j] = clipPath;
                 
-                const srtPath = path.join(projectDir, `sub_${j}.srt`);
-                generateSRT(clip.text, clip.duration, srtPath);
-                
                 // Build Dynamic Filter Chain for Context-Aware Editing & Monetization Safety
-                // Apply color grade + contrast + vignette to stock videos so YouTube never flags them as reused content
                 let vfFilters = `scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB`;
                 if (visualSource === 'stock_videos') {
                     vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.2,vignette=PI/4`;
@@ -763,24 +770,12 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     vfFilters += `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,0,1)'`;
                 }
 
-                const escapedSrtPath = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
-                const fontsDir = path.join(__dirname, 'assets', 'fonts');
-                const escapedFontsDir = fontsDir.replace(/\\/g, '/').replace(/:/g, '\\:');
-
-                let highlightColorHex = "&H0000FFFF"; // Yellow (Default)
-                const n = (mainNiche || "").toLowerCase();
-                if (n.includes("crime") || n.includes("horror") || n.includes("revenge") || n.includes("survival")) {
-                    highlightColorHex = "&H000000FF"; // Blood Red
-                } else if (n.includes("finance") || n.includes("wealth") || n.includes("luxury") || n.includes("business") || n.includes("motivation")) {
-                    highlightColorHex = "&H0000FF00"; // Money Green
-                } else if (n.includes("space") || n.includes("science") || n.includes("tech")) {
-                    highlightColorHex = "&H00FFFF00"; // Cyan
-                } else if (n.includes("history") || n.includes("stoicism") || n.includes("philosophy") || n.includes("military")) {
-                    highlightColorHex = "&H0000D7FF"; // Gold
+                // Append Direct FreeType DrawText Kinetic Captions (Bakes text directly onto frame pixels)
+                const fontFile = path.join(__dirname, 'assets', 'fonts', 'Oswald-Bold.ttf');
+                const dtFilterStr = buildDrawtextFilterChain(clip.text, clip.duration, fontFile, mainNiche);
+                if (dtFilterStr) {
+                    vfFilters += `,${dtFilterStr}`;
                 }
-
-                // Clean force_style key-value pairs (No escaped commas inside Fontname key)
-                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald,Fontsize=38,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=3,MarginV=140'`;
 
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
