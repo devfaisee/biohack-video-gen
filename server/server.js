@@ -752,29 +752,15 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.2,vignette=PI/4`;
                 }
 
-                let sfxInputs = [];
-                let filterComplex = '';
-
-                // Ken Burns Zoom In (Only applied to AI Images to prevent stock video distortion)
-                if (visualSource !== 'stock_videos' && clip.camera_motion === "zoom_in") {
-                    vfFilters += `,zoompan=z='min(zoom+0.0015,1.5)':d=${Math.ceil(clip.duration * 25)}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080`;
-                    const sfxPath = path.join(__dirname, 'assets', 'sfx_boom.mp3');
-                    if (fs.existsSync(sfxPath)) sfxInputs.push(sfxPath);
-                }
-                
                 // Smart Transitions & Pattern Interrupts
                 if (clip.transition === "fade_in") {
                     vfFilters += `,fade=t=in:st=0:d=0.5`;
                 } else if (clip.transition === "glitch") {
                     // Intense inverted flash for 0.1 seconds
                     vfFilters += `,negate=enable='between(t,0,0.1)'`;
-                    const sfxPath = path.join(__dirname, 'assets', 'sfx_glitch.mp3');
-                    if (fs.existsSync(sfxPath)) sfxInputs.push(sfxPath);
                 } else if (clip.transition === "blackout") {
                     // Pattern Interrupt: Complete black screen for 1 second
                     vfFilters += `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,0,1)'`;
-                    const sfxPath = path.join(__dirname, 'assets', 'sfx_whoosh.mp3');
-                    if (fs.existsSync(sfxPath)) sfxInputs.push(sfxPath);
                 }
 
                 const escapedSrtPath = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
@@ -796,30 +782,18 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 // Clean force_style key-value pairs (No escaped commas inside Fontname key)
                 vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald,Fontsize=76,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=4,MarginV=180'`;
 
-                if (sfxInputs.length > 0) {
-                    let amixParts = '[1:a]';
-                    for (let k = 0; k < sfxInputs.length; k++) {
-                        amixParts += `[${k+2}:a]`;
-                    }
-                    filterComplex = `${amixParts}amix=inputs=${sfxInputs.length + 1}:duration=first:dropout_transition=0[aout]`;
-                }
-
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
                     if (visualSource === 'stock_videos') {
-                        // FIX: Force-limit stock video to exact audio duration to prevent freeze/desync
                         cmd = cmd.input(clip.visual).inputOptions(['-stream_loop', '-1', '-t', String(clip.duration)]);
                     } else {
                         cmd = cmd.input(clip.visual).inputOptions(['-loop', '1', '-t', String(clip.duration)]);
                     }
-                    
                     cmd.input(clip.audio);
-                    for (const sfx of sfxInputs) {
-                        cmd.input(sfx);
-                    }
-                    
+
                     const outputOpts = [
                         '-map 0:v:0', // Only take video from input 0
+                        '-map 1:a:0', // Take voiceover audio from input 1
                         '-shortest',
                         '-r 30', // Force uniform 30fps for all clips (prevents concat desync)
                         '-ar 44100', // Force uniform 44.1kHz audio (prevents concat desync)
@@ -828,13 +802,6 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                         '-preset veryfast', // Drastically speeds up encoding
                         '-threads 2' // Balances CPU load across parallel processes
                     ];
-
-                    if (sfxInputs.length > 0) {
-                        outputOpts.push(`-filter_complex ${filterComplex}`);
-                        outputOpts.push('-map [aout]');
-                    } else {
-                        outputOpts.push('-map 1:a:0'); // Just original audio
-                    }
 
                     cmd.videoCodec('libx264')
                         .audioCodec('aac')
