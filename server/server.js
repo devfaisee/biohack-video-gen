@@ -453,8 +453,10 @@ Output pure JSON with the following structure:
   "title": "A highly clickable, viral YouTube title",
   "description": "YouTube video description optimized for SEO with chapters, engaging copy, and a keyword dump at the bottom",
   "tags": ["huberman lab", "neuroplasticity protocol for focus", "dopamine optimization", "cognitive performance", "how to improve memory 2024", "brain"],
-  "bgmPrompt": "A highly specific 1-2 sentence prompt for an AI music generator (Google Lyria-3). Describe the genre, instruments, mood, tempo, and style perfectly suited for this video's tone. MUST end with: 'Instrumental only, no vocals.'",
-  "thumbnailPrompt": "A masterwork YouTube thumbnail background image prompt designed for maximum Click-Through Rate (CTR) and doomscroll-stopping virality. MUST FOLLOW THESE RULES: 1. Show ONE intense central focal point or high-stakes visual mystery. 2. Dramatic 3-point volumetric lighting with glowing neon accents (cyan/gold/red) contrasting deep shadows. 3. Extreme depth-of-field background blur (bokeh). 4. ABSOLUTELY ZERO TEXT, letters, or words. 5. Cinematic teal and orange color grade.",
+  "hasThumbnailText": true,
+  "thumbnailText": "THE SECRET",
+  "thumbnailTextReason": "Short 2-word curiosity trigger that complements the title without repeating it",
+  "thumbnailPrompt": "A masterwork YouTube thumbnail background image prompt designed for maximum Click-Through Rate (CTR) and doomscroll-stopping virality. 1. Show ONE intense central focal point or high-stakes visual mystery. 2. Dramatic 3-point volumetric lighting with glowing neon accents contrasting deep shadows. 3. Extreme depth-of-field background blur (bokeh). 4. Include bold, clean, high-contrast white typography reading 'THE SECRET' placed cleanly in empty space. 5. Cinematic color grade.",
   "segments": [
     {
       "narration": "Did you know that your memory can be mathematically optimized? The science behind it is shocking.",
@@ -791,8 +793,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     highlightColorHex = "&H0000D7FF"; // Gold
                 }
 
-                // Force font family fallback chain: Oswald -> DejaVu Sans -> Liberation Sans -> sans-serif (100% font rendering guarantee)
-                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald\\,DejaVu Sans\\,Liberation Sans\\,sans-serif,Fontsize=76,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=4,MarginV=180'`;
+                // Clean force_style key-value pairs (No escaped commas inside Fontname key)
+                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald,Fontsize=76,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=4,MarginV=180'`;
 
                 if (sfxInputs.length > 0) {
                     let amixParts = '[1:a]';
@@ -938,7 +940,14 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         const thumbUrlPath = `/output/${videoId}_thumb.jpg`;
         const thumbLocalPath = path.join(outputDir, `${videoId}_thumb.jpg`);
         try {
-            const thumbPrompt = scriptData.thumbnailPrompt || `A masterwork YouTube thumbnail background for ${subNiche}, 3D depth-of-field, dramatic volumetric lighting, intense focal point, teal and orange cinematic color grade, high contrast, ultra-vibrant, no text`;
+            let thumbPrompt = scriptData.thumbnailPrompt;
+            if (!thumbPrompt) {
+                if (scriptData.hasThumbnailText && scriptData.thumbnailText) {
+                    thumbPrompt = `A masterwork YouTube thumbnail background for ${subNiche}, 3D depth-of-field, dramatic volumetric lighting, intense focal point, teal and orange cinematic color grade, high contrast, ultra-vibrant, with bold clean high-contrast white text reading '${scriptData.thumbnailText}'`;
+                } else {
+                    thumbPrompt = `A masterwork YouTube thumbnail background for ${subNiche}, 3D depth-of-field, dramatic volumetric lighting, intense focal point, teal and orange cinematic color grade, high contrast, ultra-vibrant, no text`;
+                }
+            }
             const thumbUrl = await withRetry(async () => {
                 return await replicate.run(
                     "bytedance/seedream-4.5",
