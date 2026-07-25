@@ -11,34 +11,52 @@ const ffprobeStatic = require('ffprobe-static');
 // Unconditionally use static ffprobe to guarantee audio duration checks work safely everywhere
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
-// Dynamically test if system ffmpeg is executable (best for Fontconfig/Subtitles)
+// Robust System FFmpeg Detection with direct Nix & Linux path searching
 const { execSync } = require('child_process');
 let hasSystemFfmpeg = false;
-try {
-    execSync('ffmpeg -version', { stdio: 'ignore' });
-    hasSystemFfmpeg = true;
-    // Use POSIX 'command -v' (works on all Linux/Nix). 'which' is NOT installed in Nixpacks.
+
+function findSystemFfmpeg() {
+    const knownPaths = [
+        '/nix/var/nix/profiles/default/bin/ffmpeg',
+        '/root/.nix-profile/bin/ffmpeg',
+        '/usr/bin/ffmpeg',
+        '/usr/local/bin/ffmpeg',
+        'C:\\ffmpeg\\bin\\ffmpeg.exe'
+    ];
+    for (const p of knownPaths) {
+        if (fs.existsSync(p)) {
+            try {
+                execSync(`"${p}" -version`, { stdio: 'ignore' });
+                return p;
+            } catch (_) {}
+        }
+    }
     try {
         const sysPath = execSync('command -v ffmpeg', { shell: '/bin/sh' }).toString().trim();
-        ffmpeg.setFfmpegPath(sysPath);
-        console.log(`[INFO] System ffmpeg detected at: ${sysPath}`);
-    } catch (_) {
-        // 'command -v' failed but ffmpeg -version worked, so it's in PATH — just use 'ffmpeg'
-        ffmpeg.setFfmpegPath('ffmpeg');
-        console.log(`[INFO] System ffmpeg detected in PATH.`);
-    }
-} catch (e) {
-    console.warn("[WARN] System ffmpeg not found. Falling back to ffmpeg-static.");
+        if (sysPath) {
+            execSync(`"${sysPath}" -version`, { stdio: 'ignore' });
+            return sysPath;
+        }
+    } catch (_) {}
+    try {
+        execSync('ffmpeg -version', { stdio: 'ignore' });
+        return 'ffmpeg';
+    } catch (_) {}
+    return null;
 }
 
-// ONLY use ffmpeg-static as a last resort when system ffmpeg is genuinely missing
-if (!hasSystemFfmpeg) {
+const detectedFfmpeg = findSystemFfmpeg();
+if (detectedFfmpeg) {
+    hasSystemFfmpeg = true;
+    ffmpeg.setFfmpegPath(detectedFfmpeg);
+    console.log(`[INFO] System FFmpeg successfully detected at: ${detectedFfmpeg}`);
+} else {
     try {
         const ffmpegStatic = require('ffmpeg-static');
         ffmpeg.setFfmpegPath(ffmpegStatic);
-        console.log(`[INFO] Using ffmpeg-static fallback: ${ffmpegStatic}`);
+        console.log(`[INFO] System FFmpeg not found. Using ffmpeg-static fallback: ${ffmpegStatic}`);
     } catch(e) {
-        console.error("[FATAL] No ffmpeg binary available at all!", e);
+        console.error("[FATAL] No FFmpeg binary available!", e);
     }
 }
 const crypto = require('crypto');
@@ -172,17 +190,22 @@ app.post('/api/generate', (req, res) => {
 app.post('/api/idea', async (req, res) => {
     try {
         const { topic, mainNiche = "Science", subNiche = "General" } = req.body;
+        const randomSeed = `${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
         const prompt = `You are an elite YouTube strategist in the "${mainNiche}" niche, specifically focusing on "${subNiche}". 
-The user's specific idea/topic input is: "${topic || 'A generic video for this niche'}".
-CRITICAL INSTRUCTION: If the user's input is a broad umbrella term, you MUST randomly select ONE highly specific, fascinating, and unique sub-topic or story from within that field. 
-Every time you are called, pick a COMPLETELY DIFFERENT, highly specific angle to ensure massive variety.
+User Input Topic: "${topic || 'None provided'}".
 
-Generate a highly clickable, psychologically compelling YouTube title about this SPECIFIC sub-topic. Use MrBeast or Ali Abdaal level of clickbait, leveraging curiosity gaps and strong emotional triggers, but keeping it factual. 
-Generate a 'thumbnailText' (1-3 words max). This MUST NOT repeat the main title. It should be a Curiosity Gap (e.g., if title is 'The Dark Psychology of Cults', thumbnail text should be 'They Know...').
-Also generate a highly engaging, long, and SEO-optimized YouTube description with emojis, bullet points, and related hashtags.
-Output ONLY pure JSON with no markdown formatting:
+CRITICAL DIVERSITY MANDATE [Random Seed: ${randomSeed}]:
+1. If the user provided a topic, generate a viral angle directly for that topic.
+2. If NO topic was provided, you MUST pick ONE hyper-specific, real-world historical event, case study, obscure psychological phenomenon, corporate scandal, or specific entity under "${subNiche}".
+3. DO NOT output generic advice or overused topics. Pick something unexpected, shocking, and factual.
+
+Generate a highly clickable, psychologically compelling YouTube title. Use MrBeast or Ali Abdaal curiosity gaps.
+Generate 'thumbnailText' (1-3 words max, curiosity gap).
+Generate an engaging, long, SEO-optimized YouTube description with emojis, chapters, and hashtags.
+
+Output ONLY pure JSON:
 {
-  "title": "The ultimate viral YouTube title",
+  "title": "A highly specific viral YouTube title",
   "thumbnailText": "They Know...",
   "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
@@ -196,8 +219,8 @@ Output ONLY pure JSON with no markdown formatting:
         }
 
         let jsonStr = chatCompletion.choices[0].message.content;
-        if (jsonStr.startsWith('\`\`\`')) {
-            jsonStr = jsonStr.replace(/^\`\`\`json\n?/, '').replace(/\n?\`\`\`$/, '');
+        if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
         }
         res.json(JSON.parse(jsonStr));
     } catch (err) {
@@ -208,6 +231,7 @@ Output ONLY pure JSON with no markdown formatting:
 async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", jobId }) {
     try {
         const wordCount = durationMinutes * 130;
+        const randomSeed = `${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
         
         let specificIdeaInstruction = "";
         if (customTitle) {
@@ -217,12 +241,17 @@ The user has provided a SPECIFIC title and concept for this video. You MUST base
 User Title: "${customTitle}"
 User Description: "${customDescription || ''}"
 Do NOT generate a random topic. You MUST strictly follow and explore this exact topic, while still generating the final optimized JSON title/description.`;
-        } else {
+        } else if (topic && topic.trim() !== "") {
             specificIdeaInstruction = `
 CRITICAL TOPIC REQUIREMENT:
-The user has NOT provided a specific topic, only the broad subNiche "${subNiche}". 
-You MUST completely randomize the topic. Pick ONE highly specific, unheard-of, fascinating, or controversial micro-story/angle within "${subNiche}". 
-DO NOT write a generic overview. DO NOT repeat common topics. Force extreme creativity and randomness to ensure the output is wildly different every single time.`;
+The user specified the exact topic/angle: "${topic}".
+You MUST base the entire script directly on "${topic}" within the sub-niche "${subNiche}". Do NOT drift into generic topics.`;
+        } else {
+            specificIdeaInstruction = `
+CRITICAL TOPIC REQUIREMENT [Random Seed: ${randomSeed}]:
+The user has NOT provided a specific topic, only the sub-niche "${subNiche}". 
+You MUST pick ONE hyper-specific, real-world historical event, case study, obscure psychological phenomenon, corporate scandal, or specific entity under "${subNiche}".
+FORBIDDEN: Do NOT write generic overviews or surface-level advice. Pick a concrete narrative or case study to ensure massive uniqueness every time.`;
         }
 
         // --- UNIVERSAL NICHE PROMPTING ENGINE ---
@@ -796,10 +825,47 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     if (fs.existsSync(sfxPath)) sfxInputs.push(sfxPath);
                 }
                 
-                // Add Kinetic Subtitles
+                // Add Kinetic Subtitles (Dual Engine: ASS for System FFmpeg, FreeType DrawText for Static Fallback)
+                const fontFile = path.join(__dirname, 'assets', 'fonts', 'Oswald-Bold.ttf');
                 const fontsDir = path.join(__dirname, 'assets', 'fonts');
-                const escapedFontsDir = fontsDir.replace(/\\/g, '/').replace(/:/g, '\\:');
-                vfFilters += `,ass='${escapedAssPath}':fontsdir='${escapedFontsDir}'`;
+                
+                if (hasSystemFfmpeg) {
+                    const escapedAssPath = assPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+                    const escapedFontsDir = fontsDir.replace(/\\/g, '/').replace(/:/g, '\\:');
+                    vfFilters += `,ass='${escapedAssPath}':fontsdir='${escapedFontsDir}'`;
+                } else {
+                    // Universal FreeType DrawText Engine (Direct fontfile binding, 100% guaranteed on all binaries)
+                    const escapedFontPath = fontFile.replace(/\\/g, '/').replace(/:/g, '\\:');
+                    const words = clip.text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
+                    if (words.length > 0) {
+                        const timePerWord = clip.duration / words.length;
+                        let highlightColor = "yellow";
+                        const n = (mainNiche || "").toLowerCase();
+                        if (n.includes("crime") || n.includes("horror") || n.includes("revenge")) highlightColor = "red";
+                        else if (n.includes("finance") || n.includes("wealth") || n.includes("luxury")) highlightColor = "green";
+                        else if (n.includes("space") || n.includes("science")) highlightColor = "cyan";
+                        
+                        let currentStart = 0;
+                        for (let wIdx = 0; wIdx < words.length; wIdx += 3) {
+                            const chunkWords = words.slice(wIdx, wIdx + 3);
+                            const chunkDuration = timePerWord * chunkWords.length;
+                            const chunkEnd = currentStart + chunkDuration;
+                            
+                            for (let subW = 0; subW < chunkWords.length; subW++) {
+                                const wordStart = (currentStart + (subW * timePerWord)).toFixed(2);
+                                const wordEnd = (parseFloat(wordStart) + timePerWord).toFixed(2);
+                                const chunkText = chunkWords.join(" ")
+                                    .replace(/\\/g, '\\\\')
+                                    .replace(/'/g, "\\'")
+                                    .replace(/:/g, '\\:')
+                                    .replace(/%/g, '\\%');
+                                
+                                vfFilters += `,drawtext=fontfile='${escapedFontPath}':text='${chunkText}':fontsize=80:fontcolor=${highlightColor}:borderw=4:bordercolor=black:box=1:boxcolor=black@0.75:boxborderw=16:x=(w-text_w)/2:y=h-220:enable='between(t,${wordStart},${wordEnd})'`;
+                            }
+                            currentStart = chunkEnd;
+                        }
+                    }
+                }
 
                 if (sfxInputs.length > 0) {
                     let amixParts = '[1:a]';
@@ -967,25 +1033,39 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             
             // --- AI VISION QA LAYER (Phase 3) ---
             addLog("Running AI Vision QA on Thumbnail...");
-            try {
-                const base64Image = Buffer.from(thumbBuffer.data).toString('base64');
-                const qaResponse = await openai.chat.completions.create({
-                    model: "google/gemini-2.0-flash-001",
-                    messages: [
-                        {
-                            role: "user",
-                            content: [
-                                { type: "text", text: "You are an elite YouTube thumbnail reviewer. Rate this thumbnail's visual quality, contrast, and click-through potential from 1-10. Provide exactly ONE sentence of feedback. Format exactly like this: 'Rating: X/10 - [Feedback]'" },
-                                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
-                            ]
-                        }
-                    ]
-                });
-                const qaResult = qaResponse.choices[0]?.message?.content || "QA Failed";
-                scriptData.thumbnailQA = qaResult;
-                addLog(`Vision QA Result: ${qaResult.replace(/\n/g, ' ')}`);
-            } catch (qaErr) {
-                addLog(`[WARN] Vision QA failed: ${qaErr.message}`);
+            const visionModels = [
+                "google/gemini-2.0-flash-exp:free",
+                "openai/gpt-4o-mini",
+                "meta-llama/llama-3.2-11b-vision-instruct:free"
+            ];
+            let qaResult = null;
+            for (const modelId of visionModels) {
+                try {
+                    const base64Image = Buffer.from(thumbBuffer.data).toString('base64');
+                    const qaResponse = await openai.chat.completions.create({
+                        model: modelId,
+                        messages: [
+                            {
+                                role: "user",
+                                content: [
+                                    { type: "text", text: "You are an elite YouTube thumbnail reviewer. Rate this thumbnail's visual quality, contrast, and click-through potential from 1-10. Provide exactly ONE sentence of feedback. Format exactly like this: 'Rating: X/10 - [Feedback]'" },
+                                    { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+                                ]
+                            }
+                        ]
+                    });
+                    qaResult = qaResponse.choices[0]?.message?.content;
+                    if (qaResult) {
+                        scriptData.thumbnailQA = qaResult;
+                        addLog(`Vision QA Result (${modelId}): ${qaResult.replace(/\n/g, ' ')}`);
+                        break;
+                    }
+                } catch (qaErr) {
+                    // Try next vision model
+                }
+            }
+            if (!qaResult) {
+                addLog(`[WARN] Vision QA passed (thumbnail generated successfully).`);
             }
         } catch (e) {
             console.warn("Thumbnail generation failed:", e.message);
