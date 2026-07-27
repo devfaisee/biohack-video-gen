@@ -139,9 +139,9 @@ app.get('/api/logs', (req, res) => {
     req.on('close', () => logStreamSubscribers.delete(res));
 });
 
-// Robust Retry Logic with Exponential Backoff
+// Robust Retry Logic with Exponential Backoff & 429 Rate-Limit Awareness
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-async function withRetry(fn, operationName, maxRetries = 6, baseDelayMs = 4000) {
+async function withRetry(fn, operationName, maxRetries = 10, baseDelayMs = 4000) {
     for (let i = 0; i < maxRetries; i++) {
         try {
             return await fn();
@@ -150,8 +150,17 @@ async function withRetry(fn, operationName, maxRetries = 6, baseDelayMs = 4000) 
                 addLog(`[FATAL] ${operationName} failed after ${maxRetries} attempts.`);
                 throw err;
             }
-            // Exponential backoff: 4s, 6s, 9s, 13.5s, 20s...
-            const currentDelay = Math.round(baseDelayMs * Math.pow(1.5, i));
+            let currentDelay = Math.round(baseDelayMs * Math.pow(1.4, i));
+            // Check for explicit 429 retry_after in Replicate error responses
+            if (err.message && (err.message.includes("429") || err.message.includes("retry_after"))) {
+                const match = err.message.match(/"retry_after":\s*(\d+)/);
+                if (match && match[1]) {
+                    const retryAfterSec = parseInt(match[1], 10);
+                    if (!isNaN(retryAfterSec) && retryAfterSec > 0) {
+                        currentDelay = (retryAfterSec + 3) * 1000; // Add 3s safety buffer to let rate limits reset
+                    }
+                }
+            }
             addLog(`[WARN] ${operationName} failed: ${err.message}. Retrying in ${Math.round(currentDelay/1000)}s... (Attempt ${i+1}/${maxRetries})`);
             await sleep(currentDelay);
         }
@@ -583,107 +592,119 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             });
         });
 
-        // Generate all segments concurrently (limit concurrency to 4 to avoid rate limits)
-        const generateSegment = async (i) => {
+        // 1. Fetch Visuals (Stock Footage searches run in parallel chunks of 5 with no Replicate rate limit)
+        const visualPaths = new Array(scriptData.segments.length);
+        const fetchVisualTask = async (i) => {
             if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
             const segment = scriptData.segments[i];
-            addLog(`[Segment ${i + 1}/${scriptData.segments.length}] Starting parallel asset generation...`);
-
             const visualExt = visualSource === 'stock_videos' ? 'mp4' : 'webp';
             const visualPath = path.join(projectDir, `visual_${i}.${visualExt}`);
+
+            if (visualSource === 'stock_videos') {
+                const query = segment.searchQuery || segment.imagePrompt || "science";
+                addLog(`[Segment ${i + 1}] Searching stock video for: ${query}...`);
+                const videoUrl = await withRetry(() => fetchStockVideo(query), `Stock Search ${i+1}`);
+                const videoBuffer = await withRetry(() => axios.get(videoUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Stock Video ${i+1}`);
+                fs.writeFileSync(visualPath, videoBuffer.data);
+                addLog(`[Segment ${i + 1}] Stock Video downloaded.`);
+            } else {
+                addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
+                const imageUrl = await withRetry(async () => {
+                    const imgRes = await replicate.run(
+                        "black-forest-labs/flux-schnell:c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
+                        {
+                            input: {
+                                prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
+                                aspect_ratio: "16:9",
+                                output_format: "webp",
+                                num_outputs: 1
+                            }
+                        }
+                    );
+                    return imgRes[0];
+                }, `Image Gen ${i+1}`, 10);
+                const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Image ${i+1}`);
+                fs.writeFileSync(visualPath, imgBuffer.data);
+                addLog(`[Segment ${i + 1}] Image downloaded.`);
+            }
+            visualPaths[i] = visualPath;
+        };
+
+        const VISUAL_CHUNK_SIZE = 5;
+        const visualPromise = (async () => {
+            for (let i = 0; i < scriptData.segments.length; i += VISUAL_CHUNK_SIZE) {
+                const chunk = [];
+                for (let j = i; j < i + VISUAL_CHUNK_SIZE && j < scriptData.segments.length; j++) {
+                    chunk.push(fetchVisualTask(j));
+                }
+                await Promise.all(chunk);
+            }
+        })();
+
+        // 2. Fetch Audio (Gemini TTS) sequentially with a 1.2s stagger to protect Replicate burst limits on low-credit accounts
+        const audioPaths = new Array(scriptData.segments.length);
+        for (let i = 0; i < scriptData.segments.length; i++) {
+            if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
+            const segment = scriptData.segments[i];
             const audioPath = path.join(projectDir, `audio_${i}.wav`);
 
-            // Run Visual and Audio concurrently
-            await Promise.all([
-                // VISUAL TASK
-                (async () => {
-                    if (visualSource === 'stock_videos') {
-                        const query = segment.searchQuery || segment.imagePrompt || "science";
-                        addLog(`[Segment ${i + 1}] Searching stock video for: ${query}...`);
-                        const videoUrl = await withRetry(() => fetchStockVideo(query), `Stock Search ${i+1}`);
-                        const videoBuffer = await withRetry(() => axios.get(videoUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Stock Video ${i+1}`);
-                        fs.writeFileSync(visualPath, videoBuffer.data);
-                        addLog(`[Segment ${i + 1}] Stock Video downloaded.`);
-                    } else {
-                        addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
-                        const imageUrl = await withRetry(async () => {
-                            const imgRes = await replicate.run(
-                                "black-forest-labs/flux-schnell:c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
-                                {
-                                    input: {
-                                        prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
-                                        aspect_ratio: "16:9",
-                                        output_format: "webp",
-                                        num_outputs: 1
-                                    }
-                                }
-                            );
-                            return imgRes[0];
-                        }, `Image Gen ${i+1}`);
-                        const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Image ${i+1}`);
-                        fs.writeFileSync(visualPath, imgBuffer.data);
-                        addLog(`[Segment ${i + 1}] Image downloaded.`);
-                    }
-                })(),
-
-                // AUDIO TASK
-                (async () => {
-                    addLog(`[Segment ${i + 1}] Requesting voiceover (${voiceId}) from Gemini 3.1 Flash TTS...`);
-                    const audioUrl = await withRetry(async () => {
-                        try {
-                            return await replicate.run(
-                                "google/gemini-3.1-flash-tts",
-                                {
-                                    input: {
-                                        text: segment.narration.replace(/\[.*?\]/g, '').trim(), // Force strip any hallucinated tags
-                                        voice: voiceId, 
-                                        prompt: voicePrompt,
-                                        language_code: "en-US"
-                                    }
-                                }
-                            );
-                        } catch (ttsError) {
-                            if (ttsError.message.includes("sensitive") || ttsError.message.includes("E005")) {
-                                addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized fallback...`);
-                                return await replicate.run(
-                                    "google/gemini-3.1-flash-tts",
-                                    {
-                                        input: {
-                                            text: segment.narration.replace(/\[.*?\]/g, '').trim(),
-                                            voice: voiceId,
-                                            language_code: "en-US"
-                                        }
-                                    }
-                                );
+            addLog(`[Segment ${i + 1}/${scriptData.segments.length}] Requesting voiceover (${voiceId}) from Gemini 3.1 Flash TTS...`);
+            const audioUrl = await withRetry(async () => {
+                try {
+                    return await replicate.run(
+                        "google/gemini-3.1-flash-tts",
+                        {
+                            input: {
+                                text: segment.narration.replace(/\[.*?\]/g, '').trim(),
+                                voice: voiceId,
+                                prompt: voicePrompt,
+                                language_code: "en-US"
                             }
-                            throw ttsError;
                         }
-                    }, `Audio Gen ${i+1}`);
-                    const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Audio ${i+1}`);
-                    fs.writeFileSync(audioPath, audioBuffer.data);
-                    addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
-                })()
-            ]);
+                    );
+                } catch (ttsError) {
+                    if (ttsError.message.includes("sensitive") || ttsError.message.includes("E005")) {
+                        addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized fallback...`);
+                        return await replicate.run(
+                            "google/gemini-3.1-flash-tts",
+                            {
+                                input: {
+                                    text: segment.narration.replace(/\[.*?\]/g, '').trim(),
+                                    voice: voiceId,
+                                    language_code: "en-US"
+                                }
+                            }
+                        );
+                    }
+                    throw ttsError;
+                }
+            }, `Audio Gen ${i+1}`, 10);
 
-            const audioDuration = await getAudioDuration(audioPath);
-            clips[i] = { 
-                visual: visualPath, 
-                audio: audioPath, 
-                text: segment.narration, 
+            const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Audio ${i+1}`);
+            fs.writeFileSync(audioPath, audioBuffer.data);
+            audioPaths[i] = audioPath;
+            addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
+
+            if (i < scriptData.segments.length - 1) {
+                await sleep(1200); // Rate-limit safety cushion
+            }
+        }
+
+        // Wait for visual downloads to complete
+        await visualPromise;
+
+        // Build clips array
+        for (let i = 0; i < scriptData.segments.length; i++) {
+            const segment = scriptData.segments[i];
+            const audioDuration = await getAudioDuration(audioPaths[i]);
+            clips[i] = {
+                visual: visualPaths[i],
+                audio: audioPaths[i],
+                text: segment.narration,
                 duration: audioDuration,
                 transition: segment.transition || "none",
                 camera_motion: segment.camera_motion || "static"
             };
-        };
-
-        // Process API generation in chunks of 5 for MAXIMUM speed (protected by our new exponential backoff)
-        const CHUNK_SIZE = 5;
-        for (let i = 0; i < scriptData.segments.length; i += CHUNK_SIZE) {
-            const chunk = [];
-            for (let j = i; j < i + CHUNK_SIZE && j < scriptData.segments.length; j++) {
-                chunk.push(generateSegment(j));
-            }
-            await Promise.all(chunk);
         }
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
