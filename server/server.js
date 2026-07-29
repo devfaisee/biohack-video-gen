@@ -670,11 +670,15 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                         }
                     );
                 } catch (ttsError) {
+                    const errStr = String(ttsError.message || ttsError.detail || ttsError || '');
                     const isRateLimit = ttsError.status === 429 || 
                                         (ttsError.response && ttsError.response.status === 429) ||
-                                        (ttsError.message && (ttsError.message.includes("429") || ttsError.message.toLowerCase().includes("throttled") || ttsError.message.includes("rate limit")));
+                                        errStr.includes("429") || 
+                                        errStr.toLowerCase().includes("throttled") || 
+                                        errStr.toLowerCase().includes("rate limit") ||
+                                        errStr.includes("retry_after");
 
-                    if (!isRateLimit && ttsError.message && (ttsError.message.includes("sensitive") || ttsError.message.includes("E005"))) {
+                    if (!isRateLimit && (errStr.includes("sensitive") || errStr.includes("E005"))) {
                         addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized fallback...`);
                         try {
                             return await replicate.run(
