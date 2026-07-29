@@ -192,6 +192,9 @@ async function processQueue() {
     setTimeout(processQueue, 1000);
 }
 
+// Health probe endpoint — used by Electron desktop to detect server readiness
+app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+
 app.post('/api/generate', (req, res) => {
     const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'ai_images', mainNiche = 'Science', subNiche = 'General' } = req.body;
     const jobId = crypto.randomUUID();

@@ -1,12 +1,49 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Filter, Clock, CheckCircle2, RefreshCw, Eye, Download, X, Copy, Check, ChevronDown, Zap, TrendingUp, AlertTriangle, XCircle, BarChart3, Hash } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from 'react';
+import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Filter, Clock, CheckCircle2, RefreshCw, Eye, Download, X, Copy, Check, ChevronDown, Zap, TrendingUp, AlertTriangle, XCircle, BarChart3, Hash, Server, Globe, Cpu } from 'lucide-react';
 import axios from 'axios';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import NICHES from './niches.json';
 
-const BASE_URL = 'https://biohack-video-gen-server-production.up.railway.app';
+const RAILWAY_URL = 'https://biohack-video-gen-server-production.up.railway.app';
+const LOCAL_URL = 'http://localhost:5001';
 const MAX_LOGS = 80;
+
+// ─── Server URL Context (Desktop Mode Switcher) ──────────────
+const ServerCtx = createContext({ baseUrl: RAILWAY_URL, mode: 'railway', setMode: () => {} });
+function useServer() { return useContext(ServerCtx); }
+
+function ServerProvider({ children }) {
+  const isElectron = typeof window !== 'undefined' && window.desktopAPI?.isElectron;
+  const [mode, setModeState] = useState('railway');
+  const [switching, setSwitching] = useState(false);
+  const [serverReady, setServerReady] = useState(true);
+  const baseUrl = mode === 'local' ? LOCAL_URL : RAILWAY_URL;
+
+  const setMode = useCallback(async (newMode) => {
+    if (!isElectron) return;
+    setSwitching(true);
+    setServerReady(false);
+    try {
+      const result = await window.desktopAPI.switchMode(newMode);
+      if (result.success) {
+        setModeState(newMode);
+        setServerReady(true);
+      } else {
+        console.error('Mode switch failed:', result.error);
+      }
+    } catch (e) {
+      console.error('Mode switch error:', e);
+    }
+    setSwitching(false);
+  }, [isElectron]);
+
+  return (
+    <ServerCtx.Provider value={{ baseUrl, mode, setMode, switching, serverReady, isElectron }}>
+      {children}
+    </ServerCtx.Provider>
+  );
+}
 
 // ─── Toast System ───────────────────────────────────────────
 const ToastContext = React.createContext();
@@ -51,7 +88,9 @@ function useCopy() {
 // ─── Navbar ─────────────────────────────────────────────────
 function Navbar() {
   const location = useLocation();
+  const { mode, setMode, switching, serverReady, isElectron } = useServer();
   return (
+    <>
     <nav className="navbar">
       <Link to="/" className="nav-brand">
         <div className="brand-icon"><Sparkles size={20} /></div>
@@ -68,12 +107,39 @@ function Navbar() {
           <BarChart3 size={16} /> Analytics
         </Link>
       </div>
+      {isElectron && (
+        <div className="mode-switcher" title={mode === 'railway' ? 'Using Railway Cloud Server' : 'Using Local PC Server (localhost:5001)'}>
+          <button
+            className={`mode-btn ${mode === 'railway' ? 'mode-active' : ''}`}
+            onClick={() => setMode('railway')}
+            disabled={switching || mode === 'railway'}
+          >
+            <Globe size={13} /> Railway
+          </button>
+          <button
+            className={`mode-btn ${mode === 'local' ? 'mode-active mode-local' : ''}`}
+            onClick={() => setMode('local')}
+            disabled={switching || mode === 'local'}
+          >
+            <Cpu size={13} /> {switching && mode !== 'local' ? 'Starting...' : 'Local PC'}
+          </button>
+          <div className={`mode-indicator ${serverReady ? 'mode-ok' : 'mode-wait'}`} />
+        </div>
+      )}
     </nav>
+    {isElectron && mode === 'local' && serverReady && (
+      <div className="desktop-banner">
+        <Cpu size={13} /> Running on <strong>Local PC</strong> — Output saved to <code>server/output/</code>
+        <button className="open-folder-btn" onClick={() => window.desktopAPI?.openOutputFolder()}>📁 Open Output Folder</button>
+      </div>
+    )}
+    </>
   );
 }
 
 // ─── Creator Studio ─────────────────────────────────────────
 function CreatorStudio() {
+  const { baseUrl } = useServer();
   const [loading, setLoading] = useState(false);
   const [duration, setDuration] = useState(1);
   const [mainNiche, setMainNiche] = useState(Object.keys(NICHES)[0]);
@@ -88,14 +154,17 @@ function CreatorStudio() {
   const logsEndRef = useRef(null);
   const toast = useToast();
   const { copied, copy } = useCopy();
+  const sseRef = useRef(null);
 
-  // SSE connection - stable ref, no re-renders on logs
+  // SSE connection - re-connects when baseUrl changes (mode switch)
   useEffect(() => {
-    axios.get(`${BASE_URL}/api/status`)
+    if (sseRef.current) sseRef.current.close();
+    axios.get(`${baseUrl}/api/status`)
       .then(res => { if (res.data.isRunning) setLoading(true); })
       .catch(() => {});
 
-    const sse = new EventSource(`${BASE_URL}/api/logs`);
+    const sse = new EventSource(`${baseUrl}/api/logs`);
+    sseRef.current = sse;
     sse.onmessage = (e) => {
       const data = JSON.parse(e.data);
       try {
@@ -105,8 +174,8 @@ function CreatorStudio() {
             title: parsedLog.title,
             description: parsedLog.description,
             tags: parsedLog.tags,
-            videoUrl: `${BASE_URL}${parsedLog.videoUrl}`,
-            thumbnailUrl: parsedLog.thumbnailUrl ? `${BASE_URL}${parsedLog.thumbnailUrl}` : null
+            videoUrl: `${baseUrl}${parsedLog.videoUrl}`,
+            thumbnailUrl: parsedLog.thumbnailUrl ? `${baseUrl}${parsedLog.thumbnailUrl}` : null
           });
           setLoading(false);
           return;
@@ -124,7 +193,7 @@ function CreatorStudio() {
       }
     };
     return () => sse.close();
-  }, []);
+  }, [baseUrl]);
 
   useEffect(() => {
     if (logsEndRef.current) logsEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -133,7 +202,7 @@ function CreatorStudio() {
   const generateIdea = useCallback(async () => {
     setIdeaLoading(true);
     try {
-      const res = await axios.post(`${BASE_URL}/api/idea`, { topic, mainNiche, subNiche });
+      const res = await axios.post(`${baseUrl}/api/idea`, { topic, mainNiche, subNiche });
       setCustomTitle(res.data.title);
       setCustomDescription(res.data.description);
       toast('Viral idea generated!', 'success');
@@ -141,14 +210,14 @@ function CreatorStudio() {
       toast('Failed to generate idea. Try again.', 'error');
     }
     setIdeaLoading(false);
-  }, [topic, mainNiche, subNiche, toast]);
+  }, [baseUrl, topic, mainNiche, subNiche, toast]);
 
   const generateVideo = useCallback(async () => {
     setLoading(true);
     setLogs([]);
     setResult(null);
     try {
-      await axios.post(`${BASE_URL}/api/generate`, {
+      await axios.post(`${baseUrl}/api/generate`, {
         durationMinutes: duration, format: 'horizontal', topic, mainNiche, subNiche, visualSource, customTitle, customDescription
       });
       toast('Pipeline started! Generating your masterpiece...', 'info');
@@ -156,17 +225,17 @@ function CreatorStudio() {
       toast('Failed to start generation. Server may be busy.', 'error');
       setLoading(false);
     }
-  }, [duration, topic, mainNiche, subNiche, visualSource, customTitle, customDescription, toast]);
+  }, [baseUrl, duration, topic, mainNiche, subNiche, visualSource, customTitle, customDescription, toast]);
 
   const cancelGeneration = useCallback(async () => {
     try {
-      await axios.post(`${BASE_URL}/api/cancel`);
+      await axios.post(`${baseUrl}/api/cancel`);
       setLoading(false);
       toast('Generation cancelled.', 'info');
     } catch {
       toast('Failed to cancel.', 'error');
     }
-  }, [toast]);
+  }, [baseUrl, toast]);
 
   const nicheKeys = useMemo(() => Object.keys(NICHES), []);
   const subNiches = useMemo(() => NICHES[mainNiche] || [], [mainNiche]);
@@ -334,6 +403,7 @@ function CreatorStudio() {
 
 // ─── Video Detail Modal ─────────────────────────────────────
 function VideoModal({ video, onClose }) {
+  const { baseUrl } = useServer();
   const { copied, copy } = useCopy();
   if (!video) return null;
   return (
@@ -341,7 +411,7 @@ function VideoModal({ video, onClose }) {
       <motion.div className="modal-content" initial={{ scale: 0.9, y: 40 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 40 }} onClick={e => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose}><X size={20} /></button>
         <div className="modal-video">
-          <video src={`${BASE_URL}${video.videoUrl}`} controls poster={video.thumbnailUrl ? `${BASE_URL}${video.thumbnailUrl}` : undefined} />
+          <video src={`${baseUrl}${video.videoUrl}`} controls poster={video.thumbnailUrl ? `${baseUrl}${video.thumbnailUrl}` : undefined} />
         </div>
         <div className="modal-body">
           <div className="modal-title-row">
@@ -377,8 +447,8 @@ function VideoModal({ video, onClose }) {
             )}
           </div>
           <div className="modal-actions">
-            <a href={`${BASE_URL}${video.videoUrl}`} download className="btn btn-primary"><Download size={16} /> Download MP4</a>
-            {video.thumbnailUrl && <a href={`${BASE_URL}${video.thumbnailUrl}`} download className="btn btn-secondary"><Download size={16} /> Thumbnail</a>}
+            <a href={`${baseUrl}${video.videoUrl}`} download className="btn btn-primary"><Download size={16} /> Download MP4</a>
+            {video.thumbnailUrl && <a href={`${baseUrl}${video.thumbnailUrl}`} download className="btn btn-secondary"><Download size={16} /> Thumbnail</a>}
             <button className="btn btn-ghost" onClick={() => { const all = `Title: ${video.title}\n\nDescription:\n${video.description}\n\nTags: ${(video.tags||[]).map(t=>'#'+t).join(' ')}`; copy(all, 'mall'); }}>
               {copied === 'mall' ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy All</>}
             </button>
@@ -391,6 +461,7 @@ function VideoModal({ video, onClose }) {
 
 // ─── Video Library ──────────────────────────────────────────
 function VideoLibrary() {
+  const { baseUrl } = useServer();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterNiche, setFilterNiche] = useState('All');
@@ -402,7 +473,7 @@ function VideoLibrary() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await axios.get(`${BASE_URL}/api/videos`);
+        const res = await axios.get(`${baseUrl}/api/videos`);
         setVideos(res.data.filter(v => v.status !== "error"));
       } catch {
         toast('Failed to load library.', 'error');
@@ -472,7 +543,7 @@ function VideoLibrary() {
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(idx * 0.03, 0.5) }} key={video.id} className="video-card" onClick={() => setSelectedVideo(video)}>
               <div className="video-thumb-container">
                 {video.thumbnailUrl ? (
-                  <img src={`${BASE_URL}${video.thumbnailUrl}`} alt="" className="video-thumb" loading="lazy" />
+                  <img src={`${baseUrl}${video.thumbnailUrl}`} alt="" className="video-thumb" loading="lazy" />
                 ) : (
                   <div className="video-thumb-placeholder"><Video size={28} /></div>
                 )}
@@ -497,18 +568,19 @@ function VideoLibrary() {
 
 // ─── Analytics Page ─────────────────────────────────────────
 function Analytics() {
+  const { baseUrl } = useServer();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await axios.get(`${BASE_URL}/api/videos`);
+        const res = await axios.get(`${baseUrl}/api/videos`);
         setVideos(res.data.filter(v => v.status !== "error"));
       } catch { /* ignore */ }
       setLoading(false);
     })();
-  }, []);
+  }, [baseUrl]);
 
   const stats = useMemo(() => {
     const nicheCount = {};
@@ -576,16 +648,18 @@ function Analytics() {
 function App() {
   return (
     <Router>
-      <ToastProvider>
-        <Navbar />
-        <div className="app-container">
-          <Routes>
-            <Route path="/" element={<CreatorStudio />} />
-            <Route path="/library" element={<VideoLibrary />} />
-            <Route path="/analytics" element={<Analytics />} />
-          </Routes>
-        </div>
-      </ToastProvider>
+      <ServerProvider>
+        <ToastProvider>
+          <Navbar />
+          <div className="app-container">
+            <Routes>
+              <Route path="/" element={<CreatorStudio />} />
+              <Route path="/library" element={<VideoLibrary />} />
+              <Route path="/analytics" element={<Analytics />} />
+            </Routes>
+          </div>
+        </ToastProvider>
+      </ServerProvider>
     </Router>
   );
 }
