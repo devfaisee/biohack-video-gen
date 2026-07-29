@@ -151,8 +151,12 @@ async function withRetry(fn, operationName, maxRetries = 10, baseDelayMs = 4000)
                 throw err;
             }
             let currentDelay = Math.round(baseDelayMs * Math.pow(1.4, i));
-            // Check for explicit 429 retry_after in Replicate error responses
-            if (err.message && (err.message.includes("429") || err.message.includes("retry_after"))) {
+            // Check for explicit 429 status code or retry_after in Replicate error objects
+            const isRateLimitErr = err.status === 429 || 
+                                  (err.response && err.response.status === 429) ||
+                                  (err.message && (err.message.includes("429") || err.message.toLowerCase().includes("throttled") || err.message.includes("retry_after")));
+            
+            if (isRateLimitErr && err.message) {
                 const match = err.message.match(/"retry_after":\s*(\d+)/);
                 if (match && match[1]) {
                     const retryAfterSec = parseInt(match[1], 10);
@@ -663,22 +667,30 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                         }
                     );
                 } catch (ttsError) {
-                    if (!ttsError.message.includes("429") && !ttsError.message.includes("throttled") && (ttsError.message.includes("sensitive") || ttsError.message.includes("E005"))) {
+                    const isRateLimit = ttsError.status === 429 || 
+                                        (ttsError.response && ttsError.response.status === 429) ||
+                                        (ttsError.message && (ttsError.message.includes("429") || ttsError.message.toLowerCase().includes("throttled") || ttsError.message.includes("rate limit")));
+
+                    if (!isRateLimit && ttsError.message && (ttsError.message.includes("sensitive") || ttsError.message.includes("E005"))) {
                         addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized fallback...`);
-                        return await replicate.run(
-                            "google/gemini-3.1-flash-tts",
-                            {
-                                input: {
-                                    text: segment.narration.replace(/\[.*?\]/g, '').trim(),
-                                    voice: voiceId,
-                                    language_code: "en-US"
+                        try {
+                            return await replicate.run(
+                                "google/gemini-3.1-flash-tts",
+                                {
+                                    input: {
+                                        text: segment.narration.replace(/\[.*?\]/g, '').trim(),
+                                        voice: voiceId,
+                                        language_code: "en-US"
+                                    }
                                 }
-                            }
-                        );
+                            );
+                        } catch (fallbackErr) {
+                            throw fallbackErr;
+                        }
                     }
                     throw ttsError;
                 }
-            }, `Audio Gen ${i+1}`, 12);
+            }, `Audio Gen ${i+1}`, 15);
 
             const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Audio ${i+1}`);
             fs.writeFileSync(audioPath, audioBuffer.data);
