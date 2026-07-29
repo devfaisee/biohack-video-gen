@@ -663,7 +663,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                         }
                     );
                 } catch (ttsError) {
-                    if (ttsError.message.includes("sensitive") || ttsError.message.includes("E005")) {
+                    if (!ttsError.message.includes("429") && !ttsError.message.includes("throttled") && (ttsError.message.includes("sensitive") || ttsError.message.includes("E005"))) {
                         addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized fallback...`);
                         return await replicate.run(
                             "google/gemini-3.1-flash-tts",
@@ -678,7 +678,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     }
                     throw ttsError;
                 }
-            }, `Audio Gen ${i+1}`, 10);
+            }, `Audio Gen ${i+1}`, 12);
 
             const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Audio ${i+1}`);
             fs.writeFileSync(audioPath, audioBuffer.data);
@@ -686,7 +686,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
 
             if (i < scriptData.segments.length - 1) {
-                await sleep(1200); // Rate-limit safety cushion
+                await sleep(3500); // 3.5s rate-limit cushion for accounts under $5 credit limit
             }
         }
 
