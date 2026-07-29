@@ -695,8 +695,29 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 }
             }, `Audio Gen ${i+1}`, 15);
 
-            const audioBuffer = await withRetry(() => axios.get(audioUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Audio ${i+1}`);
-            fs.writeFileSync(audioPath, audioBuffer.data);
+            // Replicate SDK v1.4.0+ returns FileOutput objects for file outputs, not plain URL strings.
+            // FileOutput has .arrayBuffer(), .blob(), .url(), etc. — axios.get(FileOutput) fails silently.
+            // Detect and handle both: FileOutput (SDK v1+) and legacy URL strings (SDK v0.x)
+            let audioData;
+            if (audioUrl && typeof audioUrl.arrayBuffer === 'function') {
+                // SDK v1.4.0+ FileOutput — download directly without axios
+                addLog(`[Segment ${i + 1}] Downloading voiceover from FileOutput...`);
+                const buffer = await withRetry(async () => {
+                    const ab = await audioUrl.arrayBuffer();
+                    return Buffer.from(ab);
+                }, `Download Audio ${i+1}`);
+                audioData = buffer;
+            } else {
+                // Legacy: URL string — download via axios
+                const urlStr = String(audioUrl);
+                const resp = await withRetry(() => axios.get(urlStr, {
+                    responseType: 'arraybuffer',
+                    timeout: 120000,
+                    signal: abortController.signal
+                }), `Download Audio ${i+1}`);
+                audioData = resp.data;
+            }
+            fs.writeFileSync(audioPath, audioData);
             audioPaths[i] = audioPath;
             addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
 
