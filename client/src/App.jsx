@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from 'react';
 import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Filter, Clock, CheckCircle2, RefreshCw, Eye, Download, X, Copy, Check, ChevronDown, Zap, TrendingUp, AlertTriangle, XCircle, BarChart3, Hash, Server, Globe, Cpu } from 'lucide-react';
 import axios from 'axios';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import NICHES from './niches.json';
 

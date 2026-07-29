@@ -130,7 +130,11 @@ function createMainWindow(targetUrl) {
     },
   });
 
-  mainWindow.loadURL(targetUrl);
+  // CRITICAL: Load the LOCAL built React app — NOT the Railway URL.
+  // The React app (App.jsx) handles all API routing via ServerCtx (Railway vs localhost:5001).
+  // Loading a remote URL here would block preload.js from injecting window.desktopAPI.
+  const distIndex = path.join(__dirname, '..', '..', 'client', 'dist', 'index.html');
+  mainWindow.loadFile(distIndex);
 
   mainWindow.once('ready-to-show', () => {
     if (splashWindow && !splashWindow.isDestroyed()) {
