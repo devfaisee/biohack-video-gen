@@ -445,6 +445,9 @@ ${nicheRules}
 CRITICAL DURATION REQUIREMENT:
 The user requested a ${durationMinutes}-minute video. At normal speaking pace, you MUST write AT LEAST ${wordCount} words of narration total. Do NOT summarize. Do NOT finish early.
 
+NUMBERED LIST & STRUCTURAL INTEGRITY MANDATE:
+If the user's topic or title specifies a numbered list (e.g., "10 habits", "7 secrets", "5 rules", "12 tips"), you MUST explicitly write out and cover EVERY SINGLE item sequentially from #1 through #N. Do NOT stop early, skip numbers, or summarize halfway. Every item must receive full detail and narration.
+
 CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
 CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
 1. PSYCHOLOGICAL HOOK: The first 5 seconds MUST use one of these hook frameworks: 
