@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from 'react';
-import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Filter, Clock, CheckCircle2, RefreshCw, Eye, Download, X, Copy, Check, ChevronDown, Zap, TrendingUp, AlertTriangle, XCircle, BarChart3, Hash, Server, Globe, Cpu } from 'lucide-react';
+import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Filter, Clock, CheckCircle2, RefreshCw, Eye, Download, X, Copy, Check, ChevronDown, Zap, TrendingUp, AlertTriangle, XCircle, BarChart3, Hash, Server, Globe, Cpu, Calendar, Activity, Layers, PieChart } from 'lucide-react';
 import axios from 'axios';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -142,6 +142,7 @@ function CreatorStudio() {
   const { baseUrl } = useServer();
   const [loading, setLoading] = useState(false);
   const [duration, setDuration] = useState(1);
+  const [format, setFormat] = useState('horizontal');
   const [mainNiche, setMainNiche] = useState(Object.keys(NICHES)[0]);
   const [subNiche, setSubNiche] = useState(NICHES[Object.keys(NICHES)[0]][0]);
   const [topic, setTopic] = useState('');
@@ -230,14 +231,14 @@ function CreatorStudio() {
         }
       }
       await axios.post(`${baseUrl}/api/generate`, {
-        durationMinutes: duration, format: 'horizontal', topic, mainNiche, subNiche, visualSource, customTitle, customDescription
+        durationMinutes: duration, format, topic, mainNiche, subNiche, visualSource, customTitle, customDescription
       });
       toast('Pipeline started! Generating your masterpiece...', 'info');
     } catch {
       toast('Failed to start generation. Server may be starting, try again in 3 seconds.', 'error');
       setLoading(false);
     }
-  }, [baseUrl, duration, topic, mainNiche, subNiche, visualSource, customTitle, customDescription, toast]);
+  }, [baseUrl, duration, format, topic, mainNiche, subNiche, visualSource, customTitle, customDescription, toast]);
 
   const cancelGeneration = useCallback(async () => {
     try {
@@ -286,13 +287,24 @@ function CreatorStudio() {
           </div>
         </div>
 
+        <div className="form-group">
+          <label className="label">Visual Engine</label>
+          <div className="select-wrapper">
+            <select className="select" value={visualSource} onChange={(e) => setVisualSource(e.target.value)}>
+              <option value="ai_images">✨ AI Cinematic Visuals (Flux) — 100% Unique (Zero Reused Content Risk)</option>
+              <option value="stock_videos">🎬 Transformed Stock Footage (Color Graded & Vignetted)</option>
+            </select>
+            <ChevronDown size={16} className="select-icon" />
+          </div>
+        </div>
+
         <div className="form-grid-2">
           <div className="form-group">
-            <label className="label">Visual Engine</label>
+            <label className="label">Video Format</label>
             <div className="select-wrapper">
-              <select className="select" value={visualSource} onChange={(e) => setVisualSource(e.target.value)}>
-                <option value="ai_images">✨ AI Cinematic Visuals (Flux) — 100% Unique (Zero Reused Content Risk)</option>
-                <option value="stock_videos">🎬 Transformed Stock Footage (Color Graded & Vignetted)</option>
+              <select className="select" value={format} onChange={(e) => setFormat(e.target.value)}>
+                <option value="horizontal">🖥️ Horizontal (16:9) — YouTube, Desktop</option>
+                <option value="vertical">📱 Vertical (9:16) — YouTube Shorts, TikTok, Reels</option>
               </select>
               <ChevronDown size={16} className="select-icon" />
             </div>
@@ -615,64 +627,250 @@ function Analytics() {
   const stats = useMemo(() => {
     const nicheCount = {};
     const sourceCount = { ai_images: 0, stock_videos: 0 };
+    const dates = {};
+    const subNicheCount = {};
+
     videos.forEach(v => {
       if (v.mainNiche) nicheCount[v.mainNiche] = (nicheCount[v.mainNiche] || 0) + 1;
       if (v.visualSource) sourceCount[v.visualSource] = (sourceCount[v.visualSource] || 0) + 1;
+      
+      const date = new Date(v.createdAt).toLocaleDateString();
+      dates[date] = (dates[date] || 0) + 1;
+
+      if (v.subNiche && v.mainNiche) {
+        const key = `${v.mainNiche}::${v.subNiche}`;
+        subNicheCount[key] = (subNicheCount[key] || 0) + 1;
+      }
     });
-    const topNiches = Object.entries(nicheCount).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+    const topNiches = Object.entries(nicheCount).sort((a, b) => b[1] - a[1]);
     const totalSegments = videos.reduce((sum, v) => sum + (v.imageCount || 0), 0);
-    return { total: videos.length, topNiches, totalSegments, sourceCount };
+    
+    const uniqueDays = Object.keys(dates).length || 1;
+    const avgPerDay = (videos.length / uniqueDays).toFixed(1);
+
+    const timelineData = Object.entries(dates).sort((a, b) => new Date(a[0]) - new Date(b[0])).slice(-14);
+    
+    const topSubNiches = Object.entries(subNicheCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([key, count]) => {
+        const [main, sub] = key.split('::');
+        return { main, sub, count };
+      });
+
+    return { 
+      total: videos.length, 
+      topNiches, 
+      totalSegments, 
+      sourceCount,
+      uniqueNiches: Object.keys(nicheCount).length,
+      avgPerDay,
+      timelineData,
+      topSubNiches
+    };
   }, [videos]);
 
   if (loading) return <div className="loading-center"><RefreshCw size={36} className="spin" /></div>;
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="page-content">
-      <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Analytics</h1>
-      <p className="subtitle" style={{ marginBottom: '2rem' }}>Your generation history at a glance</p>
+  const totalSources = stats.sourceCount.ai_images + stats.sourceCount.stock_videos || 1;
+  const aiPercentage = Math.round((stats.sourceCount.ai_images / totalSources) * 100);
+  const stockPercentage = Math.round((stats.sourceCount.stock_videos / totalSources) * 100);
+  const maxTimelineCount = Math.max(...stats.timelineData.map(d => d[1]), 1);
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon"><Video size={20} /></div>
-          <div className="stat-value">{stats.total}</div>
-          <div className="stat-label">Total Videos</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon"><Film size={20} /></div>
-          <div className="stat-value">{stats.totalSegments}</div>
-          <div className="stat-label">Total Segments</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon"><TrendingUp size={20} /></div>
-          <div className="stat-value">{stats.topNiches.length > 0 ? stats.topNiches[0][0].split(' ')[0] : '—'}</div>
-          <div className="stat-label">Top Niche</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon"><BarChart3 size={20} /></div>
-          <div className="stat-value">{Object.keys(NICHES).length}</div>
-          <div className="stat-label">Available Niches</div>
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="page-content analytics-dashboard">
+      <div className="analytics-header">
+        <div>
+          <h1 className="title" style={{ fontSize: '2.5rem', marginBottom: '0.2rem' }}>Analytics Dashboard</h1>
+          <p className="subtitle">Comprehensive insights into your generation history</p>
         </div>
       </div>
 
-      {stats.topNiches.length > 0 && (
-        <div className="glass-card" style={{ marginTop: '2rem' }}>
-          <h3 style={{ marginBottom: '1.5rem', fontWeight: 700 }}>Videos by Niche</h3>
-          <div className="bar-chart">
-            {stats.topNiches.map(([niche, count]) => (
-              <div key={niche} className="bar-row">
-                <span className="bar-label">{niche}</span>
-                <div className="bar-track">
-                  <motion.div className="bar-fill" initial={{ width: 0 }} animate={{ width: `${(count / stats.total) * 100}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
+      {/* 1. Summary Stats Row */}
+      <div className="analytics-stats-grid">
+        <div className="stat-card premium-card">
+          <div className="stat-icon-wrapper"><Video size={20} className="text-violet" /></div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.total}</div>
+            <div className="stat-label">Total Videos</div>
+          </div>
+        </div>
+        <div className="stat-card premium-card">
+          <div className="stat-icon-wrapper"><Film size={20} className="text-blue" /></div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.totalSegments}</div>
+            <div className="stat-label">Segments Processed</div>
+          </div>
+        </div>
+        <div className="stat-card premium-card">
+          <div className="stat-icon-wrapper"><TrendingUp size={20} className="text-emerald" /></div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.topNiches.length > 0 ? stats.topNiches[0][0].split(' ')[0] : '—'}</div>
+            <div className="stat-label">Top Niche</div>
+          </div>
+        </div>
+        <div className="stat-card premium-card">
+          <div className="stat-icon-wrapper"><Layers size={20} className="text-amber" /></div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.uniqueNiches}</div>
+            <div className="stat-label">Unique Niches</div>
+          </div>
+        </div>
+        <div className="stat-card premium-card">
+          <div className="stat-icon-wrapper"><Activity size={20} className="text-rose" /></div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.avgPerDay}</div>
+            <div className="stat-label">Avg Videos / Day</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="analytics-bento-grid">
+        {/* 2. Generation Timeline Chart */}
+        <div className="glass-card bento-card col-span-2">
+          <div className="card-header">
+            <h3 className="card-title"><Calendar size={18} /> Generation Timeline</h3>
+          </div>
+          <div className="timeline-chart">
+            {stats.timelineData.map(([date, count], i) => (
+              <div key={date} className="timeline-bar-wrapper" title={`${date}: ${count} videos`}>
+                <div className="timeline-bar-value">{count}</div>
+                <div className="timeline-bar-track">
+                  <motion.div 
+                    className="timeline-bar-fill" 
+                    initial={{ height: 0 }} 
+                    animate={{ height: `${(count / maxTimelineCount) * 100}%` }} 
+                    transition={{ duration: 0.8, delay: i * 0.05, ease: 'easeOut' }} 
+                  />
                 </div>
-                <span className="bar-value">{count}</span>
+                <div className="timeline-bar-label">{date.split('/')[0]}/{date.split('/')[1]}</div>
+              </div>
+            ))}
+            {stats.timelineData.length === 0 && <div className="empty-state">No timeline data available</div>}
+          </div>
+        </div>
+
+        {/* 5. Visual Source Breakdown */}
+        <div className="glass-card bento-card">
+          <div className="card-header">
+            <h3 className="card-title"><PieChart size={18} /> Visual Sources</h3>
+          </div>
+          <div className="source-breakdown">
+            <div className="source-item">
+              <div className="source-info">
+                <span>AI Images</span>
+                <span className="source-count">{stats.sourceCount.ai_images}</span>
+              </div>
+              <div className="progress-track">
+                <motion.div className="progress-fill ai-fill" initial={{ width: 0 }} animate={{ width: `${aiPercentage}%` }} transition={{ duration: 1 }} />
+              </div>
+              <div className="source-pct">{aiPercentage}%</div>
+            </div>
+            <div className="source-item">
+              <div className="source-info">
+                <span>Stock Videos</span>
+                <span className="source-count">{stats.sourceCount.stock_videos}</span>
+              </div>
+              <div className="progress-track">
+                <motion.div className="progress-fill stock-fill" initial={{ width: 0 }} animate={{ width: `${stockPercentage}%` }} transition={{ duration: 1 }} />
+              </div>
+              <div className="source-pct">{stockPercentage}%</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Niche Distribution */}
+        <div className="glass-card bento-card col-span-2">
+          <div className="card-header">
+            <h3 className="card-title"><BarChart3 size={18} /> Niche Distribution</h3>
+          </div>
+          <div className="niche-chart">
+            {stats.topNiches.slice(0, 5).map(([niche, count], i) => (
+              <div key={niche} className="niche-row">
+                <span className="niche-label">{niche}</span>
+                <div className="niche-track">
+                  <motion.div 
+                    className="niche-fill" 
+                    initial={{ width: 0 }} 
+                    animate={{ width: `${(count / stats.total) * 100}%` }} 
+                    transition={{ duration: 0.8, delay: i * 0.1, ease: 'easeOut' }} 
+                  />
+                </div>
+                <span className="niche-value">{count}</span>
               </div>
             ))}
           </div>
         </div>
-      )}
+
+        {/* 6. Sub-Niche Leaderboard */}
+        <div className="glass-card bento-card col-span-2">
+          <div className="card-header">
+            <h3 className="card-title"><LayoutDashboard size={18} /> Sub-Niche Leaderboard</h3>
+          </div>
+          <div className="leaderboard-table-container">
+            <table className="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Sub-Niche</th>
+                  <th>Parent Niche</th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.topSubNiches.map((item, i) => (
+                  <motion.tr 
+                    key={`${item.main}-${item.sub}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                  >
+                    <td><span className="rank-badge">#{i + 1}</span></td>
+                    <td className="font-medium">{item.sub}</td>
+                    <td className="text-muted">{item.main}</td>
+                    <td className="text-right font-bold">{item.count}</td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 4. Recent Activity Feed */}
+        <div className="glass-card bento-card col-span-full">
+          <div className="card-header">
+            <h3 className="card-title"><Clock size={18} /> Recent Activity</h3>
+          </div>
+          <div className="activity-feed">
+            {videos.slice(0, 10).map((v, i) => (
+              <motion.div 
+                key={v.id} 
+                className="activity-item"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <div className="activity-thumb">
+                  {v.thumbnailUrl ? <img src={`${baseUrl}${v.thumbnailUrl}`} alt="" /> : <Video size={20} />}
+                </div>
+                <div className="activity-details">
+                  <h4>{v.title || 'Untitled Generation'}</h4>
+                  <div className="activity-meta">
+                    <span className="badge">{v.mainNiche}</span>
+                    <span className="time">{new Date(v.createdAt).toLocaleString()}</span>
+                  </div>
+                </div>
+                <Link to="/library" className="activity-link">View</Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 }
+
 
 // ─── App Root ───────────────────────────────────────────────
 function App() {

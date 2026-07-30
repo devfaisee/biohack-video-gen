@@ -178,12 +178,12 @@ async function processQueue() {
     if (global.currentJob || global.jobQueue.length === 0) return;
     
     const jobData = global.jobQueue.shift();
-    const { durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, jobId } = jobData;
+    const { durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, jobId } = jobData;
     
     addLog(`[QUEUE] Starting generation job ${jobId}. Remaining in queue: ${global.jobQueue.length}`);
     
     try {
-        await generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, jobId });
+        await generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, jobId });
     } catch (err) {
         addLog(JSON.stringify({ event: "error", message: err.message, id: jobId }));
     }
@@ -196,10 +196,10 @@ async function processQueue() {
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 app.post('/api/generate', (req, res) => {
-    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'ai_images', mainNiche = 'Science', subNiche = 'General' } = req.body;
+    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'ai_images', mainNiche = 'Science', subNiche = 'General', format = 'horizontal' } = req.body;
     const jobId = crypto.randomUUID();
     
-    global.jobQueue.push({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, jobId });
+    global.jobQueue.push({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, jobId });
     
     addLog(`Job ${jobId} added to queue. Position: ${global.jobQueue.length}`);
     
@@ -250,7 +250,7 @@ Output ONLY pure JSON:
     }
 });
 
-async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", jobId }) {
+async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", format = 'horizontal', jobId }) {
     try {
         const wordCount = durationMinutes * 130;
         const randomSeed = `${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
@@ -438,7 +438,7 @@ CRITICAL EDUCATIONAL RULES:
             : `"imagePrompt": "A highly detailed visual prompt for an AI image generator. The aesthetic MUST wildly vary to match the context of the sentence unless it is a story that requires consistent characters. Describe the scene, lighting, and composition."`;
 
         const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the "${mainNiche}" niche, specifically focusing on "${subNiche}". 
-Your goal is to write a highly viral, retention-optimized script for a horizontal YouTube video.
+Your goal is to write a highly viral, retention-optimized script for a ${format} YouTube video.
 ${specificIdeaInstruction}
 ${nicheRules}
 
@@ -559,8 +559,9 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         const pixabayKey = process.env.PIXABAY_API_KEY || "54069102-5cb5de9252e9808a1e0d5f201";
 
         async function fetchStockVideo(query) {
+            const isVertical = format === 'vertical';
             try {
-                const res = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape`, {
+                const res = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=3&orientation=${isVertical ? 'portrait' : 'landscape'}`, {
                     headers: { Authorization: pexelsKey },
                     timeout: 8000,
                     signal: abortController.signal
@@ -574,7 +575,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 console.warn("Pexels failed, falling back to Pixabay", e.message);
             }
             try {
-                const res = await axios.get(`https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodeURIComponent(query)}&video_type=film&orientation=horizontal`, {
+                const res = await axios.get(`https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodeURIComponent(query)}&video_type=film&orientation=${isVertical ? 'vertical' : 'horizontal'}`, {
                     timeout: 8000,
                     signal: abortController.signal
                 });
@@ -835,7 +836,9 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 generateHighlightSRT(clip.text, clip.duration, srtPath, highlightColorHex);
                 
                 // Build Dynamic Filter Chain for Context-Aware Editing & Monetization Safety
-                let vfFilters = `scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB`;
+                const isVertical = format === 'vertical';
+                const [outW, outH] = isVertical ? [1080, 1920] : [1920, 1080];
+                let vfFilters = `scale=${outW}:${outH}:force_original_aspect_ratio=increase,crop=${outW}:${outH},setpts=N/FRAME_RATE/TB`;
                 if (visualSource === 'stock_videos') {
                     vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.2,vignette=PI/4`;
                 }
@@ -852,7 +855,9 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 const relSrtPath = path.relative(process.cwd(), srtPath).replace(/\\/g, '/');
                 const fontsDir = path.join(__dirname, 'assets', 'fonts').replace(/\\/g, '/').replace(/:/g, '\\:');
 
-                vfFilters += `,subtitles='${relSrtPath}':fontsdir='${fontsDir}':force_style='Fontname=Oswald,Fontsize=38,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3.5,Alignment=2,MarginV=150'`;
+                const subFontSize = isVertical ? 28 : 38;
+                const subMarginV = isVertical ? 250 : 150;
+                vfFilters += `,subtitles='${relSrtPath}':fontsdir='${fontsDir}':force_style='Fontname=Oswald,Fontsize=${subFontSize},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3.5,Alignment=2,MarginV=${subMarginV}'`;
 
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
@@ -1012,7 +1017,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                         input: {
                             prompt: thumbPrompt,
                             size: "2K",
-                            aspect_ratio: "16:9",
+                            aspect_ratio: format === 'vertical' ? "9:16" : "16:9",
                             sequential_image_generation: "disabled"
                         }
                     }
@@ -1079,6 +1084,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             imageCount: scriptData.segments.length,
             mainNiche: mainNiche,
             subNiche: subNiche,
+            format: format,
             folderPath: videoFolder,
             createdAt: new Date().toISOString()
         };
