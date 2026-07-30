@@ -749,60 +749,58 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        // Universal Karaoke ASS Subtitle Generator (Word-by-Word Real-Time Color Highlighting)
-        function generateASS(text, durationSec, assPath, highlightColorHex = '&H0000FFFF') {
+        // Universal Word-by-Word Highlighted SRT Subtitle Generator (Real-Time Color Pop)
+        function generateHighlightSRT(text, durationSec, srtPath, highlightColorHex = '#00FF00') {
             const words = text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
             if (words.length === 0) words.push("...");
-            const timePerWordSec = durationSec / words.length;
-            const csPerWord = Math.max(10, Math.round(timePerWordSec * 100));
+            const timePerWord = durationSec / words.length;
 
-            const formatASSTime = (sec) => {
+            const formatSRTTime = (sec) => {
                 const h = Math.floor(sec / 3600);
                 const m = Math.floor((sec % 3600) / 60);
                 const s = Math.floor(sec % 60);
-                const cs = Math.floor((sec % 1) * 100);
-                return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
+                const ms = Math.floor((sec % 1) * 1000);
+                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
             };
 
-            let assContent = `[Script Info]
-ScriptType: v4.00+
-PlayResX: 1920
-PlayResY: 1080
+            let srtContent = "";
+            let srtIndex = 1;
+            let currentStart = 0;
 
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Oswald,44,&H00FFFFFF,${highlightColorHex},&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3.5,0,2,10,10,150,1
-
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-`;
-
-            let currentStartSec = 0;
             for (let i = 0; i < words.length; i += 3) {
                 const chunkWords = words.slice(i, i + 3);
-                const chunkDurationSec = timePerWordSec * chunkWords.length;
-                const chunkEndSec = currentStartSec + chunkDurationSec;
+                const chunkDuration = timePerWord * chunkWords.length;
+                const timePerChunkWord = chunkDuration / chunkWords.length;
 
-                const startStr = formatASSTime(currentStartSec);
-                const endStr = formatASSTime(chunkEndSec);
+                for (let wIdx = 0; wIdx < chunkWords.length; wIdx++) {
+                    const wordStart = currentStart + (wIdx * timePerChunkWord);
+                    const wordEnd = wordStart + timePerChunkWord;
 
-                let kText = "";
-                for (const w of chunkWords) {
-                    const cleanW = w.toUpperCase().replace(/[{}]/g, '');
-                    kText += `{\\k${csPerWord}}${cleanW} `;
+                    const startTimeStr = formatSRTTime(wordStart);
+                    const endTimeStr = formatSRTTime(wordEnd);
+
+                    const formattedWords = chunkWords.map((w, idx) => {
+                        const upperW = w.toUpperCase();
+                        if (idx === wIdx) {
+                            return `<font color="${highlightColorHex}">${upperW}</font>`;
+                        }
+                        return upperW;
+                    });
+
+                    const lineText = formattedWords.join(" ");
+                    srtContent += `${srtIndex}\n${startTimeStr} --> ${endTimeStr}\n${lineText}\n\n`;
+                    srtIndex++;
                 }
-
-                assContent += `Dialogue: 0,${startStr},${endStr},Default,,0,0,0,,${kText.trim()}\n`;
-                currentStartSec = chunkEndSec;
+                currentStart += chunkDuration;
             }
 
-            fs.writeFileSync(assPath, assContent, 'utf8');
+            fs.writeFileSync(srtPath, srtContent, 'utf8');
         }
 
-        addLog("Assets generated. Stitching clips with KARAOKE WORD-BY-WORD HIGHLIGHT CAPTIONS in parallel...");
+        addLog("Assets generated. Stitching clips with WORD-BY-WORD HIGHLIGHT CAPTIONS in parallel...");
         const activeFfmpegPath = ffmpeg.path || detectedFfmpeg || "ffmpeg";
         addLog(`[PRODUCTION LOG] Active FFmpeg Binary: ${activeFfmpegPath}`);
-        addLog(`[SUBTITLE ENGINE] Active Word Karaoke Subtitle Engine (Font: Oswald-Bold, Word-by-Word Highlight)`);
+        addLog(`[SUBTITLE ENGINE] Bulletproof Word-by-Word Highlight Subtitle Engine Active`);
         
         const clipPaths = new Array(clips.length);
         
@@ -817,21 +815,21 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 const clipPath = path.join(projectDir, `clip_${j}.mp4`);
                 clipPaths[j] = clipPath;
 
-                const assPath = path.join(projectDir, `sub_${j}.ass`);
+                const srtPath = path.join(projectDir, `sub_${j}.srt`);
                 
-                let highlightColorHex = "&H0000FFFF"; // Yellow (Default)
+                let highlightColorHex = "#FFFF00"; // Bright Yellow (Default)
                 const n = (mainNiche || "").toLowerCase();
                 if (n.includes("crime") || n.includes("horror") || n.includes("revenge") || n.includes("survival")) {
-                    highlightColorHex = "&H000000FF"; // Blood Red
+                    highlightColorHex = "#FF3333"; // Crimson Red
                 } else if (n.includes("finance") || n.includes("wealth") || n.includes("luxury") || n.includes("business") || n.includes("motivation")) {
-                    highlightColorHex = "&H0000FF00"; // Money Green
+                    highlightColorHex = "#00FF66"; // Money Neon Green
                 } else if (n.includes("space") || n.includes("science") || n.includes("tech")) {
-                    highlightColorHex = "&H00FFFF00"; // Cyan
+                    highlightColorHex = "#00E5FF"; // Bright Cyan
                 } else if (n.includes("history") || n.includes("stoicism") || n.includes("philosophy") || n.includes("military")) {
-                    highlightColorHex = "&H0000D7FF"; // Gold
+                    highlightColorHex = "#FFD700"; // Rich Gold
                 }
 
-                generateASS(clip.text, clip.duration, assPath, highlightColorHex);
+                generateHighlightSRT(clip.text, clip.duration, srtPath, highlightColorHex);
                 
                 // Build Dynamic Filter Chain for Context-Aware Editing & Monetization Safety
                 let vfFilters = `scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB`;
@@ -848,11 +846,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     vfFilters += `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,0,1)'`;
                 }
 
-                const escapedAssPath = assPath.replace(/\\/g, '/').replace(/:/g, '\\:');
-                const fontsDir = path.join(__dirname, 'assets', 'fonts');
-                const escapedFontsDir = fontsDir.replace(/\\/g, '/').replace(/:/g, '\\:');
+                const relSrtPath = path.relative(process.cwd(), srtPath).replace(/\\/g, '/');
+                const fontsDir = path.join(__dirname, 'assets', 'fonts').replace(/\\/g, '/').replace(/:/g, '\\:');
 
-                vfFilters += `,subtitles='${escapedAssPath}':fontsdir='${escapedFontsDir}'`;
+                vfFilters += `,subtitles='${relSrtPath}':fontsdir='${fontsDir}':force_style='Fontname=Oswald,Fontsize=38,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3.5,Alignment=2,MarginV=150'`;
 
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
