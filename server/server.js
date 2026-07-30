@@ -906,6 +906,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         
         await bgmPromise; // Ensure Lyria-3 generation is complete
         const finalVideoPath = path.join(outputDir, `${videoId}.mp4`);
+        const finalVideoTmpPath = path.join(outputDir, `${videoId}.tmp.mp4`);
         
         let finalBgmToMix = null;
         if (lyriaBgmPath && fs.existsSync(lyriaBgmPath)) {
@@ -941,15 +942,22 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                         '[1:a]volume=0.25[bgm];[0:a][bgm]amix=inputs=2:duration=first[a]'
                     ])
                     .outputOptions([
-                        '-map 0:v:0', // Keep original video stream
-                        '-map [a]',   // Use mixed audio stream
-                        '-c:v copy',  // Instant video copy
+                        '-map 0:v:0',           // Keep original video stream
+                        '-map [a]',             // Use mixed audio stream
+                        '-c:v copy',            // Instant video copy
                         '-c:a aac',
-                        '-b:a 192k'
+                        '-b:a 192k',
+                        '-movflags +faststart'  // Relocate moov atom to start of file for web streaming
                     ])
-                    .save(finalVideoPath)
-                    .on('end', resolve)
-                    .on('error', reject);
+                    .save(finalVideoTmpPath)
+                    .on('end', () => {
+                        fs.renameSync(finalVideoTmpPath, finalVideoPath);
+                        resolve();
+                    })
+                    .on('error', (err) => {
+                        if (fs.existsSync(finalVideoTmpPath)) fs.unlinkSync(finalVideoTmpPath);
+                        reject(err);
+                    });
                 global.currentJob.ffmpegProcesses.push(cmd);
             });
         } else {
