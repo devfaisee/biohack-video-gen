@@ -749,46 +749,60 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        // Universal SRT Subtitle Generator (Mathematical Word Timing, 3-Word Kinetic Chunks & Niche Styling)
-        function generateSRT(text, durationSec, srtPath) {
+        // Universal Karaoke ASS Subtitle Generator (Word-by-Word Real-Time Color Highlighting)
+        function generateASS(text, durationSec, assPath, highlightColorHex = '&H0000FFFF') {
             const words = text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
             if (words.length === 0) words.push("...");
-            const timePerWord = durationSec / words.length;
+            const timePerWordSec = durationSec / words.length;
+            const csPerWord = Math.max(10, Math.round(timePerWordSec * 100));
 
-            const formatSRTTime = (sec) => {
+            const formatASSTime = (sec) => {
                 const h = Math.floor(sec / 3600);
                 const m = Math.floor((sec % 3600) / 60);
                 const s = Math.floor(sec % 60);
-                const ms = Math.floor((sec % 1) * 1000);
-                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
+                const cs = Math.floor((sec % 1) * 100);
+                return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
             };
 
-            let srtContent = "";
-            let srtIndex = 1;
-            let currentStart = 0;
+            let assContent = `[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
 
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Oswald,44,&H00FFFFFF,${highlightColorHex},&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3.5,0,2,10,10,150,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`;
+
+            let currentStartSec = 0;
             for (let i = 0; i < words.length; i += 3) {
                 const chunkWords = words.slice(i, i + 3);
-                const chunkDuration = timePerWord * chunkWords.length;
-                const chunkEnd = currentStart + chunkDuration;
+                const chunkDurationSec = timePerWordSec * chunkWords.length;
+                const chunkEndSec = currentStartSec + chunkDurationSec;
 
-                const startTimeStr = formatSRTTime(currentStart);
-                const endTimeStr = formatSRTTime(chunkEnd);
-                const chunkText = chunkWords.join(" ").toUpperCase();
+                const startStr = formatASSTime(currentStartSec);
+                const endStr = formatASSTime(chunkEndSec);
 
-                srtContent += `${srtIndex}\n${startTimeStr} --> ${endTimeStr}\n${chunkText}\n\n`;
-                srtIndex++;
+                let kText = "";
+                for (const w of chunkWords) {
+                    const cleanW = w.toUpperCase().replace(/[{}]/g, '');
+                    kText += `{\\k${csPerWord}}${cleanW} `;
+                }
 
-                currentStart = chunkEnd;
+                assContent += `Dialogue: 0,${startStr},${endStr},Default,,0,0,0,,${kText.trim()}\n`;
+                currentStartSec = chunkEndSec;
             }
 
-            fs.writeFileSync(srtPath, srtContent);
+            fs.writeFileSync(assPath, assContent, 'utf8');
         }
 
-        addLog("Assets generated. Stitching clips with UNIVERSAL KINETIC SUBTITLES in parallel...");
+        addLog("Assets generated. Stitching clips with KARAOKE WORD-BY-WORD HIGHLIGHT CAPTIONS in parallel...");
         const activeFfmpegPath = ffmpeg.path || detectedFfmpeg || "ffmpeg";
         addLog(`[PRODUCTION LOG] Active FFmpeg Binary: ${activeFfmpegPath}`);
-        addLog(`[SUBTITLE ENGINE] Universal SRT Subtitle Engine Active (Font: Oswald-Bold, Sleek 38px, Dynamic Colors)`);
+        addLog(`[SUBTITLE ENGINE] Active Word Karaoke Subtitle Engine (Font: Oswald-Bold, Word-by-Word Highlight)`);
         
         const clipPaths = new Array(clips.length);
         
@@ -803,30 +817,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 const clipPath = path.join(projectDir, `clip_${j}.mp4`);
                 clipPaths[j] = clipPath;
 
-                const srtPath = path.join(projectDir, `sub_${j}.srt`);
-                generateSRT(clip.text, clip.duration, srtPath);
+                const assPath = path.join(projectDir, `sub_${j}.ass`);
                 
-                // Build Dynamic Filter Chain for Context-Aware Editing & Monetization Safety
-                let vfFilters = `scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB`;
-                if (visualSource === 'stock_videos') {
-                    vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.2,vignette=PI/4`;
-                }
-
-                // Smart Transitions & Pattern Interrupts
-                if (clip.transition === "fade_in") {
-                    vfFilters += `,fade=t=in:st=0:d=0.5`;
-                } else if (clip.transition === "glitch") {
-                    // Intense inverted flash for 0.1 seconds
-                    vfFilters += `,negate=enable='between(t,0,0.1)'`;
-                } else if (clip.transition === "blackout") {
-                    // Pattern Interrupt: Complete black screen for 1 second
-                    vfFilters += `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,0,1)'`;
-                }
-
-                const escapedSrtPath = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:');
-                const fontsDir = path.join(__dirname, 'assets', 'fonts');
-                const escapedFontsDir = fontsDir.replace(/\\/g, '/').replace(/:/g, '\\:');
-
                 let highlightColorHex = "&H0000FFFF"; // Yellow (Default)
                 const n = (mainNiche || "").toLowerCase();
                 if (n.includes("crime") || n.includes("horror") || n.includes("revenge") || n.includes("survival")) {
@@ -839,7 +831,28 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     highlightColorHex = "&H0000D7FF"; // Gold
                 }
 
-                vfFilters += `,subtitles='${escapedSrtPath}':fontsdir='${escapedFontsDir}':force_style='Fontname=Oswald,Fontsize=38,PrimaryColour=${highlightColorHex},OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=3,Outline=3,MarginV=140'`;
+                generateASS(clip.text, clip.duration, assPath, highlightColorHex);
+                
+                // Build Dynamic Filter Chain for Context-Aware Editing & Monetization Safety
+                let vfFilters = `scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setpts=N/FRAME_RATE/TB`;
+                if (visualSource === 'stock_videos') {
+                    vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.2,vignette=PI/4`;
+                }
+
+                // Smart Transitions & Pattern Interrupts
+                if (clip.transition === "fade_in") {
+                    vfFilters += `,fade=t=in:st=0:d=0.5`;
+                } else if (clip.transition === "glitch") {
+                    vfFilters += `,negate=enable='between(t,0,0.1)'`;
+                } else if (clip.transition === "blackout") {
+                    vfFilters += `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,0,1)'`;
+                }
+
+                const escapedAssPath = assPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+                const fontsDir = path.join(__dirname, 'assets', 'fonts');
+                const escapedFontsDir = fontsDir.replace(/\\/g, '/').replace(/:/g, '\\:');
+
+                vfFilters += `,subtitles='${escapedAssPath}':fontsdir='${escapedFontsDir}'`;
 
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
@@ -905,8 +918,17 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         addLog("Mixing Background Music at 25% Volume...");
         
         await bgmPromise; // Ensure Lyria-3 generation is complete
-        const finalVideoPath = path.join(outputDir, `${videoId}.mp4`);
-        const finalVideoTmpPath = path.join(outputDir, `${videoId}.tmp.mp4`);
+
+        // Create organized subfolder for this video: [YYYY-MM-DD]_[Clean_Title]_[ShortId]
+        const dateStr = new Date().toISOString().split('T')[0];
+        const titleSlug = (scriptData.title || "Video").replace(/[^a-zA-Z0-9_\- ]/g, '').trim().substring(0, 45).replace(/\s+/g, '_');
+        const folderName = `${dateStr}_${titleSlug}_${videoId.substring(0, 8)}`;
+        const videoFolder = path.join(outputDir, folderName);
+        if (!fs.existsSync(videoFolder)) fs.mkdirSync(videoFolder, { recursive: true });
+
+        const finalVideoPath = path.join(videoFolder, 'video.mp4');
+        const finalVideoTmpPath = path.join(videoFolder, 'video.tmp.mp4');
+        const legacyVideoPath = path.join(outputDir, `${videoId}.mp4`); // Legacy flat path compatibility
         
         let finalBgmToMix = null;
         if (lyriaBgmPath && fs.existsSync(lyriaBgmPath)) {
@@ -952,6 +974,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     .save(finalVideoTmpPath)
                     .on('end', () => {
                         fs.renameSync(finalVideoTmpPath, finalVideoPath);
+                        try { fs.copyFileSync(finalVideoPath, legacyVideoPath); } catch (_) {}
                         resolve();
                     })
                     .on('error', (err) => {
@@ -963,14 +986,16 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         } else {
             // Fallback if BGM doesn't exist
             fs.copyFileSync(stitchedVideoPath, finalVideoPath);
+            try { fs.copyFileSync(finalVideoPath, legacyVideoPath); } catch (_) {}
         }
 
         // -------------------------
         // Generate YouTube Thumbnail
         // -------------------------
         addLog("Generating Viral YouTube Thumbnail...");
-        const thumbUrlPath = `/output/${videoId}_thumb.jpg`;
-        const thumbLocalPath = path.join(outputDir, `${videoId}_thumb.jpg`);
+        const thumbUrlPath = `/output/${folderName}/thumbnail.jpg`;
+        const thumbLocalPath = path.join(videoFolder, `thumbnail.jpg`);
+        const legacyThumbPath = path.join(outputDir, `${videoId}_thumb.jpg`);
         try {
             let thumbPrompt = scriptData.thumbnailPrompt;
             if (!thumbPrompt) {
@@ -996,6 +1021,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             
             const thumbBuffer = await withRetry(() => axios.get(thumbUrl[0], { responseType: 'arraybuffer' }), "Download Thumbnail");
             fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
+            try { fs.copyFileSync(thumbLocalPath, legacyThumbPath); } catch (_) {}
             
             addLog("Thumbnail Generated Successfully!");
             
@@ -1039,7 +1065,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             console.warn("Thumbnail generation failed:", e.message);
         }
 
-        const finalUrl = `/output/${videoId}.mp4`;
+        const finalUrl = `/output/${folderName}/video.mp4`;
         
         // Save metadata for the Library
         const metadata = {
@@ -1053,9 +1079,11 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             imageCount: scriptData.segments.length,
             mainNiche: mainNiche,
             subNiche: subNiche,
+            folderPath: videoFolder,
             createdAt: new Date().toISOString()
         };
-        fs.writeFileSync(path.join(outputDir, `${videoId}.json`), JSON.stringify(metadata, null, 2));
+        fs.writeFileSync(path.join(videoFolder, `metadata.json`), JSON.stringify(metadata, null, 2));
+        fs.writeFileSync(path.join(outputDir, `${videoId}.json`), JSON.stringify(metadata, null, 2)); // Legacy root copy
 
         addLog(`Video generated successfully: ${finalUrl}`);
         
@@ -1120,20 +1148,40 @@ app.post('/api/queue/clear', (req, res) => {
     global.jobQueue = [];
     res.json({ message: "Queue cleared." });
 });
-// Endpoint to fetch all previously generated videos
+// Endpoint to fetch all previously generated videos (scans root & subfolders)
 app.get('/api/videos', (req, res) => {
     try {
-        const files = fs.readdirSync(outputDir);
         const videos = [];
-        for (const file of files) {
-            if (file.endsWith('.json')) {
-                const data = JSON.parse(fs.readFileSync(path.join(outputDir, file), 'utf8'));
-                videos.push(data);
+        function scanDir(dir) {
+            if (!fs.existsSync(dir)) return;
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    scanDir(fullPath);
+                } else if (entry.isFile() && entry.name.endsWith('.json')) {
+                    try {
+                        const data = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+                        if (data && data.title && data.videoUrl) {
+                            videos.push(data);
+                        }
+                    } catch (_) {}
+                }
             }
         }
-        // Sort by newest first
+        scanDir(outputDir);
+        // Deduplicate by video id
+        const unique = [];
+        const seen = new Set();
         videos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        res.json(videos);
+        for (const v of videos) {
+            const key = v.id || v.videoUrl;
+            if (key && !seen.has(key)) {
+                seen.add(key);
+                unique.push(v);
+            }
+        }
+        res.json(unique);
     } catch (err) {
         console.error("Error reading video library:", err);
         res.status(500).json({ error: "Failed to read videos" });

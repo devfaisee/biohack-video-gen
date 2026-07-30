@@ -217,19 +217,36 @@ function CreatorStudio() {
     setLogs([]);
     setResult(null);
     try {
+      // Ensure server is online before posting generation
+      let attempts = 0;
+      let ok = false;
+      while (attempts < 5 && !ok) {
+        try {
+          await axios.get(`${baseUrl}/api/health`, { timeout: 2000 });
+          ok = true;
+        } catch {
+          attempts++;
+          await new Promise(r => setTimeout(r, 800));
+        }
+      }
       await axios.post(`${baseUrl}/api/generate`, {
         durationMinutes: duration, format: 'horizontal', topic, mainNiche, subNiche, visualSource, customTitle, customDescription
       });
       toast('Pipeline started! Generating your masterpiece...', 'info');
     } catch {
-      toast('Failed to start generation. Server may be busy.', 'error');
+      toast('Failed to start generation. Server may be starting, try again in 3 seconds.', 'error');
       setLoading(false);
     }
   }, [baseUrl, duration, topic, mainNiche, subNiche, visualSource, customTitle, customDescription, toast]);
 
   const cancelGeneration = useCallback(async () => {
     try {
-      await axios.post(`${baseUrl}/api/cancel`);
+      // In Electron Local PC mode: use the IPC bridge so main process sends cancel to local server
+      if (typeof window !== 'undefined' && window.desktopAPI?.isElectron) {
+        await window.desktopAPI.cancelGeneration();
+      } else {
+        await axios.post(`${baseUrl}/api/cancel`);
+      }
       setLoading(false);
       toast('Generation cancelled.', 'info');
     } catch {
@@ -357,6 +374,9 @@ function CreatorStudio() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="result-card">
               <div className="result-layout">
                 <div className="result-main">
+                  <div className="result-video-preview" style={{ marginBottom: '1.25rem' }}>
+                    <video src={result.videoUrl} controls autoPlay poster={result.thumbnailUrl || undefined} style={{ width: '100%', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', background: '#000' }} />
+                  </div>
                   <div className="result-title-row">
                     <h2 className="result-title">{result.title}</h2>
                     <button className="copy-btn" onClick={() => copy(result.title, 'title')} title="Copy Title">
@@ -377,13 +397,20 @@ function CreatorStudio() {
                       </button>
                     </div>
                   )}
-                  <div className="result-actions">
-                    <a href={result.videoUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
-                      <Video size={16} /> Watch Video
+                  <div className="result-actions" style={{ flexWrap: 'wrap', gap: '8px', marginTop: '1rem' }}>
+                    <a href={result.videoUrl} download className="btn btn-primary">
+                      <Download size={16} /> Download MP4
                     </a>
-                    <a href={result.videoUrl} download className="btn btn-ghost">
-                      <Download size={16} /> Download
-                    </a>
+                    {result.thumbnailUrl && (
+                      <a href={result.thumbnailUrl} download className="btn btn-secondary">
+                        <Download size={16} /> Download Thumbnail
+                      </a>
+                    )}
+                    {typeof window !== 'undefined' && window.desktopAPI?.isElectron && (
+                      <button className="btn btn-ghost" onClick={() => window.desktopAPI.openOutputFolder()}>
+                        📁 Open Folder
+                      </button>
+                    )}
                   </div>
                 </div>
                 {result.thumbnailUrl && (
@@ -449,6 +476,9 @@ function VideoModal({ video, onClose }) {
           <div className="modal-actions">
             <a href={`${baseUrl}${video.videoUrl}`} download className="btn btn-primary"><Download size={16} /> Download MP4</a>
             {video.thumbnailUrl && <a href={`${baseUrl}${video.thumbnailUrl}`} download className="btn btn-secondary"><Download size={16} /> Thumbnail</a>}
+            {typeof window !== 'undefined' && window.desktopAPI?.isElectron && (
+              <button className="btn btn-secondary" onClick={() => window.desktopAPI.openOutputFolder()}>📁 Open Folder</button>
+            )}
             <button className="btn btn-ghost" onClick={() => { const all = `Title: ${video.title}\n\nDescription:\n${video.description}\n\nTags: ${(video.tags||[]).map(t=>'#'+t).join(' ')}`; copy(all, 'mall'); }}>
               {copied === 'mall' ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy All</>}
             </button>
