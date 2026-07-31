@@ -449,18 +449,29 @@ NUMBERED LIST & STRUCTURAL INTEGRITY MANDATE:
 If the user's topic or title specifies a numbered list (e.g., "10 habits", "7 secrets", "5 rules", "12 tips"), you MUST explicitly write out and cover EVERY SINGLE item sequentially from #1 through #N. Do NOT stop early, skip numbers, or summarize halfway. Every item must receive full detail and narration.
 
 CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
-CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
 1. PSYCHOLOGICAL HOOK: The first 5 seconds MUST use one of these hook frameworks: 
    - The Contrarian Hook: "Everything you've been told about X is a lie."
    - The Negative Hook: "Do not do X until you understand this dark reality."
    - In-Media-Res: Start exactly at the climax of the story, then rewind.
-2. OPEN LOOPS: You MUST plant a massive, unanswered question or mystery in the first 60 seconds and explicitly promise the payoff at the end.
+2. OPEN LOOP ENFORCEMENT: You MUST plant ONE specific, unanswered mystery in the FIRST segment. Reference it briefly at the ~50% mark to remind viewers it is still unanswered. Deliver the FULL payoff in the SECOND-TO-LAST segment. The LAST segment is reserved for the end screen CTA.
 3. VISUAL PACING & PATTERN INTERRUPTS: Visuals must change RAPIDLY. Provide a new visual instruction every sentence. Use a "blackout" transition for a sudden 1-second black screen during a whispered secret.
 4. TITLE & SEO: The title must be highly clickable and psychologically compelling, MrBeast or Ali Abdaal level of clickbait but factual. 
-5. TAGS/KEYWORDS: Provide 20-30 highly targeted, algorithm-optimizing SEO tags. You MUST include a mix of short-tail (1 word), medium-tail (2-3 words), and very long-tail phrases (4-6 words) that people actually search for in this specific niche.
-6. DESCRIPTION: Write a very engaging, long SEO description with emojis, timestamps, and a dedicated "Keywords" paragraph at the bottom.
-7. CONTEXT-AWARE EDITING: For every segment, you MUST act as the video editor. Choose a "transition" ("none", "fade_in", "glitch", or "blackout") and a "camera_motion" ("static" or "zoom_in"). Use "glitch" for shocking/scary moments, "fade_in" for tone shifts, "blackout" for pattern interrupts, and "zoom_in" for intense focus. Keep most transitions as "none" to avoid overwhelming the viewer.
-7. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter. Even for True Crime or Horror, you MUST NOT use banned words like "kill", "murder", "rape", "drug", "suicide", "blood", or "gore". Use safe alternatives like "eliminated", "dark fate", "perished", "tragic end", "substance", or "mystery". If you use banned words, the generation will instantly fail.
+5. TAG DISTRIBUTION MANDATE: Provide 25-30 highly targeted, algorithm-optimizing SEO tags with this exact distribution:
+   - 5 short-tail tags (1 word): "psychology", "wealth", "secrets"
+   - 10 medium-tail tags (2-3 words): "dark psychology", "wealth building tips"
+   - 10 long-tail tags (4-7 words): "dark psychology tactics used by narcissists"
+   - 5 trending/timely tags: "2026", "new research", "just discovered"
+6. DESCRIPTION STRUCTURE (in this exact order):
+   a) Compelling 2-3 sentence hook paragraph with emojis
+   b) ⏱️ TIMESTAMPS section with chapters for every 2-3 segments
+   c) 📌 About This Video — 2 paragraph detailed summary
+   d) 🔑 Keywords — 30+ long-tail search phrases separated by commas
+   e) 3 hashtags at the very end (#niche #subniche #topic)
+   f) MANDATORY LAST LINE: "⚠️ This video uses AI-assisted narration and visuals."
+7. CONTEXT-AWARE EDITING: For every segment, you MUST act as the video editor. Choose a "transition" ("none", "fade_in", "glitch", or "blackout") and a "camera_motion" ("static" or "zoom_in"). Use "glitch" for shocking/scary moments, "fade_in" for tone shifts, "blackout" for pattern interrupts, and "zoom_in" for intense focus. Vary the distribution — do NOT use only "none" for every segment.
+8. COMMENT ENGAGEMENT: Include ONE natural engagement prompt somewhere in the middle of the script (around the 40-60% mark). Example: "Drop a comment below — which of these shocked you the most?" or "Let me know in the comments if you have ever experienced this."
+9. END SCREEN CTA: The LAST segment (final 15-20 seconds) MUST be a compelling call-to-action: "If this blew your mind, you need to see what we cover next. Subscribe and hit the bell so you never miss a deep dive like this." This segment's visual should be a clean, simple background suitable for YouTube end screen cards.
+10. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter. Even for True Crime or Horror, you MUST NOT use banned words like "kill", "murder", "rape", "drug", "suicide", "blood", or "gore". Use safe alternatives like "eliminated", "dark fate", "perished", "tragic end", "substance", or "mystery". If you use banned words, the generation will instantly fail.
 
 We are using Gemini 3.1 Flash TTS for the voiceover.
 - DO NOT use inline expressive tags like [whispering] or [fast]. The delivery MUST be professional, consistent, and perfectly paced.
@@ -470,12 +481,12 @@ We are using Gemini 3.1 Flash TTS for the voiceover.
 Output pure JSON with the following structure:
 {
   "title": "A highly clickable, viral YouTube title",
-  "description": "YouTube video description optimized for SEO with chapters, engaging copy, and a keyword dump at the bottom",
-  "tags": ["huberman lab", "neuroplasticity protocol for focus", "dopamine optimization", "cognitive performance", "how to improve memory 2024", "brain"],
+  "description": "YouTube video description following the DESCRIPTION STRUCTURE above",
+  "tags": ["psychology", "dark psychology", "wealth building tips", "dark psychology tactics used by narcissists", "2026 new research"],
   "hasThumbnailText": true,
   "thumbnailText": "THE SECRET",
   "thumbnailTextReason": "Short 2-word curiosity trigger that complements the title without repeating it",
-  "thumbnailPrompt": "A masterwork YouTube thumbnail background image prompt designed for maximum Click-Through Rate (CTR) and doomscroll-stopping virality. 1. Show ONE intense central focal point or high-stakes visual mystery. 2. Dramatic 3-point volumetric lighting with glowing neon accents contrasting deep shadows. 3. Extreme depth-of-field background blur (bokeh). 4. Include bold, clean, high-contrast white typography reading 'THE SECRET' placed cleanly in empty space. 5. Cinematic color grade.",
+  "thumbnailPrompt": "A masterwork YouTube thumbnail BACKGROUND (no baked-in text). 1. ONE dramatic central focal point — a mysterious human silhouette, dramatic object, or high-stakes visual mystery. 2. Dramatic 3-point volumetric lighting with glowing neon accents contrasting deep shadows. 3. Extreme depth-of-field background blur (bokeh). 4. Clean empty space on one side for external text overlay. 5. Cinematic teal-orange color grade. DO NOT include any text in the image.",
   "segments": [
     {
       "narration": "Did you know that your memory can be mathematically optimized? The science behind it is shocking.",
@@ -753,11 +764,14 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        // Universal Word-by-Word Highlighted SRT Subtitle Generator (Real-Time Color Pop)
+        // Universal Word-by-Word Highlighted SRT Subtitle Generator (Proportional Timing + Anti-Template Variety)
         function generateHighlightSRT(text, durationSec, srtPath, highlightColorHex = '#00FF00') {
             const words = text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
             if (words.length === 0) words.push("...");
-            const timePerWord = durationSec / words.length;
+
+            // Proportional timing: longer words get more display time
+            const totalChars = words.reduce((sum, w) => sum + Math.max(w.length, 2), 0);
+            const timePerChar = durationSec / totalChars;
 
             const formatSRTTime = (sec) => {
                 const h = Math.floor(sec / 3600);
@@ -767,20 +781,24 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
             };
 
+            // Anti-template: vary chunk size (2-4 words) to avoid identical subtitle patterns
+            const chunkSize = 2 + Math.floor(Math.random() * 2); // 2 or 3
+
             let srtContent = "";
             let srtIndex = 1;
             let currentStart = 0;
 
-            for (let i = 0; i < words.length; i += 3) {
-                const chunkWords = words.slice(i, i + 3);
-                const chunkDuration = timePerWord * chunkWords.length;
-                const timePerChunkWord = chunkDuration / chunkWords.length;
+            for (let i = 0; i < words.length; i += chunkSize) {
+                const chunkWords = words.slice(i, i + chunkSize);
+                const chunkChars = chunkWords.reduce((sum, w) => sum + Math.max(w.length, 2), 0);
+                const chunkDuration = timePerChar * chunkChars;
 
                 for (let wIdx = 0; wIdx < chunkWords.length; wIdx++) {
-                    const wordStart = currentStart + (wIdx * timePerChunkWord);
-                    const wordEnd = wordStart + timePerChunkWord;
+                    const wordChars = Math.max(chunkWords[wIdx].length, 2);
+                    const wordDuration = timePerChar * wordChars;
+                    const wordEnd = currentStart + wordDuration;
 
-                    const startTimeStr = formatSRTTime(wordStart);
+                    const startTimeStr = formatSRTTime(currentStart);
                     const endTimeStr = formatSRTTime(wordEnd);
 
                     const formattedWords = chunkWords.map((w, idx) => {
@@ -794,8 +812,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     const lineText = formattedWords.join(" ");
                     srtContent += `${srtIndex}\n${startTimeStr} --> ${endTimeStr}\n${lineText}\n\n`;
                     srtIndex++;
+                    currentStart = wordEnd;
                 }
-                currentStart += chunkDuration;
             }
 
             fs.writeFileSync(srtPath, srtContent, 'utf8');
@@ -840,7 +858,11 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 const [outW, outH] = isVertical ? [1080, 1920] : [1920, 1080];
                 let vfFilters = `scale=${outW}:${outH}:force_original_aspect_ratio=increase,crop=${outW}:${outH},setpts=N/FRAME_RATE/TB`;
                 if (visualSource === 'stock_videos') {
-                    vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.2,vignette=PI/4`;
+                    // Enhanced visual transformation for stock footage (anti-reuse fingerprinting)
+                    const hueShift = Math.floor(Math.random() * 16) - 8; // Random ±8° hue shift
+                    vfFilters += `,eq=contrast=1.15:brightness=0.03:saturation=1.3,vignette=PI/3.5`;
+                    if (hueShift !== 0) vfFilters += `,hue=h=${hueShift}`;
+                    vfFilters += `,unsharp=5:5:0.8:3:3:0.4`; // Cinematic sharpening
                 }
 
                 // Smart Transitions & Pattern Interrupts
@@ -920,7 +942,9 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         // -------------------------
         // Mix Background Music
         // -------------------------
-        addLog("Mixing Background Music at 25% Volume...");
+        // Anti-template: randomize BGM volume between 20%-28% per generation
+        const bgmVolume = (0.20 + Math.random() * 0.08).toFixed(2);
+        addLog(`Mixing Background Music at ${Math.round(bgmVolume * 100)}% Volume...`);
         
         await bgmPromise; // Ensure Lyria-3 generation is complete
 
@@ -966,7 +990,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     .input(finalBgmToMix)
                     .inputOptions(['-stream_loop', '-1']) // Loop BGM infinitely
                     .complexFilter([
-                        '[1:a]volume=0.25[bgm];[0:a][bgm]amix=inputs=2:duration=first[a]'
+                        `[1:a]volume=${bgmVolume}[bgm];[0:a][bgm]amix=inputs=2:duration=first[a]`
                     ])
                     .outputOptions([
                         '-map 0:v:0',           // Keep original video stream
@@ -1084,6 +1108,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             imageCount: scriptData.segments.length,
             mainNiche: mainNiche,
             subNiche: subNiche,
+            aiDisclosureRequired: true,
+            visualSource: visualSource,
             format: format,
             folderPath: videoFolder,
             createdAt: new Date().toISOString()
