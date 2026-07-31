@@ -828,10 +828,21 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        // Universal Word-by-Word Highlighted SRT Subtitle Generator (Proportional Timing + Anti-Template Variety)
+        // Convert Hex #RRGGBB to ASS &H00BBGGRR& format for FFmpeg libass
+        function hexToASSColor(hex) {
+            const cleanHex = hex.replace('#', '');
+            const rr = cleanHex.substring(0, 2);
+            const gg = cleanHex.substring(2, 4);
+            const bb = cleanHex.substring(4, 6);
+            return `&H00${bb}${gg}${rr}&`;
+        }
+
+        // Universal Word-by-Word Highlighted SRT Subtitle Generator (Proportional Timing + Anti-Template Variety + Native ASS Color Tags)
         function generateHighlightSRT(text, durationSec, srtPath, highlightColorHex = '#00FF00') {
             const words = text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
             if (words.length === 0) words.push("...");
+
+            const assColor = hexToASSColor(highlightColorHex);
 
             // Proportional timing: longer words get more display time
             const totalChars = words.reduce((sum, w) => sum + Math.max(w.length, 2), 0);
@@ -845,7 +856,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
             };
 
-            // Anti-template: vary chunk size (2-4 words) to avoid identical subtitle patterns
+            // Anti-template: vary chunk size (2-3 words) to avoid identical subtitle patterns
             const chunkSize = 2 + Math.floor(Math.random() * 2); // 2 or 3
 
             let srtContent = "";
@@ -868,7 +879,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     const formattedWords = chunkWords.map((w, idx) => {
                         const upperW = w.toUpperCase();
                         if (idx === wIdx) {
-                            return `<font color="${highlightColorHex}">${upperW}</font>`;
+                            return `{\\c${assColor}}${upperW}{\\r}`;
                         }
                         return upperW;
                     });
