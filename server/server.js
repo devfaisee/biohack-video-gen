@@ -232,13 +232,10 @@ Output ONLY pure JSON:
   "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
         const scriptModels = [
-            "google/gemini-2.0-flash-exp:free",
-            "meta-llama/llama-3.3-70b-instruct:free",
-            "deepseek/deepseek-r1:free",
-            "x-ai/grok-2-1212",
-            "google/gemini-2.0-flash-001",
+            "openai/gpt-4o-mini",
+            "google/gemini-flash-1.5",
             "meta-llama/llama-3.3-70b-instruct",
-            "openai/gpt-4o-mini"
+            "deepseek/deepseek-chat"
         ];
         let chatCompletion = null;
         for (const modelId of scriptModels) {
@@ -540,13 +537,10 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         addLog("Generating script via OpenRouter LLM...");
         const scriptModels = [
-            "google/gemini-2.0-flash-exp:free",
-            "meta-llama/llama-3.3-70b-instruct:free",
-            "deepseek/deepseek-r1:free",
-            "x-ai/grok-2-1212",
-            "google/gemini-2.0-flash-001",
+            "openai/gpt-4o-mini",
+            "google/gemini-flash-1.5",
             "meta-llama/llama-3.3-70b-instruct",
-            "openai/gpt-4o-mini"
+            "deepseek/deepseek-chat"
         ];
         
         let chatCompletion = null;
