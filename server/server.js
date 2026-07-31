@@ -231,10 +231,27 @@ Output ONLY pure JSON:
   "thumbnailText": "They Know...",
   "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
-        const chatCompletion = await openai.chat.completions.create({
-            model: "x-ai/grok-4.5",
-            messages: [{ role: "user", content: prompt }]
-        });
+        const scriptModels = [
+            "google/gemini-2.0-flash-exp:free",
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "deepseek/deepseek-r1:free",
+            "x-ai/grok-2-1212",
+            "google/gemini-2.0-flash-001",
+            "meta-llama/llama-3.3-70b-instruct",
+            "openai/gpt-4o-mini"
+        ];
+        let chatCompletion = null;
+        for (const modelId of scriptModels) {
+            try {
+                chatCompletion = await openai.chat.completions.create({
+                    model: modelId,
+                    messages: [{ role: "user", content: prompt }]
+                });
+                if (chatCompletion && chatCompletion.choices && chatCompletion.choices.length > 0) break;
+            } catch (mErr) {
+                console.warn(`Idea model ${modelId} failed:`, mErr.message);
+            }
+        }
         
         if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0) {
             throw new Error("AI API failed to return a valid response for the idea. Please try again.");
@@ -521,16 +538,40 @@ Output pure JSON with the following structure:
 }
 Ensure the JSON is strictly valid and contains no markdown formatting around it.`;
 
-        addLog("Generating script via Grok 4.5 (OpenRouter)...");
-        const chatCompletion = await withRetry(async () => {
-            return await openai.chat.completions.create({
-                model: "x-ai/grok-4.5", 
-                messages: [{ role: "user", content: systemPrompt }]
-            });
-        }, "Script Generation (Grok)");
+        addLog("Generating script via OpenRouter LLM...");
+        const scriptModels = [
+            "google/gemini-2.0-flash-exp:free",
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "deepseek/deepseek-r1:free",
+            "x-ai/grok-2-1212",
+            "google/gemini-2.0-flash-001",
+            "meta-llama/llama-3.3-70b-instruct",
+            "openai/gpt-4o-mini"
+        ];
+        
+        let chatCompletion = null;
+        let lastError = null;
+        for (const modelId of scriptModels) {
+            try {
+                addLog(`Attempting script generation with model: ${modelId}`);
+                chatCompletion = await withRetry(async () => {
+                    return await openai.chat.completions.create({
+                        model: modelId, 
+                        messages: [{ role: "user", content: systemPrompt }]
+                    });
+                }, `Script Generation (${modelId})`, 2, 2000);
+                if (chatCompletion && chatCompletion.choices && chatCompletion.choices.length > 0) {
+                    addLog(`Script successfully generated with ${modelId}`);
+                    break;
+                }
+            } catch (mErr) {
+                lastError = mErr;
+                addLog(`Model ${modelId} unavailable: ${mErr.message}. Trying next fallback...`);
+            }
+        }
 
         if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0) {
-            throw new Error("AI Scriptwriter failed to return a response. This may be due to a rate limit or content filter.");
+            throw new Error(`AI Scriptwriter failed on all fallback models. Last error: ${lastError?.message || 'Unknown'}`);
         }
 
         let jsonStr = chatCompletion.choices[0].message.content;
