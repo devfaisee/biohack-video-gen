@@ -232,9 +232,9 @@ Output ONLY pure JSON:
   "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
         const scriptModels = [
+            "meta-llama/llama-3.3-70b-instruct",
             "openai/gpt-4o-mini",
             "google/gemini-flash-1.5",
-            "meta-llama/llama-3.3-70b-instruct",
             "deepseek/deepseek-chat"
         ];
         let chatCompletion = null;
@@ -246,7 +246,7 @@ Output ONLY pure JSON:
                 });
                 if (chatCompletion && chatCompletion.choices && chatCompletion.choices.length > 0) break;
             } catch (mErr) {
-                console.warn(`Idea model ${modelId} failed:`, mErr.message);
+                // Silent fallback
             }
         }
         
@@ -535,11 +535,11 @@ Output pure JSON with the following structure:
 }
 Ensure the JSON is strictly valid and contains no markdown formatting around it.`;
 
-        addLog("Generating script via OpenRouter LLM...");
+        addLog("Generating viral script & masterwork prompt...");
         const scriptModels = [
+            "meta-llama/llama-3.3-70b-instruct",
             "openai/gpt-4o-mini",
             "google/gemini-flash-1.5",
-            "meta-llama/llama-3.3-70b-instruct",
             "deepseek/deepseek-chat"
         ];
         
@@ -547,25 +547,20 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         let lastError = null;
         for (const modelId of scriptModels) {
             try {
-                addLog(`Attempting script generation with model: ${modelId}`);
-                chatCompletion = await withRetry(async () => {
-                    return await openai.chat.completions.create({
-                        model: modelId, 
-                        messages: [{ role: "user", content: systemPrompt }]
-                    });
-                }, `Script Generation (${modelId})`, 2, 2000);
+                chatCompletion = await openai.chat.completions.create({
+                    model: modelId, 
+                    messages: [{ role: "user", content: systemPrompt }]
+                });
                 if (chatCompletion && chatCompletion.choices && chatCompletion.choices.length > 0) {
-                    addLog(`Script successfully generated with ${modelId}`);
                     break;
                 }
             } catch (mErr) {
                 lastError = mErr;
-                addLog(`Model ${modelId} unavailable: ${mErr.message}. Trying next fallback...`);
             }
         }
 
         if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0) {
-            throw new Error(`AI Scriptwriter failed on all fallback models. Last error: ${lastError?.message || 'Unknown'}`);
+            throw new Error(`AI Scriptwriter failed to connect to OpenRouter LLM: ${lastError?.message || 'Unknown'}`);
         }
 
         let jsonStr = chatCompletion.choices[0].message.content;
