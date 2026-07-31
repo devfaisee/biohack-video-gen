@@ -819,39 +819,23 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        // Convert Hex #RRGGBB to ASS &H00BBGGRR& format for FFmpeg libass
-        function hexToASSColor(hex) {
-            const cleanHex = hex.replace('#', '');
-            const rr = cleanHex.substring(0, 2);
-            const gg = cleanHex.substring(2, 4);
-            const bb = cleanHex.substring(4, 6);
-            return `&H00${bb}${gg}${rr}&`;
-        }
-
-        // Universal Word-by-Word Highlighted SRT Subtitle Generator (Proportional Timing + Anti-Template Variety + Native ASS Color Tags)
-        function generateHighlightSRT(text, durationSec, srtPath, highlightColorHex = '#00FF00') {
+        // Bulletproof Kinetic Subtitle Engine using FFmpeg drawtext & direct fontfile pathing (Zero-libass dependency)
+        function generateDrawtextFilter(text, durationSec, isVertical, highlightColorHex = '#00FF00') {
+            const fontPath = path.join(__dirname, 'assets', 'fonts', 'Oswald-Bold.ttf').replace(/\\/g, '/').replace(/:/g, '\\:');
             const words = text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
-            if (words.length === 0) words.push("...");
+            if (words.length === 0) return '';
 
-            const assColor = hexToASSColor(highlightColorHex);
-
-            // Proportional timing: longer words get more display time
             const totalChars = words.reduce((sum, w) => sum + Math.max(w.length, 2), 0);
             const timePerChar = durationSec / totalChars;
 
-            const formatSRTTime = (sec) => {
-                const h = Math.floor(sec / 3600);
-                const m = Math.floor((sec % 3600) / 60);
-                const s = Math.floor(sec % 60);
-                const ms = Math.floor((sec % 1) * 1000);
-                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
-            };
+            const fontSize = isVertical ? 46 : 42;
+            const yPos = isVertical ? 'h-350' : 'h-180';
 
-            // Anti-template: vary chunk size (2-3 words) to avoid identical subtitle patterns
-            const chunkSize = 2 + Math.floor(Math.random() * 2); // 2 or 3
+            const cleanHex = highlightColorHex.replace('#', '');
+            const activeColor = `0x${cleanHex}`;
 
-            let srtContent = "";
-            let srtIndex = 1;
+            const chunkSize = 2 + Math.floor(Math.random() * 2); // 2 or 3 words
+            const filters = [];
             let currentStart = 0;
 
             for (let i = 0; i < words.length; i += chunkSize) {
@@ -864,25 +848,20 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     const wordDuration = timePerChar * wordChars;
                     const wordEnd = currentStart + wordDuration;
 
-                    const startTimeStr = formatSRTTime(currentStart);
-                    const endTimeStr = formatSRTTime(wordEnd);
+                    const st = currentStart.toFixed(2);
+                    const et = wordEnd.toFixed(2);
 
-                    const formattedWords = chunkWords.map((w, idx) => {
-                        const upperW = w.toUpperCase();
-                        if (idx === wIdx) {
-                            return `{\\c${assColor}}${upperW}{\\r}`;
-                        }
-                        return upperW;
-                    });
+                    const displayStr = chunkWords.map(w => w.toUpperCase()).join(" ").replace(/'/g, "'\\''").replace(/:/g, '\\:');
 
-                    const lineText = formattedWords.join(" ");
-                    srtContent += `${srtIndex}\n${startTimeStr} --> ${endTimeStr}\n${lineText}\n\n`;
-                    srtIndex++;
+                    filters.push(
+                        `drawtext=fontfile='${fontPath}':text='${displayStr}':fontsize=${fontSize}:fontcolor=${activeColor}:borderw=4:bordercolor=black:shadowx=2:shadowy=2:shadowcolor=black@0.8:x=(w-text_w)/2:y=${yPos}:enable='between(t,${st},${et})'`
+                    );
+
                     currentStart = wordEnd;
                 }
             }
 
-            fs.writeFileSync(srtPath, srtContent, 'utf8');
+            return filters.join(',');
         }
 
         addLog("Assets generated. Stitching clips with WORD-BY-WORD HIGHLIGHT CAPTIONS in parallel...");
@@ -952,12 +931,10 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     vfFilters += `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,0,1)'`;
                 }
 
-                const relSrtPath = path.relative(process.cwd(), srtPath).replace(/\\/g, '/');
-                const fontsDir = path.join(__dirname, 'assets', 'fonts').replace(/\\/g, '/').replace(/:/g, '\\:');
-
-                const subFontSize = isVertical ? 28 : 38;
-                const subMarginV = isVertical ? 250 : 150;
-                vfFilters += `,subtitles='${relSrtPath}':fontsdir='${fontsDir}':force_style='Fontname=Oswald,Fontsize=${subFontSize},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=3.5,Alignment=2,MarginV=${subMarginV}'`;
+                const drawtextFilter = generateDrawtextFilter(clip.text, clip.duration, isVertical, highlightColorHex);
+                if (drawtextFilter) {
+                    vfFilters += `,${drawtextFilter}`;
+                }
 
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
