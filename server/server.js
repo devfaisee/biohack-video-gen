@@ -232,10 +232,11 @@ Output ONLY pure JSON:
   "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
         const scriptModels = [
-            "meta-llama/llama-3.3-70b-instruct",
+            "x-ai/grok-4.5",
+            "x-ai/grok-2",
+            "x-ai/grok-beta",
             "openai/gpt-4o-mini",
-            "google/gemini-flash-1.5",
-            "deepseek/deepseek-chat"
+            "meta-llama/llama-3.3-70b-instruct"
         ];
         let chatCompletion = null;
         for (const modelId of scriptModels) {
@@ -537,10 +538,11 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         addLog("Generating viral script & masterwork prompt...");
         const scriptModels = [
-            "meta-llama/llama-3.3-70b-instruct",
+            "x-ai/grok-4.5",
+            "x-ai/grok-2",
+            "x-ai/grok-beta",
             "openai/gpt-4o-mini",
-            "google/gemini-flash-1.5",
-            "deepseek/deepseek-chat"
+            "meta-llama/llama-3.3-70b-instruct"
         ];
         
         let chatCompletion = null;
