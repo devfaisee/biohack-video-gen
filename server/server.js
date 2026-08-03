@@ -141,7 +141,46 @@ app.get('/api/logs', (req, res) => {
 
 // Robust Retry Logic with Exponential Backoff & 429 Rate-Limit Awareness
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-async function withRetry(fn, operationName, maxRetries = 10, baseDelayMs = 4000) {
+
+// Global Replicate Concurrency & Rate Limit Serializer
+let replicateQueue = Promise.resolve();
+let replicateCooldownUntil = 0;
+
+async function safeReplicateRun(modelIdentifier, inputOptions, label = "Replicate Task") {
+    return new Promise((resolve, reject) => {
+        replicateQueue = replicateQueue.then(async () => {
+            const now = Date.now();
+            if (now < replicateCooldownUntil) {
+                const waitMs = replicateCooldownUntil - now;
+                addLog(`[RATE-LIMIT PROTECTOR] Cooling down Replicate API for ${Math.ceil(waitMs/1000)}s to reset quota...`);
+                await sleep(waitMs);
+            }
+
+            try {
+                const res = await withRetry(async () => {
+                    return await replicate.run(modelIdentifier, inputOptions);
+                }, label, 20, 5000);
+                
+                // Add 2.5s minimum gap between Replicate calls
+                replicateCooldownUntil = Date.now() + 2500;
+                resolve(res);
+            } catch (err) {
+                const errStr = String(err.message || err.detail || err || '');
+                const match = errStr.match(/retry_after["\s:=]*(\d+)/i);
+                if (match && match[1]) {
+                    const sec = parseInt(match[1], 10);
+                    if (!isNaN(sec) && sec > 0) {
+                        replicateCooldownUntil = Date.now() + ((sec + 5) * 1000);
+                        addLog(`[RATE-LIMIT PROTECTOR] API rate limit triggered (${sec}s). Global cooldown active until ${new Date(replicateCooldownUntil).toLocaleTimeString()}`);
+                    }
+                }
+                reject(err);
+            }
+        }).catch(reject);
+    });
+}
+
+async function withRetry(fn, operationName, maxRetries = 20, baseDelayMs = 4000) {
     for (let i = 0; i < maxRetries; i++) {
         try {
             return await fn();
@@ -150,22 +189,29 @@ async function withRetry(fn, operationName, maxRetries = 10, baseDelayMs = 4000)
                 addLog(`[FATAL] ${operationName} failed after ${maxRetries} attempts.`);
                 throw err;
             }
-            let currentDelay = Math.round(baseDelayMs * Math.pow(1.4, i));
-            // Check for explicit 429 status code or retry_after in Replicate error objects
+            let currentDelay = Math.round(baseDelayMs * Math.pow(1.3, i));
+            const errStr = String(err.message || err.detail || err || '');
+            
             const isRateLimitErr = err.status === 429 || 
                                   (err.response && err.response.status === 429) ||
-                                  (err.message && (err.message.includes("429") || err.message.toLowerCase().includes("throttled") || err.message.includes("retry_after")));
+                                  errStr.includes("429") || 
+                                  errStr.toLowerCase().includes("throttled") || 
+                                  errStr.toLowerCase().includes("rate limit") ||
+                                  errStr.toLowerCase().includes("retry_after");
             
-            if (isRateLimitErr && err.message) {
-                const match = err.message.match(/"retry_after":\s*(\d+)/);
+            if (isRateLimitErr) {
+                const match = errStr.match(/retry_after["\s:=]*(\d+)/i);
+                let retryAfterSec = 10;
                 if (match && match[1]) {
-                    const retryAfterSec = parseInt(match[1], 10);
-                    if (!isNaN(retryAfterSec) && retryAfterSec > 0) {
-                        currentDelay = (retryAfterSec + 3) * 1000; // Add 3s safety buffer to let rate limits reset
-                    }
+                    const parsed = parseInt(match[1], 10);
+                    if (!isNaN(parsed) && parsed > 0) retryAfterSec = parsed;
                 }
+                currentDelay = Math.max(currentDelay, (retryAfterSec + 5) * 1000); // 5s safety buffer
+                addLog(`[RATE-LIMIT] ${operationName} hit Replicate quota limit. Waiting ${Math.round(currentDelay/1000)}s for API window to reset... (Attempt ${i+1}/${maxRetries})`);
+            } else {
+                addLog(`[WARN] ${operationName} failed: ${err.message}. Retrying in ${Math.round(currentDelay/1000)}s... (Attempt ${i+1}/${maxRetries})`);
             }
-            addLog(`[WARN] ${operationName} failed: ${err.message}. Retrying in ${Math.round(currentDelay/1000)}s... (Attempt ${i+1}/${maxRetries})`);
+            
             await sleep(currentDelay);
         }
     }
@@ -599,23 +645,22 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             try {
                 addLog("Starting Lyria-3 AI Background Music Generation...");
                 const bgmPrompt = scriptData.bgmPrompt || "A calm atmospheric ambient track. Instrumental only, no vocals.";
-                const lyriaAudioUrl = await withRetry(async () => {
-                    return await replicate.run(
-                        "google/lyria-3",
-                        {
-                            input: {
-                                prompt: bgmPrompt
-                            }
+                const lyriaAudioUrl = await safeReplicateRun(
+                    "google/lyria-3",
+                    {
+                        input: {
+                            prompt: bgmPrompt
                         }
-                    );
-                }, "Lyria-3 BGM Generation");
+                    },
+                    "Lyria-3 BGM Generation"
+                );
                 
                 const bgmBuffer = await withRetry(() => axios.get(lyriaAudioUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Lyria BGM`);
                 lyriaBgmPath = path.join(projectDir, `lyria_bgm.mp3`);
                 fs.writeFileSync(lyriaBgmPath, bgmBuffer.data);
                 addLog("AI Background Music generated successfully via Lyria-3.");
             } catch (e) {
-                addLog(`[WARN] Lyria-3 Generation failed: ${e.message}. Falling back to local files.`);
+                addLog(`[WARN] Lyria-3 BGM Generation unavailable or flagged (${e.message}). Using premium curated local track.`);
             }
         })();
 
@@ -726,48 +771,18 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             const audioPath = path.join(projectDir, `audio_${i}.wav`);
 
             addLog(`[Segment ${i + 1}/${scriptData.segments.length}] Requesting voiceover (${voiceId}) from Gemini 3.1 Flash TTS...`);
-            const audioUrl = await withRetry(async () => {
-                try {
-                    return await replicate.run(
-                        "google/gemini-3.1-flash-tts",
-                        {
-                            input: {
-                                text: segment.narration.replace(/\[.*?\]/g, '').trim(),
-                                voice: voiceId,
-                                prompt: voicePrompt,
-                                language_code: "en-US"
-                            }
-                        }
-                    );
-                } catch (ttsError) {
-                    const errStr = String(ttsError.message || ttsError.detail || ttsError || '');
-                    const isRateLimit = ttsError.status === 429 || 
-                                        (ttsError.response && ttsError.response.status === 429) ||
-                                        errStr.includes("429") || 
-                                        errStr.toLowerCase().includes("throttled") || 
-                                        errStr.toLowerCase().includes("rate limit") ||
-                                        errStr.includes("retry_after");
-
-                    if (!isRateLimit && (errStr.includes("sensitive") || errStr.includes("E005"))) {
-                        addLog(`[WARN] Retrying Segment ${i+1} audio with a sanitized fallback...`);
-                        try {
-                            return await replicate.run(
-                                "google/gemini-3.1-flash-tts",
-                                {
-                                    input: {
-                                        text: segment.narration.replace(/\[.*?\]/g, '').trim(),
-                                        voice: voiceId,
-                                        language_code: "en-US"
-                                    }
-                                }
-                            );
-                        } catch (fallbackErr) {
-                            throw fallbackErr;
-                        }
+            const audioUrl = await safeReplicateRun(
+                "google/gemini-3.1-flash-tts",
+                {
+                    input: {
+                        text: segment.narration.replace(/\[.*?\]/g, '').trim(),
+                        voice: voiceId,
+                        prompt: voicePrompt,
+                        language_code: "en-US"
                     }
-                    throw ttsError;
-                }
-            }, `Audio Gen ${i+1}`, 15);
+                },
+                `Audio Gen ${i+1}`
+            );
 
             // Replicate SDK v1.4.0+ returns FileOutput objects for file outputs, not plain URL strings.
             // FileOutput has .arrayBuffer(), .blob(), .url(), etc. — axios.get(FileOutput) fails silently.
@@ -1101,19 +1116,18 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     thumbPrompt = `A masterwork YouTube thumbnail background for ${subNiche}, 3D depth-of-field, dramatic volumetric lighting, intense focal point, teal and orange cinematic color grade, high contrast, ultra-vibrant, no text`;
                 }
             }
-            const thumbUrl = await withRetry(async () => {
-                return await replicate.run(
-                    "bytedance/seedream-4.5",
-                    {
-                        input: {
-                            prompt: thumbPrompt,
-                            size: "2K",
-                            aspect_ratio: format === 'vertical' ? "9:16" : "16:9",
-                            sequential_image_generation: "disabled"
-                        }
+            const thumbUrl = await safeReplicateRun(
+                "bytedance/seedream-4.5",
+                {
+                    input: {
+                        prompt: thumbPrompt,
+                        size: "2K",
+                        aspect_ratio: format === 'vertical' ? "9:16" : "16:9",
+                        sequential_image_generation: "disabled"
                     }
-                );
-            }, "Thumbnail Gen");
+                },
+                "Thumbnail Gen"
+            );
             
             const thumbBuffer = await withRetry(() => axios.get(thumbUrl[0], { responseType: 'arraybuffer' }), "Download Thumbnail");
             fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
