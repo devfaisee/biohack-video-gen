@@ -493,6 +493,30 @@ CRITICAL FOOD SCIENCE RULES:
 CRITICAL RELATIONSHIP RULES:
 1. TONE: Sound like a perceptive interpersonal psychologist — empathetic but direct.
 2. PSYCHOLOGY: Back points with attachment theory, body language cues, or social dynamics research.`;
+        } else if (nicheKey.includes("mystery") || nicheKey.includes("unsolved") || nicheKey.includes("conspiracy")) {
+            voiceId = "Charon";
+            voicePrompt = "Enigmatic, measured investigator. Builds suspense with deliberate pauses and a conspiratorial undertone.";
+            visualStylePreset = "Moody noir photography, redacted documents, foggy night streets, unsolved case files, paranormal investigation aesthetic.";
+            nicheRules = `
+CRITICAL MYSTERY RULES:
+1. TONE: Build suspense layer by layer. Use rhetorical questions to keep viewers guessing.
+2. EVIDENCE: Present clues, timelines, and competing theories systematically.`;
+        } else if (nicheKey.includes("health") || nicheKey.includes("biohack")) {
+            voiceId = "Charon";
+            voicePrompt = "Science-backed health expert. Clear, authoritative, cutting-edge research communicator.";
+            visualStylePreset = "Clean medical infographic aesthetic, molecular structures, lab environments, biometric data overlays, human anatomy renders.";
+            nicheRules = `
+CRITICAL HEALTH & BIOHACKING RULES:
+1. TONE: Sound like a cutting-edge health researcher — evidence-based, no pseudoscience.
+2. CITATIONS: Reference specific studies, journals, or researchers for credibility.`;
+        } else if (nicheKey.includes("geography") || nicheKey.includes("architecture")) {
+            voiceId = "Rasalgethi";
+            voicePrompt = "Worldly, cultured travel narrator. Deeply reverent of place and design.";
+            visualStylePreset = "Architectural photography, golden hour cityscapes, aerial drone shots, sweeping landscape vistas, geometric structure details.";
+            nicheRules = `
+CRITICAL GEOGRAPHY & ARCHITECTURE RULES:
+1. TONE: Sound like a cultured world traveler — reverent, awestruck, deeply knowledgeable.
+2. DETAILS: Include specific architectural styles, construction dates, cultural significance, and geographic context.`;
         } else {
             voiceId = "Charon";
             voicePrompt = "Top-tier documentary narrator. Factual, professional, and fascinating.";
@@ -937,8 +961,38 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         addLog(`[PRODUCTION LOG] Active FFmpeg Binary: ${activeFfmpegPath}`);
         addLog(`[SUBTITLE ENGINE] Bulletproof Word-by-Word Highlight Subtitle Engine Active`);
         
+        // Niche-Aware Subtitle Color Selection (computed once, used for all clips)
         const clipPaths = new Array(clips.length);
-        
+        let highlightColorHex = "#FFFF00"; // Bright Yellow (Default)
+        const nicheColorKey = (mainNiche || "").toLowerCase();
+        if (nicheColorKey.includes("finance") || nicheColorKey.includes("wealth") || nicheColorKey.includes("money")) {
+            highlightColorHex = "#00FF66"; // Money Neon Green
+        } else if (nicheColorKey.includes("luxury") || nicheColorKey.includes("motivation")) {
+            highlightColorHex = "#FFD700"; // Gold
+        } else if (nicheColorKey.includes("crime") || nicheColorKey.includes("horror")) {
+            highlightColorHex = "#FF1744"; // Blood Red
+        } else if (nicheColorKey.includes("revenge") || nicheColorKey.includes("unethical") || nicheColorKey.includes("dark") || nicheColorKey.includes("psychology")) {
+            highlightColorHex = "#FF0055"; // Neon Crimson
+        } else if (nicheColorKey.includes("health") || nicheColorKey.includes("biohack") || nicheColorKey.includes("food")) {
+            highlightColorHex = "#76FF03"; // Bio Lime Green
+        } else if (nicheColorKey.includes("space") || nicheColorKey.includes("science") || nicheColorKey.includes("tech")) {
+            highlightColorHex = "#00E5FF"; // Bright Cyan
+        } else if (nicheColorKey.includes("history") || nicheColorKey.includes("stoicism") || nicheColorKey.includes("philosophy") || nicheColorKey.includes("military")) {
+            highlightColorHex = "#FFC107"; // Warm Amber Gold
+        } else if (nicheColorKey.includes("survival") || nicheColorKey.includes("disaster")) {
+            highlightColorHex = "#FF9100"; // Safety Orange
+        } else if (nicheColorKey.includes("geography") || nicheColorKey.includes("architecture")) {
+            highlightColorHex = "#E0F7FA"; // Ice Cyan White
+        } else if (nicheColorKey.includes("relationship") || nicheColorKey.includes("social")) {
+            highlightColorHex = "#FF80AB"; // Rose Pink
+        } else if (nicheColorKey.includes("mystery") || nicheColorKey.includes("unsolved") || nicheColorKey.includes("conspiracy")) {
+            highlightColorHex = "#B388FF"; // Mystic Purple
+        } else if (nicheColorKey.includes("rise") || nicheColorKey.includes("fall") || nicheColorKey.includes("company") || nicheColorKey.includes("empire")) {
+            highlightColorHex = "#FF6D00"; // Corporate Amber
+        } else if (nicheColorKey.includes("nature") || nicheColorKey.includes("wildlife")) {
+            highlightColorHex = "#69F0AE"; // Nature Emerald
+        }
+
         // Run FFmpeg processes sequentially to prevent CPU starvation
         const FFMPEG_CHUNK_SIZE = 1; 
         for (let i = 0; i < clips.length; i += FFMPEG_CHUNK_SIZE) {
@@ -949,33 +1003,10 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 const clip = clips[j];
                 const clipPath = path.join(projectDir, `clip_${j}.mp4`);
                 clipPaths[j] = clipPath;
-                
-                let highlightColorHex = "#FFFF00"; // Bright Yellow (Default)
-                const n = (mainNiche || "").toLowerCase();
-                if (n.includes("finance") || n.includes("wealth") || n.includes("money")) {
-                    highlightColorHex = "#00FF66"; // Money Neon Green
-                } else if (n.includes("luxury") || n.includes("motivation")) {
-                    highlightColorHex = "#FFD700"; // Gold
-                } else if (n.includes("crime") || n.includes("horror")) {
-                    highlightColorHex = "#FF1744"; // Blood Red
-                } else if (n.includes("revenge") || n.includes("unethical") || n.includes("dark") || n.includes("psychology")) {
-                    highlightColorHex = "#FF0055"; // Neon Crimson
-                } else if (n.includes("space") || n.includes("science") || n.includes("tech")) {
-                    highlightColorHex = "#00E5FF"; // Bright Cyan
-                } else if (n.includes("history") || n.includes("stoicism") || n.includes("philosophy") || n.includes("military")) {
-                    highlightColorHex = "#FFC107"; // Warm Amber Gold
-                } else if (n.includes("health") || n.includes("biohack") || n.includes("food")) {
-                    highlightColorHex = "#76FF03"; // Bio Lime Green
-                } else if (n.includes("survival") || n.includes("disaster")) {
-                    highlightColorHex = "#FF9100"; // Safety Orange
-                } else if (n.includes("geography") || n.includes("architecture")) {
-                    highlightColorHex = "#E0F7FA"; // Ice Cyan White
-                } else if (n.includes("relationship") || n.includes("social")) {
-                    highlightColorHex = "#FF80AB"; // Rose Pink
-                }
 
                 
                 // Build Dynamic Filter Chain for Context-Aware Editing & Monetization Safety
+
                 const isVertical = format === 'vertical';
                 const [outW, outH] = isVertical ? [1080, 1920] : [1920, 1080];
                 let vfFilters = `scale=${outW}:${outH}:force_original_aspect_ratio=increase,crop=${outW}:${outH},setpts=N/FRAME_RATE/TB`;
