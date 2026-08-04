@@ -236,9 +236,7 @@ Output ONLY pure JSON:
   "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
         const scriptModels = [
-            "x-ai/grok-4.5",
-            "x-ai/grok-2",
-            "x-ai/grok-beta",
+            "google/gemini-2.0-flash-001",
             "openai/gpt-4o-mini",
             "meta-llama/llama-3.3-70b-instruct"
         ];
@@ -566,9 +564,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         addLog("Generating viral script & masterwork prompt...");
         const scriptModels = [
-            "x-ai/grok-4.5",
-            "x-ai/grok-2",
-            "x-ai/grok-beta",
+            "google/gemini-2.0-flash-001",
             "openai/gpt-4o-mini",
             "meta-llama/llama-3.3-70b-instruct"
         ];
