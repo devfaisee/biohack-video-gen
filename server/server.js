@@ -923,7 +923,6 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     highlightColorHex = "#FF80AB"; // Rose Pink
                 }
 
-                generateHighlightSRT(clip.text, clip.duration, srtPath, highlightColorHex);
                 
                 // Build Dynamic Filter Chain for Context-Aware Editing & Monetization Safety
                 const isVertical = format === 'vertical';
