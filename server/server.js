@@ -12,51 +12,7 @@ const ffprobeStatic = require('ffprobe-static');
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 // Robust System FFmpeg Detection with direct Nix & Linux path searching
-const { execSync } = require('child_process');
-
-function findSystemFfmpeg() {
-    const knownPaths = [
-        '/nix/var/nix/profiles/default/bin/ffmpeg',
-        '/root/.nix-profile/bin/ffmpeg',
-        '/usr/bin/ffmpeg',
-        '/usr/local/bin/ffmpeg',
-        'C:\\ffmpeg\\bin\\ffmpeg.exe'
-    ];
-    for (const p of knownPaths) {
-        if (fs.existsSync(p)) {
-            try {
-                execSync(`"${p}" -version`, { stdio: 'ignore' });
-                return p;
-            } catch (_) {}
-        }
-    }
-    try {
-        const sysPath = execSync('command -v ffmpeg', { shell: '/bin/sh' }).toString().trim();
-        if (sysPath) {
-            execSync(`"${sysPath}" -version`, { stdio: 'ignore' });
-            return sysPath;
-        }
-    } catch (_) {}
-    try {
-        execSync('ffmpeg -version', { stdio: 'ignore' });
-        return 'ffmpeg';
-    } catch (_) {}
-    return null;
-}
-
-const detectedFfmpeg = findSystemFfmpeg();
-if (detectedFfmpeg) {
-    ffmpeg.setFfmpegPath(detectedFfmpeg);
-    console.log(`[INFO] System FFmpeg successfully detected at: ${detectedFfmpeg}`);
-} else {
-    try {
-        const ffmpegStatic = require('ffmpeg-static');
-        ffmpeg.setFfmpegPath(ffmpegStatic);
-        console.log(`[INFO] System FFmpeg not found. Using ffmpeg-static fallback: ${ffmpegStatic}`);
-    } catch(e) {
-        console.error("[FATAL] No FFmpeg binary available!", e);
-    }
-}
+// System FFmpeg will be resolved from PATH by fluent-ffmpeg automatically
 const crypto = require('crypto');
 const axios = require('axios');
 
@@ -956,8 +912,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             return filters.join(',');
         }
 
-        addLog("Assets generated. Stitching clips with WORD-BY-WORD HIGHLIGHT CAPTIONS in parallel...");
-        const activeFfmpegPath = ffmpeg.path || detectedFfmpeg || "ffmpeg";
+        addLog("Assets generated. Stitching clips with WORD-BY-WORD HIGHLIGHT CAPTIONS in parallel...");        const activeFfmpegPath = "ffmpeg (System PATH)";
         addLog(`[PRODUCTION LOG] Active FFmpeg Binary: ${activeFfmpegPath}`);
         addLog(`[SUBTITLE ENGINE] Bulletproof Word-by-Word Highlight Subtitle Engine Active`);
         
