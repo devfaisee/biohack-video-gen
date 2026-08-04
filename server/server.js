@@ -13,7 +13,6 @@ ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 // Robust System FFmpeg Detection with direct Nix & Linux path searching
 const { execSync } = require('child_process');
-let hasSystemFfmpeg = false;
 
 function findSystemFfmpeg() {
     const knownPaths = [
@@ -47,7 +46,6 @@ function findSystemFfmpeg() {
 
 const detectedFfmpeg = findSystemFfmpeg();
 if (detectedFfmpeg) {
-    hasSystemFfmpeg = true;
     ffmpeg.setFfmpegPath(detectedFfmpeg);
     console.log(`[INFO] System FFmpeg successfully detected at: ${detectedFfmpeg}`);
 } else {
@@ -242,7 +240,11 @@ async function processQueue() {
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 app.post('/api/generate', (req, res) => {
-    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'ai_images', mainNiche = 'Science', subNiche = 'General', format = 'horizontal' } = req.body;
+    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'stock_videos', mainNiche, subNiche, format = 'horizontal' } = req.body;
+    if (!mainNiche || !subNiche) return res.status(400).json({ error: 'mainNiche and subNiche are required' });
+    if (durationMinutes < 0.5 || durationMinutes > 30) return res.status(400).json({ error: 'Duration must be between 0.5 and 30 minutes' });
+    if (!['horizontal', 'vertical'].includes(format)) return res.status(400).json({ error: 'Format must be horizontal or vertical' });
+    if (!['stock_videos', 'ai_images'].includes(visualSource)) return res.status(400).json({ error: 'visualSource must be stock_videos or ai_images' });
     const jobId = crypto.randomUUID();
     
     global.jobQueue.push({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, jobId });
@@ -595,13 +597,15 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         let lastError = null;
         for (const modelId of scriptModels) {
             try {
-                chatCompletion = await openai.chat.completions.create({
-                    model: modelId, 
-                    messages: [{ role: "user", content: systemPrompt }]
-                });
-                if (chatCompletion && chatCompletion.choices && chatCompletion.choices.length > 0) {
-                    break;
-                }
+                chatCompletion = await withRetry(async () => {
+                    const result = await openai.chat.completions.create({
+                        model: modelId,
+                        messages: [{ role: "user", content: systemPrompt }]
+                    });
+                    if (!result?.choices?.length) throw new Error('Empty LLM response');
+                    return result;
+                }, `Script Gen (${modelId})`, 3, 3000);
+                if (chatCompletion) break;
             } catch (mErr) {
                 lastError = mErr;
             }
@@ -612,11 +616,28 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         }
 
         let jsonStr = chatCompletion.choices[0].message.content;
-        if (jsonStr.startsWith('```')) {
-            jsonStr = jsonStr.replace(/^```json\n/, '').replace(/\n```$/, '');
+        // Strip markdown code fences (```json ... ``` or ``` ... ```)
+        jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+        // Extract JSON object if surrounded by extra text
+        if (!jsonStr.startsWith('{')) {
+            const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+            if (jsonMatch) jsonStr = jsonMatch[0];
         }
+        // Fix common LLM JSON issues: trailing commas before ] or }
+        jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
 
-        const scriptData = JSON.parse(jsonStr);
+        let scriptData;
+        try {
+            scriptData = JSON.parse(jsonStr);
+        } catch (parseErr) {
+            addLog(`[WARN] JSON parse failed, attempting aggressive recovery...`);
+            const fallbackMatch = chatCompletion.choices[0].message.content.match(/\{[\s\S]*\}/);
+            if (fallbackMatch) {
+                scriptData = JSON.parse(fallbackMatch[0].replace(/,\s*([\]}])/g, '$1'));
+            } else {
+                throw new Error(`Script JSON parse failed: ${parseErr.message}`);
+            }
+        }
         addLog(`Script generated successfully. Total segments: ${scriptData.segments.length}`);
 
         const videoId = jobId || crypto.randomUUID();
@@ -655,9 +676,16 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     "Lyria-3 BGM Generation"
                 );
                 
-                const bgmBuffer = await withRetry(() => axios.get(lyriaAudioUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Lyria BGM`);
+                let bgmData;
+                if (lyriaAudioUrl && typeof lyriaAudioUrl.arrayBuffer === 'function') {
+                    const ab = await lyriaAudioUrl.arrayBuffer();
+                    bgmData = Buffer.from(ab);
+                } else {
+                    const bgmBuffer = await withRetry(() => axios.get(String(lyriaAudioUrl), { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Lyria BGM`);
+                    bgmData = bgmBuffer.data;
+                }
                 lyriaBgmPath = path.join(projectDir, `lyria_bgm.mp3`);
-                fs.writeFileSync(lyriaBgmPath, bgmBuffer.data);
+                fs.writeFileSync(lyriaBgmPath, bgmData);
                 addLog("AI Background Music generated successfully via Lyria-3.");
             } catch (e) {
                 addLog(`[WARN] Lyria-3 BGM Generation unavailable or flagged (${e.message}). Using premium curated local track.`);
@@ -678,7 +706,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     signal: abortController.signal
                 });
                 if (res.data.videos && res.data.videos.length > 0) {
-                    const video = res.data.videos[0];
+                    const randomIdx = Math.floor(Math.random() * Math.min(res.data.videos.length, 3));
+                    const video = res.data.videos[randomIdx];
                     const hdFile = video.video_files.find(f => f.quality === 'hd' || f.width >= 1280) || video.video_files[0];
                     return hdFile.link;
                 }
@@ -691,7 +720,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     signal: abortController.signal
                 });
                 if (res.data.hits && res.data.hits.length > 0) {
-                    const video = res.data.hits[0];
+                    const randomIdx = Math.floor(Math.random() * Math.min(res.data.hits.length, 3));
+                    const video = res.data.hits[randomIdx];
                     return video.videos.large.url || video.videos.medium.url || video.videos.small.url;
                 }
             } catch (e) {
@@ -718,6 +748,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         const visualPaths = new Array(scriptData.segments.length);
         const fetchVisualTask = async (i) => {
             if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
+            const isVertical = format === 'vertical';
             const segment = scriptData.segments[i];
             const visualExt = visualSource === 'stock_videos' ? 'mp4' : 'webp';
             const visualPath = path.join(projectDir, `visual_${i}.${visualExt}`);
@@ -731,22 +762,28 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 addLog(`[Segment ${i + 1}] Stock Video downloaded.`);
             } else {
                 addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
-                const imageUrl = await withRetry(async () => {
-                    const imgRes = await replicate.run(
-                        "black-forest-labs/flux-schnell:c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
-                        {
-                            input: {
-                                prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
-                                aspect_ratio: "16:9",
-                                output_format: "webp",
-                                num_outputs: 1
-                            }
+                const imgResult = await safeReplicateRun(
+                    "black-forest-labs/flux-schnell:c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
+                    {
+                        input: {
+                            prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
+                            aspect_ratio: isVertical ? "9:16" : "16:9",
+                            output_format: "webp",
+                            num_outputs: 1
                         }
-                    );
-                    return imgRes[0];
-                }, `Image Gen ${i+1}`, 10);
-                const imgBuffer = await withRetry(() => axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Image ${i+1}`);
-                fs.writeFileSync(visualPath, imgBuffer.data);
+                    },
+                    `Image Gen ${i+1}`
+                );
+                const imageOutput = Array.isArray(imgResult) ? imgResult[0] : imgResult;
+                let imgData;
+                if (imageOutput && typeof imageOutput.arrayBuffer === 'function') {
+                    const ab = await imageOutput.arrayBuffer();
+                    imgData = Buffer.from(ab);
+                } else {
+                    const imgBuffer = await withRetry(() => axios.get(String(imageOutput), { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Image ${i+1}`);
+                    imgData = imgBuffer.data;
+                }
+                fs.writeFileSync(visualPath, imgData);
                 addLog(`[Segment ${i + 1}] Image downloaded.`);
             }
             visualPaths[i] = visualPath;
@@ -809,10 +846,6 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             fs.writeFileSync(audioPath, audioData);
             audioPaths[i] = audioPath;
             addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
-
-            if (i < scriptData.segments.length - 1) {
-                await sleep(3500); // 3.5s rate-limit cushion for accounts under $5 credit limit
-            }
         }
 
         // Wait for visual downloads to complete
@@ -837,43 +870,63 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
         // Bulletproof Kinetic Subtitle Engine using FFmpeg drawtext & direct fontfile pathing (Zero-libass dependency)
         function generateDrawtextFilter(text, durationSec, isVertical, highlightColorHex = '#00FF00') {
             const fontPath = path.join(__dirname, 'assets', 'fonts', 'Oswald-Bold.ttf').replace(/\\/g, '/').replace(/:/g, '\\:');
-            const words = text.replace(/\[.*?\]/g, '').trim().split(/\s+/);
-            if (words.length === 0) return '';
+            const cleanText = text.replace(/\[.*?\]/g, '').trim();
+            const words = cleanText.split(/\s+/).filter(w => w.length > 0);
+            if (words.length === 0 || durationSec <= 0) return '';
 
+            // Dynamic font sizing: larger for short phrases, smaller for dense narration
+            const baseFontSize = isVertical ? 54 : 48;
+            const fontSize = words.length > 25 ? baseFontSize - 8 : words.length > 15 ? baseFontSize - 4 : baseFontSize;
+            const yPos = isVertical ? '(h*3/4)' : '(h-h/6)';
+
+            // Color setup
+            const cleanHex = highlightColorHex.replace('#', '');
+            const accentColor = `0x${cleanHex}`;
+
+            // Smart phrase grouping: 2-3 words per card, respecting punctuation breaks
+            const phrases = [];
+            let currentPhrase = [];
+            for (let i = 0; i < words.length; i++) {
+                currentPhrase.push(words[i]);
+                const isPunctEnd = /[.,!?;:\u2014-]$/.test(words[i]);
+                if (currentPhrase.length >= 3 || isPunctEnd || i === words.length - 1) {
+                    phrases.push([...currentPhrase]);
+                    currentPhrase = [];
+                }
+            }
+            // Merge orphan single-word phrases into the previous phrase
+            if (phrases.length > 1 && phrases[phrases.length - 1].length === 1) {
+                const orphan = phrases.pop();
+                phrases[phrases.length - 1].push(...orphan);
+            }
+
+            // Proportional timing based on character count
             const totalChars = words.reduce((sum, w) => sum + Math.max(w.length, 2), 0);
             const timePerChar = durationSec / totalChars;
 
-            const fontSize = isVertical ? 46 : 42;
-            const yPos = isVertical ? 'h-350' : 'h-180';
-
-            const cleanHex = highlightColorHex.replace('#', '');
-            const activeColor = `0x${cleanHex}`;
-
-            const chunkSize = 2 + Math.floor(Math.random() * 2); // 2 or 3 words
             const filters = [];
-            let currentStart = 0;
+            let currentTime = 0;
 
-            for (let i = 0; i < words.length; i += chunkSize) {
-                const chunkWords = words.slice(i, i + chunkSize);
-                const chunkChars = chunkWords.reduce((sum, w) => sum + Math.max(w.length, 2), 0);
-                const chunkDuration = timePerChar * chunkChars;
+            for (const phrase of phrases) {
+                const phraseChars = phrase.reduce((sum, w) => sum + Math.max(w.length, 2), 0);
+                const phraseDuration = timePerChar * phraseChars;
+                const phraseEnd = Math.min(currentTime + phraseDuration, durationSec);
 
-                for (let wIdx = 0; wIdx < chunkWords.length; wIdx++) {
-                    const wordChars = Math.max(chunkWords[wIdx].length, 2);
-                    const wordDuration = timePerChar * wordChars;
-                    const wordEnd = currentStart + wordDuration;
+                // Escape text for FFmpeg drawtext filter syntax
+                const displayText = phrase.map(w => w.toUpperCase()).join(' ')
+                    .replace(/\\/g, '\\\\')
+                    .replace(/'/g, "'\\''")
+                    .replace(/:/g, '\\:')
+                    .replace(/%/g, '%%');
 
-                    const st = currentStart.toFixed(2);
-                    const et = wordEnd.toFixed(2);
+                const st = currentTime.toFixed(3);
+                const et = phraseEnd.toFixed(3);
 
-                    const displayStr = chunkWords.map(w => w.toUpperCase()).join(" ").replace(/'/g, "'\\''").replace(/:/g, '\\:');
+                filters.push(
+                    `drawtext=fontfile='${fontPath}':text='${displayText}':fontsize=${fontSize}:fontcolor=${accentColor}:borderw=5:bordercolor=black:shadowx=3:shadowy=3:shadowcolor=black@0.6:x=(w-text_w)/2:y=${yPos}:enable='between(t,${st},${et})'`
+                );
 
-                    filters.push(
-                        `drawtext=fontfile='${fontPath}':text='${displayStr}':fontsize=${fontSize}:fontcolor=${activeColor}:borderw=4:bordercolor=black:shadowx=2:shadowy=2:shadowcolor=black@0.8:x=(w-text_w)/2:y=${yPos}:enable='between(t,${st},${et})'`
-                    );
-
-                    currentStart = wordEnd;
-                }
+                currentTime = phraseEnd;
             }
 
             return filters.join(',');
@@ -896,8 +949,6 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 const clip = clips[j];
                 const clipPath = path.join(projectDir, `clip_${j}.mp4`);
                 clipPaths[j] = clipPath;
-
-                const srtPath = path.join(projectDir, `sub_${j}.srt`);
                 
                 let highlightColorHex = "#FFFF00"; // Bright Yellow (Default)
                 const n = (mainNiche || "").toLowerCase();
@@ -984,7 +1035,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 }));
             }
             
-            addLog(`Encoding clips ${i + 1} to ${Math.min(i + FFMPEG_CHUNK_SIZE, clips.length)} of ${clips.length}...`);
+            const progress = Math.round(((i + Math.min(FFMPEG_CHUNK_SIZE, clips.length - i)) / clips.length) * 100);
+            addLog(`Encoding clip ${i + 1} of ${clips.length}... (${progress}% complete)`);
             await Promise.all(chunk);
         }
 
@@ -1050,16 +1102,9 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 bgmCategory = 'survival';
             }
             
-            let bgmPath = path.join(__dirname, 'assets', `bgm_${bgmCategory}.mp3`); // fallback
-            const categoryDir = path.join(__dirname, 'assets', 'bgm', bgmCategory);
-            
-            if (fs.existsSync(categoryDir)) {
-                const files = fs.readdirSync(categoryDir).filter(f => f.endsWith('.mp3') || f.endsWith('.wav'));
-                if (files.length > 0) {
-                    const randomBgm = files[Math.floor(Math.random() * files.length)];
-                    bgmPath = path.join(categoryDir, randomBgm);
-                }
-            } else if (!fs.existsSync(bgmPath)) {
+            // Flat file fallback: bgm_${category}.mp3 or bgm.mp3
+            let bgmPath = path.join(__dirname, 'assets', `bgm_${bgmCategory}.mp3`);
+            if (!fs.existsSync(bgmPath)) {
                 bgmPath = path.join(__dirname, 'assets', 'bgm.mp3');
             }
             if (fs.existsSync(bgmPath)) finalBgmToMix = bgmPath;
@@ -1137,8 +1182,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             // --- AI VISION QA LAYER (Phase 3) ---
             addLog("Running AI Vision QA on Thumbnail...");
             const visionModels = [
-                "google/gemini-2.0-flash-exp:free",
                 "openai/gpt-4o-mini",
+                "google/gemini-2.0-flash-001",
                 "meta-llama/llama-3.2-11b-vision-instruct:free"
             ];
             let qaResult = null;

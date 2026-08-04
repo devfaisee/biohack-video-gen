@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from 'react';
-import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Filter, Clock, CheckCircle2, RefreshCw, Eye, Download, X, Copy, Check, ChevronDown, Zap, TrendingUp, AlertTriangle, XCircle, BarChart3, Hash, Server, Globe, Cpu, Calendar, Activity, Layers, PieChart } from 'lucide-react';
+import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Clock, CheckCircle2, RefreshCw, Eye, Download, X, Copy, Check, ChevronDown, Zap, TrendingUp, XCircle, BarChart3, Hash, Globe, Cpu, Calendar, Activity, Layers, PieChart } from 'lucide-react';
 import axios from 'axios';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -166,6 +166,14 @@ function CreatorStudio() {
 
     const sse = new EventSource(`${baseUrl}/api/logs`);
     sseRef.current = sse;
+    sse.onerror = () => {
+      sse.close();
+      setTimeout(() => {
+        if (sseRef.current) sseRef.current.close();
+        // Reconnect logic - the useEffect will handle it on next re-render
+      }, 3000);
+      console.log('SSE connection lost, reconnecting...');
+    };
     sse.onmessage = (e) => {
       const data = JSON.parse(e.data);
       try {
@@ -370,6 +378,20 @@ function CreatorStudio() {
             {logs.length > 0 && <span className="log-count">{logs.length}</span>}
           </div>
           <div className="terminal-body">
+            {loading && logs.length > 0 && (() => {
+              const lastLog = logs[logs.length - 1]?.text || '';
+              const encMatch = lastLog.match(/(\d+)% complete/);
+              const segMatch = lastLog.match(/Segment (\d+)\/(\d+)/);
+              let pct = 0;
+              if (encMatch) pct = parseInt(encMatch[1]);
+              else if (segMatch) pct = Math.round((parseInt(segMatch[1]) / parseInt(segMatch[2])) * 50);
+              return pct > 0 ? (
+                <div className="progress-bar-container">
+                  <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
+                  <span className="progress-bar-text">{pct}%</span>
+                </div>
+              ) : null;
+            })()}
             {logs.map((log, i) => (
               <div key={i} className="log-line">
                 <span className="log-time">{log.time}</span>
@@ -619,7 +641,9 @@ function Analytics() {
       try {
         const res = await axios.get(`${baseUrl}/api/videos`);
         setVideos(res.data.filter(v => v.status !== "error"));
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.warn('Analytics fetch failed:', err.message);
+      }
       setLoading(false);
     })();
   }, [baseUrl]);
