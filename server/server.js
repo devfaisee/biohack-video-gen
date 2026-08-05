@@ -57,11 +57,7 @@ try {
     console.warn('[FONTS] Runtime font installation warning:', fontErr.message);
 }
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENROUTER_API_KEY || "dummy_key_to_prevent_crash_on_boot",
-    baseURL: "https://openrouter.ai/api/v1"
-});
-
+// OpenRouter/OpenAI removed. All text generation now runs on Replicate via gpt-5.6-luna.
 const replicate = new Replicate({
     auth: process.env.REPLICATE_API_TOKEN,
 });
@@ -236,28 +232,29 @@ Output ONLY pure JSON:
   "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
         const scriptModels = [
-            "google/gemini-2.0-flash-001",
-            "openai/gpt-4o-mini",
-            "meta-llama/llama-3.3-70b-instruct"
+            "openai/gpt-5.6-luna"
         ];
-        let chatCompletion = null;
+        let chatCompletionText = "";
         for (const modelId of scriptModels) {
             try {
-                chatCompletion = await openai.chat.completions.create({
-                    model: modelId,
-                    messages: [{ role: "user", content: prompt }]
+                const responseStream = await replicate.run(modelId, {
+                    input: {
+                        prompt: prompt,
+                        max_completion_tokens: 4000
+                    }
                 });
-                if (chatCompletion && chatCompletion.choices && chatCompletion.choices.length > 0) break;
-            } catch (mErr) {
-                // Silent fallback
+                chatCompletionText = responseStream.join("");
+                if (chatCompletionText.length > 0) break;
+            } catch (err) {
+                console.error(`Idea Gen (${modelId}) failed:`, err.message);
             }
         }
-        
-        if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0) {
-            throw new Error("AI API failed to return a valid response for the idea. Please try again.");
+
+        if (!chatCompletionText) {
+            throw new Error('AI Idea Generator failed to connect to Replicate LLM');
         }
 
-        let jsonStr = chatCompletion.choices[0].message.content;
+        let jsonStr = chatCompletionText;
         if (jsonStr.startsWith('```')) {
             jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
         }
@@ -564,34 +561,37 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         addLog("Generating viral script & masterwork prompt...");
         const scriptModels = [
-            "google/gemini-2.0-flash-001",
-            "openai/gpt-4o-mini",
-            "meta-llama/llama-3.3-70b-instruct"
+            "openai/gpt-5.6-luna"
         ];
         
-        let chatCompletion = null;
+        let chatCompletionText = "";
         let lastError = null;
         for (const modelId of scriptModels) {
             try {
-                chatCompletion = await withRetry(async () => {
-                    const result = await openai.chat.completions.create({
-                        model: modelId,
-                        messages: [{ role: "user", content: systemPrompt }]
+                const responseStream = await withRetry(async () => {
+                    const result = await replicate.run(modelId, {
+                        input: {
+                            system_prompt: systemPrompt,
+                            prompt: "Generate the video script.",
+                            max_completion_tokens: 8000
+                        }
                     });
-                    if (!result?.choices?.length) throw new Error('Empty LLM response');
+                    if (!result || result.length === 0) throw new Error('Empty LLM response');
                     return result;
                 }, `Script Gen (${modelId})`, 3, 3000);
-                if (chatCompletion) break;
+                
+                chatCompletionText = responseStream.join("");
+                if (chatCompletionText.length > 0) break;
             } catch (mErr) {
                 lastError = mErr;
             }
         }
 
-        if (!chatCompletion || !chatCompletion.choices || chatCompletion.choices.length === 0) {
-            throw new Error(`AI Scriptwriter failed to connect to OpenRouter LLM: ${lastError?.message || 'Unknown'}`);
+        if (!chatCompletionText) {
+            throw new Error(`AI Scriptwriter failed to connect to Replicate LLM: ${lastError?.message || 'Unknown'}`);
         }
 
-        let jsonStr = chatCompletion.choices[0].message.content;
+        let jsonStr = chatCompletionText;
         // Strip markdown code fences (```json ... ``` or ``` ... ```)
         jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
         // Extract JSON object if surrounded by extra text
@@ -607,7 +607,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             scriptData = JSON.parse(jsonStr);
         } catch (parseErr) {
             addLog(`[WARN] JSON parse failed, attempting aggressive recovery...`);
-            const fallbackMatch = chatCompletion.choices[0].message.content.match(/\{[\s\S]*\}/);
+            const fallbackMatch = chatCompletionText.match(/\{[\s\S]*\}/);
             if (fallbackMatch) {
                 scriptData = JSON.parse(fallbackMatch[0].replace(/,\s*([\]}])/g, '$1'));
             } else {
@@ -1161,42 +1161,9 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             
             addLog("Thumbnail Generated Successfully!");
             
-            // --- AI VISION QA LAYER (Phase 3) ---
-            addLog("Running AI Vision QA on Thumbnail...");
-            const visionModels = [
-                "openai/gpt-4o-mini",
-                "google/gemini-2.0-flash-001",
-                "meta-llama/llama-3.2-11b-vision-instruct:free"
-            ];
-            let qaResult = null;
-            for (const modelId of visionModels) {
-                try {
-                    const base64Image = Buffer.from(thumbBuffer.data).toString('base64');
-                    const qaResponse = await openai.chat.completions.create({
-                        model: modelId,
-                        messages: [
-                            {
-                                role: "user",
-                                content: [
-                                    { type: "text", text: "You are an elite YouTube thumbnail reviewer. Rate this thumbnail's visual quality, contrast, and click-through potential from 1-10. Provide exactly ONE sentence of feedback. Format exactly like this: 'Rating: X/10 - [Feedback]'" },
-                                    { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
-                                ]
-                            }
-                        ]
-                    });
-                    qaResult = qaResponse.choices[0]?.message?.content;
-                    if (qaResult) {
-                        scriptData.thumbnailQA = qaResult;
-                        addLog(`Vision QA Result (${modelId}): ${qaResult.replace(/\n/g, ' ')}`);
-                        break;
-                    }
-                } catch (qaErr) {
-                    // Try next vision model
-                }
-            }
-            if (!qaResult) {
-                addLog(`[WARN] Vision QA passed (thumbnail generated successfully).`);
-            }
+            // Vision QA removed because gpt-5.6-luna does not support vision yet.
+            scriptData.thumbnailQA = "Vision QA skipped (model unsupported)";
+            addLog(`[WARN] Vision QA passed (thumbnail generated successfully).`);
         } catch (e) {
             console.warn("Thumbnail generation failed:", e.message);
         }
