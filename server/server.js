@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { OpenAI } = require('openai');
+// OpenAI SDK removed
 const Replicate = require('replicate');
 const fs = require('fs');
 const path = require('path');
