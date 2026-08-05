@@ -12,7 +12,27 @@ const ffprobeStatic = require('ffprobe-static');
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 // Robust System FFmpeg Detection with direct Nix & Linux path searching
-// System FFmpeg will be resolved from PATH by fluent-ffmpeg automatically
+const { execSync } = require('child_process');
+function findSystemFfmpeg() {
+    const knownPaths = [
+        '/usr/bin/ffmpeg',
+        '/usr/local/bin/ffmpeg',
+        '/nix/var/nix/profiles/default/bin/ffmpeg',
+        '/root/.nix-profile/bin/ffmpeg',
+        'C:\\ffmpeg\\bin\\ffmpeg.exe'
+    ];
+    for (const p of knownPaths) {
+        if (fs.existsSync(p)) return p;
+    }
+    try {
+        const sysPath = execSync('command -v ffmpeg', { shell: '/bin/sh' }).toString().trim();
+        if (sysPath) return sysPath;
+    } catch (_) {}
+    return 'ffmpeg';
+}
+const detectedFfmpeg = findSystemFfmpeg();
+ffmpeg.setFfmpegPath(detectedFfmpeg);
+console.log(`[INFO] System FFmpeg set to: ${detectedFfmpeg}`);
 const crypto = require('crypto');
 const axios = require('axios');
 
@@ -239,8 +259,7 @@ Output ONLY pure JSON:
             try {
                 const responseStream = await replicate.run(modelId, {
                     input: {
-                        prompt: prompt,
-                        max_completion_tokens: 4000
+                        prompt: prompt
                     }
                 });
                 chatCompletionText = responseStream.join("");
@@ -571,9 +590,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 const responseStream = await withRetry(async () => {
                     const result = await replicate.run(modelId, {
                         input: {
-                            system_prompt: systemPrompt,
-                            prompt: "Generate the video script.",
-                            max_completion_tokens: 8000
+                            prompt: `${systemPrompt}\n\nGenerate the video script.`
                         }
                     });
                     if (!result || result.length === 0) throw new Error('Empty LLM response');
@@ -908,7 +925,7 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             return filters.join(',');
         }
 
-        addLog("Assets generated. Stitching clips with WORD-BY-WORD HIGHLIGHT CAPTIONS in parallel...");        const activeFfmpegPath = "ffmpeg (System PATH)";
+        addLog("Assets generated. Stitching clips with WORD-BY-WORD HIGHLIGHT CAPTIONS in parallel...");        const activeFfmpegPath = detectedFfmpeg || "ffmpeg (System PATH)";
         addLog(`[PRODUCTION LOG] Active FFmpeg Binary: ${activeFfmpegPath}`);
         addLog(`[SUBTITLE ENGINE] Bulletproof Word-by-Word Highlight Subtitle Engine Active`);
         
