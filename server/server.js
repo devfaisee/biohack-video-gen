@@ -272,7 +272,9 @@ Output ONLY pure JSON:
             try {
                 const responseStream = await replicate.run(modelId, {
                     input: {
-                        prompt: prompt
+                        system_prompt: prompt,
+                        prompt: "Output ONLY the raw JSON object. Begin your response with { and end with }. No markdown, no explanation.",
+                        max_new_tokens: 1000
                     }
                 });
                 chatCompletionText = responseStream.join("");
@@ -286,10 +288,15 @@ Output ONLY pure JSON:
             throw new Error('AI Idea Generator failed to connect to Replicate LLM');
         }
 
-        let jsonStr = chatCompletionText;
-        if (jsonStr.startsWith('```')) {
-            jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+        // Robust JSON extraction
+        const fenceMatch = chatCompletionText.match(/```(?:json)?\s*([\s\S]*?)```/i);
+        let jsonStr = fenceMatch ? fenceMatch[1].trim() : chatCompletionText;
+        const firstBrace = jsonStr.indexOf('{');
+        const lastBrace = jsonStr.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+            jsonStr = jsonStr.slice(firstBrace, lastBrace + 1);
         }
+        jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
         res.json(JSON.parse(jsonStr));
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -604,7 +611,9 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 const responseStream = await withRetry(async () => {
                     const result = await replicate.run(modelId, {
                         input: {
-                            prompt: `${systemPrompt}\n\nGenerate the video script.`
+                            system_prompt: systemPrompt,
+                            prompt: "Output ONLY the raw JSON object described above. Do not include any text, explanation, markdown, or code fences before or after the JSON. Begin your response with { and end with }",
+                            max_new_tokens: 8000
                         }
                     });
                     if (!result || result.length === 0) throw new Error('Empty LLM response');
@@ -622,25 +631,44 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             throw new Error(`AI Scriptwriter failed to connect to Replicate LLM: ${lastError?.message || 'Unknown'}`);
         }
 
-        let jsonStr = chatCompletionText;
-        // Strip markdown code fences (```json ... ``` or ``` ... ```)
-        jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-        // Extract JSON object if surrounded by extra text
-        if (!jsonStr.startsWith('{')) {
-            const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-            if (jsonMatch) jsonStr = jsonMatch[0];
+        // Aggressive JSON extraction for models that wrap output in text/markdown
+        function extractJson(raw) {
+            // 1. Try to find JSON between code fences anywhere in the text
+            const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+            if (fenceMatch) return fenceMatch[1].trim();
+            // 2. Find the outermost JSON object by locating first { and last }
+            const firstBrace = raw.indexOf('{');
+            const lastBrace = raw.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace > firstBrace) {
+                return raw.slice(firstBrace, lastBrace + 1);
+            }
+            return raw.trim();
         }
-        // Fix common LLM JSON issues: trailing commas before ] or }
-        jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
+
+        function repairJson(str) {
+            // Remove trailing commas before ] or }
+            str = str.replace(/,\s*([\]}])/g, '$1');
+            // Remove single-line JS-style comments
+            str = str.replace(/\/\/.*$/gm, '');
+            return str;
+        }
+
+        let jsonStr = repairJson(extractJson(chatCompletionText));
 
         let scriptData;
         try {
             scriptData = JSON.parse(jsonStr);
         } catch (parseErr) {
             addLog(`[WARN] JSON parse failed, attempting aggressive recovery...`);
-            const fallbackMatch = chatCompletionText.match(/\{[\s\S]*\}/);
-            if (fallbackMatch) {
-                scriptData = JSON.parse(fallbackMatch[0].replace(/,\s*([\]}])/g, '$1'));
+            // Last-ditch: extract largest {...} block and repair
+            const allMatches = [...chatCompletionText.matchAll(/\{[\s\S]*?\}/g)];
+            const largest = allMatches.sort((a, b) => b[0].length - a[0].length)[0];
+            if (largest) {
+                try {
+                    scriptData = JSON.parse(repairJson(largest[0]));
+                } catch (_) {
+                    throw new Error(`Script JSON parse failed: ${parseErr.message}`);
+                }
             } else {
                 throw new Error(`Script JSON parse failed: ${parseErr.message}`);
             }
