@@ -11,28 +11,50 @@ const ffprobeStatic = require('ffprobe-static');
 // Unconditionally use static ffprobe to guarantee audio duration checks work safely everywhere
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
-// Robust System FFmpeg Detection - Nix paths + ffmpeg-static fallback
+// Robust System FFmpeg Detection - Nix paths + glob + ffmpeg-static fallback
 const { execSync } = require('child_process');
 function findSystemFfmpeg() {
     const knownPaths = [
-        '/usr/bin/ffmpeg',
         '/usr/local/bin/ffmpeg',
+        '/usr/bin/ffmpeg',
         '/nix/var/nix/profiles/default/bin/ffmpeg',
         '/root/.nix-profile/bin/ffmpeg',
+        '/run/current-system/sw/bin/ffmpeg',
         'C:\\ffmpeg\\bin\\ffmpeg.exe'
     ];
     for (const p of knownPaths) {
-        if (fs.existsSync(p)) return p;
+        if (fs.existsSync(p)) {
+            console.log(`[INFO] Found ffmpeg at known path: ${p}`);
+            return p;
+        }
     }
+    // Try resolving from shell PATH (inject Nix profile dirs to be sure)
     try {
-        const sysPath = execSync('command -v ffmpeg 2>/dev/null || which ffmpeg 2>/dev/null', { shell: '/bin/sh' }).toString().trim();
-        if (sysPath && fs.existsSync(sysPath)) return sysPath;
+        const nixPath = '/nix/var/nix/profiles/default/bin:/root/.nix-profile/bin:/usr/local/bin:/usr/bin:/bin';
+        const sysPath = execSync('which ffmpeg || command -v ffmpeg', {
+            shell: '/bin/sh',
+            env: { ...process.env, PATH: `${nixPath}:${process.env.PATH || ''}` }
+        }).toString().trim();
+        if (sysPath && fs.existsSync(sysPath)) {
+            console.log(`[INFO] Found ffmpeg via which: ${sysPath}`);
+            return sysPath;
+        }
     } catch (_) {}
-    // Last resort: ffmpeg-static npm package
+    // Search Nix store for any ffmpeg binary (glob-style find)
+    try {
+        const found = execSync('find /nix/store -maxdepth 4 -name ffmpeg -type f 2>/dev/null | grep -v ".drv" | head -1', {
+            shell: '/bin/sh'
+        }).toString().trim();
+        if (found && fs.existsSync(found)) {
+            console.log(`[INFO] Found ffmpeg in Nix store: ${found}`);
+            return found;
+        }
+    } catch (_) {}
+    // Last resort: ffmpeg-static npm package (no drawtext support — fallback only)
     try {
         const ffmpegStatic = require('ffmpeg-static');
         if (ffmpegStatic && fs.existsSync(ffmpegStatic)) {
-            console.log('[INFO] Using ffmpeg-static fallback');
+            console.warn('[WARN] Using ffmpeg-static fallback — drawtext filter may not be available');
             return ffmpegStatic;
         }
     } catch (_) {}
@@ -41,7 +63,7 @@ function findSystemFfmpeg() {
 const detectedFfmpeg = findSystemFfmpeg();
 if (detectedFfmpeg) {
     ffmpeg.setFfmpegPath(detectedFfmpeg);
-    console.log(`[INFO] System FFmpeg set to: ${detectedFfmpeg}`);
+    console.log(`[INFO] Active FFmpeg binary: ${detectedFfmpeg}`);
 } else {
     console.error('[FATAL] No FFmpeg binary found on this system!');
 }
