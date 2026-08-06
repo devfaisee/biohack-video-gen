@@ -11,7 +11,7 @@ const ffprobeStatic = require('ffprobe-static');
 // Unconditionally use static ffprobe to guarantee audio duration checks work safely everywhere
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
-// Robust System FFmpeg Detection with direct Nix & Linux path searching
+// Robust System FFmpeg Detection - Nix paths + ffmpeg-static fallback
 const { execSync } = require('child_process');
 function findSystemFfmpeg() {
     const knownPaths = [
@@ -25,14 +25,26 @@ function findSystemFfmpeg() {
         if (fs.existsSync(p)) return p;
     }
     try {
-        const sysPath = execSync('command -v ffmpeg', { shell: '/bin/sh' }).toString().trim();
-        if (sysPath) return sysPath;
+        const sysPath = execSync('command -v ffmpeg 2>/dev/null || which ffmpeg 2>/dev/null', { shell: '/bin/sh' }).toString().trim();
+        if (sysPath && fs.existsSync(sysPath)) return sysPath;
     } catch (_) {}
-    return 'ffmpeg';
+    // Last resort: ffmpeg-static npm package
+    try {
+        const ffmpegStatic = require('ffmpeg-static');
+        if (ffmpegStatic && fs.existsSync(ffmpegStatic)) {
+            console.log('[INFO] Using ffmpeg-static fallback');
+            return ffmpegStatic;
+        }
+    } catch (_) {}
+    return null;
 }
 const detectedFfmpeg = findSystemFfmpeg();
-ffmpeg.setFfmpegPath(detectedFfmpeg);
-console.log(`[INFO] System FFmpeg set to: ${detectedFfmpeg}`);
+if (detectedFfmpeg) {
+    ffmpeg.setFfmpegPath(detectedFfmpeg);
+    console.log(`[INFO] System FFmpeg set to: ${detectedFfmpeg}`);
+} else {
+    console.error('[FATAL] No FFmpeg binary found on this system!');
+}
 const crypto = require('crypto');
 const axios = require('axios');
 
@@ -252,7 +264,8 @@ Output ONLY pure JSON:
   "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
         const scriptModels = [
-            "openai/gpt-5.6-luna"
+            "meta/meta-llama-3-70b-instruct",
+            "mistralai/mixtral-8x7b-instruct-v0.1"
         ];
         let chatCompletionText = "";
         for (const modelId of scriptModels) {
@@ -580,7 +593,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         addLog("Generating viral script & masterwork prompt...");
         const scriptModels = [
-            "openai/gpt-5.6-luna"
+            "meta/meta-llama-3-70b-instruct",
+            "mistralai/mixtral-8x7b-instruct-v0.1"
         ];
         
         let chatCompletionText = "";

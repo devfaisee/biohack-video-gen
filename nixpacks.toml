@@ -2,8 +2,8 @@
 node = true
 
 [phases.setup]
-nixPkgs = ["fontconfig", "coreutils"]
-aptPkgs = ["ffmpeg", "fonts-liberation", "fonts-dejavu", "fonts-noto"]
+nixPkgs = ["ffmpeg-full", "fontconfig", "coreutils", "dejavu_fonts", "liberation_ttf"]
+aptPkgs = []
 
 [phases.install]
 cmds = [
