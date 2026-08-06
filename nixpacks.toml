@@ -7,6 +7,7 @@ aptPkgs = []
 
 [phases.install]
 cmds = [
+  "ln -sf $(which ffmpeg) /usr/local/bin/ffmpeg 2>/dev/null; true",
   "cd server && npm install",
   "mkdir -p $HOME/.local/share/fonts",
   "cp server/assets/fonts/*.ttf $HOME/.local/share/fonts/ 2>/dev/null; true",
