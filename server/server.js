@@ -924,76 +924,153 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        // ─── ASS Subtitle Engine ─────────────────────────────────────────────
-        // Uses libass (built into ffmpeg-static) — zero drawtext/freetype dependency
-        function generateAssSubtitles(text, durationSec, isVertical, highlightColorHex = '#FFFF00') {
-            const cleanText = text.replace(/\[.*?\]/g, '').trim();
-            const words = cleanText.split(/\s+/).filter(w => w.length > 0);
-            if (words.length === 0 || durationSec <= 0) return null;
+        // ─── PERFECT SUBTITLE ENGINE v3 ──────────────────────────────────────
+        // Primary: drawtext (works with apt ffmpeg / full builds)
+        // Fallback: ASS subtitle file (works with libass builds incl. ffmpeg-static)
+        // Both produce identical phrase-by-phrase styled captions.
 
-            const playW = isVertical ? 1080 : 1920;
-            const playH = isVertical ? 1920 : 1080;
-            const fontSize = isVertical ? 80 : 64;
-            const marginV = isVertical ? 350 : 130;
-
-            // Convert hex color to ASS &HBBGGRR& format
-            const hexToAss = (hex) => {
-                const h = hex.replace('#', '');
-                const r = h.slice(0, 2), g = h.slice(2, 4), b = h.slice(4, 6);
-                return `&H00${b}${g}${r}&`;
-            };
-
-            const accentAss = hexToAss(highlightColorHex);
-
-            // Group words into phrases of 3, breaking on punctuation
-            const phrases = [];
-            let currentPhrase = [];
-            for (let i = 0; i < words.length; i++) {
-                currentPhrase.push(words[i]);
-                const isPunctEnd = /[.,!?;:\u2014-]$/.test(words[i]);
-                if (currentPhrase.length >= 3 || isPunctEnd || i === words.length - 1) {
-                    phrases.push([...currentPhrase]);
-                    currentPhrase = [];
-                }
-            }
-            // Merge orphan single-word phrase into previous
-            if (phrases.length > 1 && phrases[phrases.length - 1].length === 1) {
-                const orphan = phrases.pop();
-                phrases[phrases.length - 1].push(...orphan);
-            }
-
-            // Proportional timing
-            const totalChars = words.reduce((sum, w) => sum + Math.max(w.length, 2), 0);
-            const timePerChar = durationSec / totalChars;
-
-            // Time formatter: seconds → H:MM:SS.cc
-            const toAssTime = (sec) => {
-                const h = Math.floor(sec / 3600);
-                const m = Math.floor((sec % 3600) / 60);
-                const s = (sec % 60).toFixed(2);
-                return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(5, '0')}`;
-            };
-
-            let dialogues = '';
-            let cursor = 0;
-            for (const phrase of phrases) {
-                const phraseChars = phrase.reduce((sum, w) => sum + Math.max(w.length, 2), 0);
-                const phraseDur = timePerChar * phraseChars;
-                const phraseEnd = Math.min(cursor + phraseDur, durationSec);
-                const displayText = phrase.map(w => w.toUpperCase().replace(/[{}\\|<>]/g, '')).join(' ');
-                const st = toAssTime(cursor);
-                const et = toAssTime(phraseEnd);
-                // Use accent color for entire phrase
-                dialogues += `Dialogue: 0,${st},${et},Default,,0,0,0,,{\\c${accentAss}}${displayText}\n`;
-                cursor = phraseEnd;
-            }
-
-            return `[Script Info]\nScriptType: v4.00+\nPlayResX: ${playW}\nPlayResY: ${playH}\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Arial,${fontSize},${accentAss},&H000000FF,&H00000000,&HA0000000,-1,0,0,0,100,100,0,0,1,4,2,2,30,30,${marginV},1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${dialogues}`;
+        // Safely escape a string for FFmpeg drawtext filter value
+        function drawtextEscape(str) {
+            return str
+                .replace(/\\/g, '\\\\')   // backslash first
+                .replace(/'/g, '')         // remove apostrophes (safest for shell)
+                .replace(/:/g, '\\:')      // colon
+                .replace(/%/g, '%%')       // percent
+                .replace(/\[/g, '')        // remove brackets
+                .replace(/\]/g, '')
+                .replace(/[\x00-\x1F]/g, ''); // strip control chars
         }
 
-        addLog("Assets generated. Stitching clips with WORD-BY-WORD HIGHLIGHT CAPTIONS in parallel...");        const activeFfmpegPath = detectedFfmpeg || "ffmpeg (System PATH)";
-        addLog(`[PRODUCTION LOG] Active FFmpeg Binary: ${activeFfmpegPath}`);
-        addLog(`[SUBTITLE ENGINE] Bulletproof Word-by-Word Highlight Subtitle Engine Active`);
+        // Convert hex color to ASS &HBBGGRR& format
+        function hexToAss(hex) {
+            const h = hex.replace('#', '');
+            const r = h.slice(0,2), g = h.slice(2,4), b = h.slice(4,6);
+            return `&H00${b}${g}${r}&`;
+        }
+
+        // ASS time formatter: seconds → H:MM:SS.cs
+        function toAssTime(sec) {
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = (sec % 60).toFixed(2);
+            return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(5,'0')}`;
+        }
+
+        // Build phrase groups from narration text with proportional timing
+        function buildPhrases(text, durationSec) {
+            const clean = text.replace(/\[.*?\]/g, '').replace(/[*_#~`]/g, '').trim();
+            const words = clean.split(/\s+/).filter(w => w.length > 0);
+            if (words.length === 0 || durationSec <= 0) return [];
+
+            // Group into 3-word phrases, break on sentence-ending punctuation
+            const groups = [];
+            let cur = [];
+            for (let i = 0; i < words.length; i++) {
+                cur.push(words[i]);
+                const isBreak = /[.!?]$/.test(words[i]);
+                if (cur.length >= 3 || isBreak || i === words.length - 1) {
+                    groups.push([...cur]);
+                    cur = [];
+                }
+            }
+            // Absorb orphan trailing single word into previous group
+            if (groups.length > 1 && groups[groups.length-1].length === 1) {
+                groups[groups.length-2].push(...groups.pop());
+            }
+
+            // Proportional timing: characters proportional to word length
+            const totalChars = words.reduce((s, w) => s + Math.max(w.length, 2), 0);
+            const secPerChar = durationSec / totalChars;
+
+            const result = [];
+            let t = 0;
+            for (const group of groups) {
+                const chars = group.reduce((s, w) => s + Math.max(w.length, 2), 0);
+                const dur = secPerChar * chars;
+                const end = Math.min(t + dur, durationSec - 0.05);
+                result.push({ words: group, start: t, end });
+                t = end;
+            }
+            return result;
+        }
+
+        // PRIMARY: Generate drawtext filter chain (requires libfreetype)
+        function generateDrawtextFilter(text, durationSec, isVertical, colorHex) {
+            const phrases = buildPhrases(text, durationSec);
+            if (phrases.length === 0) return '';
+
+            const fontFile = path.join(__dirname, 'assets', 'fonts', 'Oswald-Bold.ttf')
+                .replace(/\\/g, '/').replace(/:/g, '\\\\:');
+            const fontSize = isVertical ? 72 : 60;
+            const yPos    = isVertical ? '(h*0.78)' : '(h*0.82)';
+            const fcolor  = `0x${colorHex.replace('#', '')}`;
+
+            return phrases.map(({ words, start, end }) => {
+                const txt = drawtextEscape(words.map(w => w.toUpperCase()).join(' '));
+                const st  = start.toFixed(3);
+                const et  = end.toFixed(3);
+                return [
+                    `drawtext=fontfile='${fontFile}'`,
+                    `text='${txt}'`,
+                    `fontsize=${fontSize}`,
+                    `fontcolor=${fcolor}`,
+                    `borderw=4`,
+                    `bordercolor=black@0.95`,
+                    `shadowx=3:shadowy=3:shadowcolor=black@0.7`,
+                    `x=(w-text_w)/2`,
+                    `y=${yPos}`,
+                    `enable='between(t,${st},${et})'`
+                ].join(':');
+            }).join(',');
+        }
+
+        // FALLBACK: Generate ASS subtitle file content (requires libass)
+        function generateAssFile(text, durationSec, isVertical, colorHex, outputPath) {
+            const phrases = buildPhrases(text, durationSec);
+            if (phrases.length === 0) return false;
+
+            const W  = isVertical ? 1080 : 1920;
+            const H  = isVertical ? 1920 : 1080;
+            const fontSz = isVertical ? 88 : 72;
+            const mv = isVertical ? 360 : 140;
+            const ac = hexToAss(colorHex);
+
+            const header = [
+                '[Script Info]',
+                'ScriptType: v4.00+',
+                `PlayResX: ${W}`,
+                `PlayResY: ${H}`,
+                'ScaledBorderAndShadow: yes',
+                '',
+                '[V4+ Styles]',
+                'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
+                `Style: Default,Oswald,${fontSz},${ac},&H000000FF,&H00000000,&HA0000000,-1,0,0,0,100,100,0,0,1,4,3,2,30,30,${mv},1`,
+                '',
+                '[Events]',
+                'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
+            ].join('\n');
+
+            const lines = phrases.map(({ words, start, end }) => {
+                const txt = words.map(w => w.toUpperCase().replace(/[{}\\|<>]/g, '')).join(' ');
+                return `Dialogue: 0,${toAssTime(start)},${toAssTime(end)},Default,,0,0,0,,{\\c${ac}\\b1}${txt}`;
+            }).join('\n');
+
+            fs.writeFileSync(outputPath, `${header}\n${lines}\n`, 'utf8');
+            return true;
+        }
+
+        addLog("Assets generated. Stitching clips with WORD-BY-WORD CAPTIONS in parallel...");
+        addLog(`[SUBTITLE ENGINE] Perfect Subtitle Engine v3 active (drawtext primary / ASS fallback)`);
+        addLog(`[PRODUCTION LOG] Active FFmpeg Binary: ${detectedFfmpeg || 'system ffmpeg'}`);
+
+        // Detect at runtime whether drawtext is available in this ffmpeg build
+        let useDrawtext = true;
+        try {
+            execSync(`${detectedFfmpeg || 'ffmpeg'} -filters 2>/dev/null | grep drawtext`, { shell: '/bin/sh', stdio: 'pipe' });
+        } catch (_) {
+            useDrawtext = false;
+            addLog('[SUBTITLE ENGINE] drawtext not available — using ASS file fallback');
+        }
         
         // Niche-Aware Subtitle Color Selection (computed once, used for all clips)
         const clipPaths = new Array(clips.length);
@@ -1061,14 +1138,18 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     vfFilters += `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,0,1)'`;
                 }
 
-                const assContent = generateAssSubtitles(clip.text, clip.duration, isVertical, highlightColorHex);
-                let assPath = null;
-                if (assContent) {
-                    assPath = path.join(projectDir, `sub_${j}.ass`);
-                    fs.writeFileSync(assPath, assContent, 'utf8');
-                    // Escape path for FFmpeg filter — forward slashes, escape colons and backslashes
-                    const assEscaped = assPath.replace(/\\/g, '/').replace(/:/g, '\\:');
-                    vfFilters += `,subtitles='${assEscaped}'`;
+                // Apply subtitles using best available method
+                if (useDrawtext) {
+                    const dtFilter = generateDrawtextFilter(clip.text, clip.duration, isVertical, highlightColorHex);
+                    if (dtFilter) vfFilters += `,${dtFilter}`;
+                } else {
+                    // ASS file fallback
+                    const assPath = path.join(projectDir, `sub_${j}.ass`);
+                    const ok = generateAssFile(clip.text, clip.duration, isVertical, highlightColorHex, assPath);
+                    if (ok) {
+                        const escaped = assPath.replace(/\\/g, '/');
+                        vfFilters += `,subtitles=${escaped}`;
+                    }
                 }
 
                 chunk.push(new Promise((resolve, reject) => {
