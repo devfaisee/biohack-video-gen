@@ -263,8 +263,12 @@ function CreatorStudio() {
     }
   }, [baseUrl, toast]);
 
-  const nicheKeys = useMemo(() => Object.keys(NICHES), []);
+  // Filter out metadata keys from niches, get display name without star prefix
+  const nicheKeys = useMemo(() => Object.keys(NICHES).filter(k => !k.startsWith('_')), []);
+  const firstNiche = nicheKeys[0];
   const subNiches = useMemo(() => NICHES[mainNiche] || [], [mainNiche]);
+  const getNicheDisplay = (key) => key; // stars are part of the key and render as unicode in option
+  const isStarred = (key) => key.startsWith('⭐');
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="page-content">
@@ -276,16 +280,19 @@ function CreatorStudio() {
 
         <div className="form-grid-2">
           <div className="form-group">
-            <label className="label">Content Category</label>
+            <label className="label">
+              Content Niche
+              <span style={{fontSize:'11px',marginLeft:'8px',color:'var(--accent)',opacity:0.8}}>⭐ = Top performers</span>
+            </label>
             <div className="select-wrapper">
-              <select className="select" value={mainNiche} onChange={(e) => { setMainNiche(e.target.value); setSubNiche(NICHES[e.target.value][0]); }}>
+              <select className="select" value={mainNiche} onChange={(e) => { setMainNiche(e.target.value); setSubNiche((NICHES[e.target.value] || [])[0] || ''); }}>
                 {nicheKeys.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
               <ChevronDown size={16} className="select-icon" />
             </div>
           </div>
           <div className="form-group">
-            <label className="label">Sub-Niche</label>
+            <label className="label">Micro-Niche <span style={{fontSize:'11px',marginLeft:'4px',color:'#888'}}>(content category)</span></label>
             <div className="select-wrapper">
               <select className="select" value={subNiche} onChange={(e) => setSubNiche(e.target.value)}>
                 {subNiches.map(sub => <option key={sub} value={sub}>{sub}</option>)}
