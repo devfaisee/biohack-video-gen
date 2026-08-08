@@ -327,7 +327,10 @@ Output ONLY pure JSON:
 
 async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", format = 'horizontal', jobId }) {
     try {
-        const wordCount = durationMinutes * 130;
+        const wordCount = Math.round(durationMinutes * 130);
+        // Each segment is ~13-16 seconds. Target 4 segments per minute of video.
+        const targetSegments = Math.max(Math.round(durationMinutes * 4), 6);
+        const minSegments = Math.max(Math.round(durationMinutes * 3), 5);
         const randomSeed = `${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
         
         let specificIdeaInstruction = "";
@@ -564,8 +567,13 @@ ${specificIdeaInstruction}
 ${nicheRules}
 ${formatPacingRules}
 
-CRITICAL DURATION REQUIREMENT:
-The user requested a ${durationMinutes}-minute video. At normal speaking pace, you MUST write AT LEAST ${wordCount} words of narration total. Do NOT summarize. Do NOT finish early.
+CRITICAL DURATION & SEGMENT REQUIREMENT:
+The user requested a ${durationMinutes}-minute video.
+- Each segment is spoken aloud by a voiceover and lasts approximately 13-16 seconds.
+- You MUST generate EXACTLY ${targetSegments} segments. Not fewer. Not more.
+- Total narration across all segments MUST be AT LEAST ${wordCount} words.
+- Each segment narration MUST be 30-50 words long. Do NOT write short 1-2 sentence segments.
+- Do NOT summarize or finish early. Fill every segment with full, detailed, engaging narration.
 
 NUMBERED LIST & STRUCTURAL INTEGRITY MANDATE:
 If the user's topic or title specifies a numbered list (e.g., "10 habits", "7 secrets", "5 rules", "12 tips"), you MUST explicitly write out and cover EVERY SINGLE item sequentially from #1 through #N. Do NOT stop early, skip numbers, or summarize halfway. Every item must receive full detail and narration.
@@ -696,6 +704,11 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             }
         }
         addLog(`Script generated successfully. Total segments: ${scriptData.segments.length}`);
+
+        // Enforce minimum segment count server-side
+        if (!scriptData.segments || scriptData.segments.length < minSegments) {
+            throw new Error(`Script too short: got ${scriptData.segments?.length || 0} segments, need at least ${minSegments} for a ${durationMinutes}-min video. Regenerating...`);
+        }
 
         const videoId = jobId || crypto.randomUUID();
         const projectDir = path.join(tmpDir, videoId);
@@ -924,31 +937,28 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
 
         if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
 
-        // ─── PERFECT SUBTITLE ENGINE v3 ──────────────────────────────────────
-        // Primary: drawtext (works with apt ffmpeg / full builds)
-        // Fallback: ASS subtitle file (works with libass builds incl. ffmpeg-static)
-        // Both produce identical phrase-by-phrase styled captions.
+        // ─── KARAOKE SUBTITLE ENGINE (word-highlight style) ──────────────────
+        // Shows 3 words at a time: [white] [ACCENT] [white]
+        // Current word pops in accent color, flanking words fade in white.
+        // Works via ASS karaoke format (libass). Falls back to phrase-only drawtext.
 
-        // Safely escape a string for FFmpeg drawtext filter value
-        function drawtextEscape(str) {
-            return str
-                .replace(/\\/g, '\\\\')   // backslash first
-                .replace(/'/g, '')         // remove apostrophes (safest for shell)
-                .replace(/:/g, '\\:')      // colon
-                .replace(/%/g, '%%')       // percent
-                .replace(/\[/g, '')        // remove brackets
-                .replace(/\]/g, '')
-                .replace(/[\x00-\x1F]/g, ''); // strip control chars
+        function buildWordTimings(text, durationSec) {
+            const clean = text.replace(/\[.*?\]/g, '').replace(/[*_#~`]/g, '').trim();
+            const words = clean.split(/\s+/).filter(w => w.length > 0);
+            if (!words.length || durationSec <= 0) return [];
+            const totalChars = words.reduce((s, w) => s + Math.max(w.length, 2), 0);
+            const secPerChar = durationSec / totalChars;
+            const timings = [];
+            let t = 0;
+            for (const w of words) {
+                const dur = Math.max(w.length, 2) * secPerChar;
+                timings.push({ word: w, start: t, end: Math.min(t + dur, durationSec) });
+                t = timings[timings.length - 1].end;
+            }
+            return timings;
         }
 
-        // Convert hex color to ASS &HBBGGRR& format
-        function hexToAss(hex) {
-            const h = hex.replace('#', '');
-            const r = h.slice(0,2), g = h.slice(2,4), b = h.slice(4,6);
-            return `&H00${b}${g}${r}&`;
-        }
-
-        // ASS time formatter: seconds → H:MM:SS.cs
+        // ASS time: seconds → H:MM:SS.cs
         function toAssTime(sec) {
             const h = Math.floor(sec / 3600);
             const m = Math.floor((sec % 3600) / 60);
@@ -956,84 +966,23 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(5,'0')}`;
         }
 
-        // Build phrase groups from narration text with proportional timing
-        function buildPhrases(text, durationSec) {
-            const clean = text.replace(/\[.*?\]/g, '').replace(/[*_#~`]/g, '').trim();
-            const words = clean.split(/\s+/).filter(w => w.length > 0);
-            if (words.length === 0 || durationSec <= 0) return [];
-
-            // Group into 3-word phrases, break on sentence-ending punctuation
-            const groups = [];
-            let cur = [];
-            for (let i = 0; i < words.length; i++) {
-                cur.push(words[i]);
-                const isBreak = /[.!?]$/.test(words[i]);
-                if (cur.length >= 3 || isBreak || i === words.length - 1) {
-                    groups.push([...cur]);
-                    cur = [];
-                }
-            }
-            // Absorb orphan trailing single word into previous group
-            if (groups.length > 1 && groups[groups.length-1].length === 1) {
-                groups[groups.length-2].push(...groups.pop());
-            }
-
-            // Proportional timing: characters proportional to word length
-            const totalChars = words.reduce((s, w) => s + Math.max(w.length, 2), 0);
-            const secPerChar = durationSec / totalChars;
-
-            const result = [];
-            let t = 0;
-            for (const group of groups) {
-                const chars = group.reduce((s, w) => s + Math.max(w.length, 2), 0);
-                const dur = secPerChar * chars;
-                const end = Math.min(t + dur, durationSec - 0.05);
-                result.push({ words: group, start: t, end });
-                t = end;
-            }
-            return result;
+        function hexToAss(hex) {
+            const h = hex.replace('#','');
+            return `&H00${h.slice(4,6)}${h.slice(2,4)}${h.slice(0,2)}&`;
         }
 
-        // PRIMARY: Generate drawtext filter chain (requires libfreetype)
-        function generateDrawtextFilter(text, durationSec, isVertical, colorHex) {
-            const phrases = buildPhrases(text, durationSec);
-            if (phrases.length === 0) return '';
+        // Generate ASS karaoke subtitle file — 3-word sliding window highlight
+        function generateKaraokeAss(text, durationSec, isVertical, accentHex) {
+            const timings = buildWordTimings(text, durationSec);
+            if (!timings.length) return null;
 
-            const fontFile = path.join(__dirname, 'assets', 'fonts', 'Oswald-Bold.ttf')
-                .replace(/\\/g, '/').replace(/:/g, '\\\\:');
-            const fontSize = isVertical ? 72 : 60;
-            const yPos    = isVertical ? '(h*0.78)' : '(h*0.82)';
-            const fcolor  = `0x${colorHex.replace('#', '')}`;
-
-            return phrases.map(({ words, start, end }) => {
-                const txt = drawtextEscape(words.map(w => w.toUpperCase()).join(' '));
-                const st  = start.toFixed(3);
-                const et  = end.toFixed(3);
-                return [
-                    `drawtext=fontfile='${fontFile}'`,
-                    `text='${txt}'`,
-                    `fontsize=${fontSize}`,
-                    `fontcolor=${fcolor}`,
-                    `borderw=4`,
-                    `bordercolor=black@0.95`,
-                    `shadowx=3:shadowy=3:shadowcolor=black@0.7`,
-                    `x=(w-text_w)/2`,
-                    `y=${yPos}`,
-                    `enable='between(t,${st},${et})'`
-                ].join(':');
-            }).join(',');
-        }
-
-        // FALLBACK: Generate ASS subtitle file content (requires libass)
-        function generateAssFile(text, durationSec, isVertical, colorHex, outputPath) {
-            const phrases = buildPhrases(text, durationSec);
-            if (phrases.length === 0) return false;
-
-            const W  = isVertical ? 1080 : 1920;
-            const H  = isVertical ? 1920 : 1080;
-            const fontSz = isVertical ? 88 : 72;
-            const mv = isVertical ? 360 : 140;
-            const ac = hexToAss(colorHex);
+            const W = isVertical ? 1080 : 1920;
+            const H = isVertical ? 1920 : 1080;
+            const fontSz = isVertical ? 78 : 64;
+            const marginV = isVertical ? 370 : 145;
+            const accentAss = hexToAss(accentHex);
+            const whiteAss  = '&H00FFFFFF&';
+            const greyAss   = '&H00CCCCCC&';
 
             const header = [
                 '[Script Info]',
@@ -1041,35 +990,117 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 `PlayResX: ${W}`,
                 `PlayResY: ${H}`,
                 'ScaledBorderAndShadow: yes',
+                'WrapStyle: 1',
                 '',
                 '[V4+ Styles]',
                 'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-                `Style: Default,Oswald,${fontSz},${ac},&H000000FF,&H00000000,&HA0000000,-1,0,0,0,100,100,0,0,1,4,3,2,30,30,${mv},1`,
+                // Style: base is white, accent is applied inline per word
+                `Style: Default,Oswald,${fontSz},${whiteAss},&H000000FF,&H00000000,&HA0000000,-1,0,0,0,100,100,1,0,1,4,3,2,40,40,${marginV},1`,
                 '',
                 '[Events]',
                 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
             ].join('\n');
 
-            const lines = phrases.map(({ words, start, end }) => {
-                const txt = words.map(w => w.toUpperCase().replace(/[{}\\|<>]/g, '')).join(' ');
-                return `Dialogue: 0,${toAssTime(start)},${toAssTime(end)},Default,,0,0,0,,{\\c${ac}\\b1}${txt}`;
-            }).join('\n');
+            // For each word, build a 3-word window: [prev?] [CURRENT] [next?]
+            const lines = [];
+            for (let i = 0; i < timings.length; i++) {
+                const curr = timings[i];
+                const prev = timings[i - 1];
+                const next = timings[i + 1];
 
-            fs.writeFileSync(outputPath, `${header}\n${lines}\n`, 'utf8');
-            return true;
+                const st = toAssTime(curr.start);
+                const et = toAssTime(curr.end);
+
+                const fmt = (w, colorAss, bold) => {
+                    const clean = w.toUpperCase().replace(/[{}\\|<>]/g, '');
+                    return `{\\c${colorAss}${bold ? '\\b1\\fs' + Math.round(fontSz * 1.05) : '\\b0'}\\bord4\\shad3}${clean}`;
+                };
+
+                let parts = [];
+                if (prev) parts.push(fmt(prev.word, greyAss, false));
+                parts.push(fmt(curr.word, accentAss, true));
+                if (next) parts.push(fmt(next.word, greyAss, false));
+
+                lines.push(`Dialogue: 0,${st},${et},Default,,0,0,0,,${parts.join(' ')}`);
+            }
+
+            return `${header}\n${lines.join('\n')}\n`;
         }
 
-        addLog("Assets generated. Stitching clips with WORD-BY-WORD CAPTIONS in parallel...");
-        addLog(`[SUBTITLE ENGINE] Perfect Subtitle Engine v3 active (drawtext primary / ASS fallback)`);
+        // Drawtext fallback for phrase-by-phrase (when libass unavailable)
+        function drawtextEscape(str) {
+            return str
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, '')
+                .replace(/:/g, '\\:')
+                .replace(/%/g, '%%')
+                .replace(/[\[\]]/g, '')
+                .replace(/[\x00-\x1F]/g, '');
+        }
+
+        function buildPhrases(text, durationSec) {
+            const clean = text.replace(/\[.*?\]/g, '').replace(/[*_#~`]/g, '').trim();
+            const words = clean.split(/\s+/).filter(w => w.length > 0);
+            if (!words.length || durationSec <= 0) return [];
+            const groups = [];
+            let cur = [];
+            for (let i = 0; i < words.length; i++) {
+                cur.push(words[i]);
+                if (cur.length >= 3 || /[.!?]$/.test(words[i]) || i === words.length - 1) {
+                    groups.push([...cur]);
+                    cur = [];
+                }
+            }
+            if (groups.length > 1 && groups[groups.length-1].length === 1) {
+                groups[groups.length-2].push(...groups.pop());
+            }
+            const totalChars = words.reduce((s, w) => s + Math.max(w.length, 2), 0);
+            const secPerChar = durationSec / totalChars;
+            const result = [];
+            let t = 0;
+            for (const g of groups) {
+                const chars = g.reduce((s, w) => s + Math.max(w.length, 2), 0);
+                const dur = secPerChar * chars;
+                const end = Math.min(t + dur, durationSec - 0.05);
+                result.push({ words: g, start: t, end });
+                t = end;
+            }
+            return result;
+        }
+
+        function generateDrawtextFallback(text, durationSec, isVertical, colorHex) {
+            const phrases = buildPhrases(text, durationSec);
+            if (!phrases.length) return '';
+            const fontFile = path.join(__dirname, 'assets', 'fonts', 'Oswald-Bold.ttf')
+                .replace(/\\/g, '/').replace(/:/g, '\\\\:');
+            const fontSize = isVertical ? 72 : 60;
+            const yPos = isVertical ? '(h*0.78)' : '(h*0.82)';
+            const fcolor = `0x${colorHex.replace('#', '')}`;
+            return phrases.map(({ words, start, end }) => {
+                const txt = drawtextEscape(words.map(w => w.toUpperCase()).join(' '));
+                return `drawtext=fontfile='${fontFile}':text='${txt}':fontsize=${fontSize}:fontcolor=${fcolor}:borderw=4:bordercolor=black@0.95:shadowx=3:shadowy=3:shadowcolor=black@0.7:x=(w-text_w)/2:y=${yPos}:enable='between(t,${start.toFixed(3)},${end.toFixed(3)})'`;
+            }).join(',');
+        }
+
+        addLog("Assets generated. Stitching clips with KARAOKE WORD-HIGHLIGHT captions...");
+        addLog(`[SUBTITLE ENGINE] Karaoke Word-Highlight Engine active`);
         addLog(`[PRODUCTION LOG] Active FFmpeg Binary: ${detectedFfmpeg || 'system ffmpeg'}`);
 
-        // Detect at runtime whether drawtext is available in this ffmpeg build
-        let useDrawtext = true;
+        // Runtime detection: prefer ASS karaoke (most compatible), fallback to drawtext
+        let subtitleMode = 'ass'; // 'ass' | 'drawtext' | 'none'
         try {
-            execSync(`${detectedFfmpeg || 'ffmpeg'} -filters 2>/dev/null | grep drawtext`, { shell: '/bin/sh', stdio: 'pipe' });
+            execSync(`${detectedFfmpeg || 'ffmpeg'} -filters 2>/dev/null | grep subtitles`, { shell: '/bin/sh', stdio: 'pipe' });
+            subtitleMode = 'ass';
+            addLog('[SUBTITLE ENGINE] ASS karaoke mode active (libass detected)');
         } catch (_) {
-            useDrawtext = false;
-            addLog('[SUBTITLE ENGINE] drawtext not available — using ASS file fallback');
+            try {
+                execSync(`${detectedFfmpeg || 'ffmpeg'} -filters 2>/dev/null | grep drawtext`, { shell: '/bin/sh', stdio: 'pipe' });
+                subtitleMode = 'drawtext';
+                addLog('[SUBTITLE ENGINE] drawtext fallback mode active');
+            } catch (__) {
+                subtitleMode = 'none';
+                addLog('[SUBTITLE ENGINE] [WARN] No subtitle filters available');
+            }
         }
         
         // Niche-Aware Subtitle Color Selection (computed once, used for all clips)
@@ -1138,18 +1169,18 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     vfFilters += `,drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,0,1)'`;
                 }
 
-                // Apply subtitles using best available method
-                if (useDrawtext) {
-                    const dtFilter = generateDrawtextFilter(clip.text, clip.duration, isVertical, highlightColorHex);
-                    if (dtFilter) vfFilters += `,${dtFilter}`;
-                } else {
-                    // ASS file fallback
+                // Apply subtitles using best detected method
+                if (subtitleMode === 'ass') {
                     const assPath = path.join(projectDir, `sub_${j}.ass`);
-                    const ok = generateAssFile(clip.text, clip.duration, isVertical, highlightColorHex, assPath);
-                    if (ok) {
+                    const assContent = generateKaraokeAss(clip.text, clip.duration, isVertical, highlightColorHex);
+                    if (assContent) {
+                        fs.writeFileSync(assPath, assContent, 'utf8');
                         const escaped = assPath.replace(/\\/g, '/');
                         vfFilters += `,subtitles=${escaped}`;
                     }
+                } else if (subtitleMode === 'drawtext') {
+                    const dtFilter = generateDrawtextFallback(clip.text, clip.duration, isVertical, highlightColorHex);
+                    if (dtFilter) vfFilters += `,${dtFilter}`;
                 }
 
                 chunk.push(new Promise((resolve, reject) => {
@@ -1295,22 +1326,59 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             try { fs.copyFileSync(finalVideoPath, legacyVideoPath); } catch (_) {}
         }
 
-        // -------------------------
-        // Generate YouTube Thumbnail
-        // -------------------------
+        // ─── INTELLIGENT THUMBNAIL SYSTEM ─────────────────────────────────────
         addLog("Generating Viral YouTube Thumbnail...");
         const thumbUrlPath = `/output/${folderName}/thumbnail.jpg`;
         const thumbLocalPath = path.join(videoFolder, `thumbnail.jpg`);
         const legacyThumbPath = path.join(outputDir, `${videoId}_thumb.jpg`);
         try {
-            let thumbPrompt = scriptData.thumbnailPrompt;
-            if (!thumbPrompt) {
-                if (scriptData.hasThumbnailText && scriptData.thumbnailText) {
-                    thumbPrompt = `A masterwork YouTube thumbnail background for ${subNiche}, 3D depth-of-field, dramatic volumetric lighting, intense focal point, teal and orange cinematic color grade, high contrast, ultra-vibrant, with bold clean high-contrast white text reading '${scriptData.thumbnailText}'`;
-                } else {
-                    thumbPrompt = `A masterwork YouTube thumbnail background for ${subNiche}, 3D depth-of-field, dramatic volumetric lighting, intense focal point, teal and orange cinematic color grade, high contrast, ultra-vibrant, no text`;
-                }
+            // 1. NICHE-AWARE VISUAL STYLE — each niche gets a unique cinematic language
+            const nicheKey = (mainNiche || '').toLowerCase();
+            let nicheVisualStyle = '';
+            if (nicheKey.includes('finance') || nicheKey.includes('wealth') || nicheKey.includes('money')) {
+                nicheVisualStyle = 'Dark mahogany desk with gold coins and luxury watch, dramatic chiaroscuro lighting, deep shadows, glowing amber highlights, ultra-luxurious atmosphere, Wall Street aesthetic';
+            } else if (nicheKey.includes('crime') || nicheKey.includes('mystery') || nicheKey.includes('unsolved')) {
+                nicheVisualStyle = 'Moody noir atmosphere, single harsh overhead light casting deep shadows, crime scene yellow tape or shadowy silhouette, dark purple and red color palette, cinematic thriller aesthetic';
+            } else if (nicheKey.includes('psychology') || nicheKey.includes('dark') || nicheKey.includes('mind')) {
+                nicheVisualStyle = 'Fragmented mirror reflection showing multiple faces, dark blue and deep purple, subtle geometric patterns in background, psychological thriller atmosphere, dramatic side lighting';
+            } else if (nicheKey.includes('history') || nicheKey.includes('military') || nicheKey.includes('ancient')) {
+                nicheVisualStyle = 'Dramatic historical scene with epic volumetric lighting, aged texture, sepia-teal color grade, sense of epic scale and grandeur, documentary cinematography style';
+            } else if (nicheKey.includes('science') || nicheKey.includes('space') || nicheKey.includes('tech')) {
+                nicheVisualStyle = 'Futuristic neon-lit environment, electric blue and teal glowing circuitry, holographic elements, deep space or high-tech laboratory background, cutting-edge aesthetic';
+            } else if (nicheKey.includes('health') || nicheKey.includes('biohack') || nicheKey.includes('food')) {
+                nicheVisualStyle = 'Clean bright environment, vibrant lime green and white, healthy body or brain visualization, scientific precision meets wellness aesthetics, energetic and motivating';
+            } else if (nicheKey.includes('motivation') || nicheKey.includes('success') || nicheKey.includes('luxury')) {
+                nicheVisualStyle = 'Inspiring silhouette on mountain peak or urban skyline, golden hour lighting, epic scale, warm gold and orange color grade, aspirational lifestyle aesthetic';
+            } else if (nicheKey.includes('relationship') || nicheKey.includes('social')) {
+                nicheVisualStyle = 'Emotionally charged scene with deep human connection or dramatic confrontation, warm pink and deep red tones, shallow depth of field, cinematic portrait style';
+            } else if (nicheKey.includes('survival') || nicheKey.includes('disaster')) {
+                nicheVisualStyle = 'Dramatic natural environment, stormy sky, intense orange emergency lighting, survival gear, apocalyptic cinematic scale, high tension atmosphere';
+            } else {
+                nicheVisualStyle = 'Dramatic central focal point with volumetric lighting, deep shadows, cinematic teal-orange color grade, extreme depth of field';
             }
+
+            // 2. SMART TEXT DECISION — only add text when it adds genuine click value
+            const thumbTextRaw = (scriptData.thumbnailText || '').trim();
+            const titleWords = (scriptData.title || '').toLowerCase().split(/\s+/);
+            const thumbWords = thumbTextRaw.toLowerCase().split(/\s+/);
+            // Add text overlay only if: text exists, is short (≤4 words), and adds new info not in title
+            const thumbWordsInTitle = thumbWords.filter(w => w.length > 3 && titleWords.includes(w)).length;
+            const shouldAddText = thumbTextRaw.length > 0 &&
+                thumbWords.length <= 4 &&
+                thumbWordsInTitle < thumbWords.length * 0.6; // at least 40% unique words vs title
+
+            // 3. AI BACKGROUND GENERATION — always generates clean background (no baked text)
+            let thumbPrompt = scriptData.thumbnailPrompt;
+            if (!thumbPrompt || thumbPrompt.length < 50) {
+                thumbPrompt = `Masterwork YouTube thumbnail background. ${nicheVisualStyle}. ONE dramatic central focal point. 3-point volumetric lighting with glowing accent colors contrasting deep shadows. Extreme depth-of-field background blur (bokeh). ${shouldAddText ? 'Clean empty space at the top or left for text overlay.' : 'Full dramatic composition.'} Ultra-high contrast, ultra-vibrant. NO TEXT, NO WORDS, NO LETTERS in the image.`;
+            } else {
+                // Strip any text instructions from the AI-provided prompt for clean background
+                thumbPrompt = thumbPrompt.replace(/with.*?text.*?reading.*?['""][^'"]+['""][,.]?/gi, '').trim();
+                thumbPrompt += '. NO TEXT, NO WORDS, NO LETTERS in the image.';
+            }
+
+            addLog(`[THUMBNAIL] Style: ${nicheKey || 'universal'} | Text overlay: ${shouldAddText ? `"${thumbTextRaw}"` : 'none (background only)'}`);
+
             const thumbUrl = await safeReplicateRun(
                 "bytedance/seedream-4.5",
                 {
@@ -1325,14 +1393,65 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
             );
             
             const thumbBuffer = await withRetry(() => axios.get(thumbUrl[0], { responseType: 'arraybuffer' }), "Download Thumbnail");
-            fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
+            
+            // 4. SERVER-SIDE TEXT COMPOSITOR — crisp professional text overlay via sharp
+            if (shouldAddText && thumbTextRaw) {
+                try {
+                    const sharp = require('sharp');
+                    const imgBuf = Buffer.from(thumbBuffer.data);
+                    const meta = await sharp(imgBuf).metadata();
+                    const W = meta.width || 1920;
+                    const H = meta.height || 1080;
+
+                    // Niche accent color for text
+                    const textColor = highlightColorHex || '#FFD700';
+                    const fontSize = Math.round(W * (thumbWords.length <= 2 ? 0.09 : 0.065));
+                    const strokeW = Math.round(fontSize * 0.08);
+
+                    // Position: upper-left zone for text (classic YouTube thumbnail layout)
+                    const textX = Math.round(W * 0.05);
+                    const textY = Math.round(H * 0.08);
+
+                    const svgText = `<svg width="${W}" height="${H}">
+                        <defs>
+                            <filter id="shadow">
+                                <feDropShadow dx="4" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.9"/>
+                            </filter>
+                        </defs>
+                        <text
+                            x="${textX}" y="${textY + fontSize}"
+                            font-family="Impact, Arial Black, sans-serif"
+                            font-size="${fontSize}"
+                            font-weight="900"
+                            fill="${textColor}"
+                            stroke="#000000"
+                            stroke-width="${strokeW}"
+                            paint-order="stroke fill"
+                            filter="url(#shadow)"
+                            text-anchor="start"
+                            dominant-baseline="auto"
+                            letter-spacing="-2"
+                        >${thumbTextRaw.toUpperCase()}</text>
+                    </svg>`;
+
+                    const composited = await sharp(imgBuf)
+                        .composite([{ input: Buffer.from(svgText), blend: 'over' }])
+                        .jpeg({ quality: 95 })
+                        .toBuffer();
+
+                    fs.writeFileSync(thumbLocalPath, composited);
+                    addLog(`[THUMBNAIL] Text overlay composited: "${thumbTextRaw.toUpperCase()}" (${W}x${H})`);
+                } catch (sharpErr) {
+                    // sharp failed — save raw background without text overlay
+                    console.warn('[THUMBNAIL] sharp text compositor failed, saving raw background:', sharpErr.message);
+                    fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
+                }
+            } else {
+                fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
+            }
+
             try { fs.copyFileSync(thumbLocalPath, legacyThumbPath); } catch (_) {}
-            
             addLog("Thumbnail Generated Successfully!");
-            
-            // Vision QA removed because gpt-5.6-luna does not support vision yet.
-            scriptData.thumbnailQA = "Vision QA skipped (model unsupported)";
-            addLog(`[WARN] Vision QA passed (thumbnail generated successfully).`);
         } catch (e) {
             console.warn("Thumbnail generation failed:", e.message);
         }

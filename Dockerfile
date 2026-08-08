@@ -1,12 +1,14 @@
 FROM node:22-slim
 
 # Install system ffmpeg (Debian build includes drawtext/libass/libfreetype/fontconfig)
+# Also install libvips for sharp (Node.js image compositor)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     fontconfig \
     fonts-liberation \
     fonts-dejavu-core \
     fonts-noto \
+    libvips-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
