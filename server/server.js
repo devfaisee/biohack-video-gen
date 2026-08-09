@@ -329,10 +329,14 @@ Output ONLY pure JSON:
 
 async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", format = 'horizontal', jobId }) {
     try {
-        const wordCount = Math.round(durationMinutes * 130);
-        // Each segment is ~13-16 seconds. Target 4 segments per minute of video.
-        const targetSegments = Math.max(Math.round(durationMinutes * 4), 6);
-        const minSegments = Math.max(Math.round(durationMinutes * 3), 5);
+        const wordCount = Math.round(durationMinutes * 130); // 130 wpm speaking pace
+        // Use 2 segments/min so each segment has 60-90 words (vs 4/min × 30-50 words).
+        // This keeps JSON small enough for LLM token limits while hitting exact duration.
+        const targetSegments = Math.max(Math.round(durationMinutes * 2), 6);
+        const minSegments = Math.max(Math.round(durationMinutes * 1.5), 5);
+        const wordsPerSegment = Math.round(wordCount / targetSegments); // ~65 words for 8 min
+        const minWordsPerSegment = Math.max(50, wordsPerSegment - 15);
+        const maxWordsPerSegment = wordsPerSegment + 25;
         const randomSeed = `${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
         
         let specificIdeaInstruction = "";
@@ -603,69 +607,103 @@ ${specificIdeaInstruction}
 ${nicheRules}
 ${formatPacingRules}
 
-CRITICAL DURATION & SEGMENT REQUIREMENT:
-The user requested a ${durationMinutes}-minute video.
-- Each segment is spoken aloud by a voiceover and lasts approximately 13-16 seconds.
-- You MUST generate EXACTLY ${targetSegments} segments. Not fewer. Not more.
-- Total narration across all segments MUST be AT LEAST ${wordCount} words.
-- Each segment narration MUST be 30-50 words long. Do NOT write short 1-2 sentence segments.
-- Do NOT summarize or finish early. Fill every segment with full, detailed, engaging narration.
+CRITICAL DURATION & SEGMENT REQUIREMENT — READ THIS CAREFULLY:
+The user requested a ${durationMinutes}-minute video. This is NON-NEGOTIABLE.
+- You MUST generate EXACTLY ${targetSegments} segments in the "segments" array.
+- Each segment narration MUST be ${minWordsPerSegment}-${maxWordsPerSegment} words long. Count them.
+- Total narration word count across ALL segments MUST reach AT LEAST ${wordCount} words.
+- The video is ${durationMinutes} minutes. Not 2. Not 3. ${durationMinutes} full minutes of substance.
+- If you stop early or write short segments, the generation FAILS and is retried.
 
-NUMBERED LIST & STRUCTURAL INTEGRITY MANDATE:
-If the user's topic or title specifies a numbered list (e.g., "10 habits", "7 secrets", "5 rules", "12 tips"), you MUST explicitly write out and cover EVERY SINGLE item sequentially from #1 through #N. Do NOT stop early, skip numbers, or summarize halfway. Every item must receive full detail and narration.
+════════════════════════════════════════════════════════
+⚠️  ANTI-FILLER MANDATE — THIS IS THE MOST CRITICAL RULE
+════════════════════════════════════════════════════════
+You are writing the COMPLETE VIDEO CONTENT, not a trailer or teaser.
 
-CRITICAL RULES FOR FAST-PACED RETENTION & VIRALITY:
-1. PSYCHOLOGICAL HOOK: The first 5 seconds MUST use one of these hook frameworks: 
-   - The Contrarian Hook: "Everything you've been told about X is a lie."
-   - The Negative Hook: "Do not do X until you understand this dark reality."
-   - In-Media-Res: Start exactly at the climax of the story, then rewind.
-2. OPEN LOOP ENFORCEMENT: You MUST plant ONE specific, unanswered mystery in the FIRST segment. Reference it briefly at the ~50% mark to remind viewers it is still unanswered. Deliver the FULL payoff in the SECOND-TO-LAST segment. The LAST segment is reserved for the end screen CTA.
-3. VISUAL PACING & PATTERN INTERRUPTS: Visuals must change RAPIDLY. Provide a new visual instruction every sentence. Use a "blackout" transition for a sudden 1-second black screen during a whispered secret.
-4. TITLE & SEO: The title must be highly clickable and psychologically compelling, MrBeast or Ali Abdaal level of clickbait but factual. 
-5. TAG DISTRIBUTION MANDATE: Provide 25-30 highly targeted, algorithm-optimizing SEO tags with this exact distribution:
-   - 5 short-tail tags (1 word): "psychology", "wealth", "secrets"
-   - 10 medium-tail tags (2-3 words): "dark psychology", "wealth building tips"
-   - 10 long-tail tags (4-7 words): "dark psychology tactics used by narcissists"
-   - 5 trending/timely tags: "2026", "new research", "just discovered"
-6. DESCRIPTION STRUCTURE (in this exact order):
-   a) Compelling 2-3 sentence hook paragraph with emojis
-   b) ⏱️ TIMESTAMPS section with chapters for every 2-3 segments
-   c) 📌 About This Video — 2 paragraph detailed summary
-   d) 🔑 Keywords — 30+ long-tail search phrases separated by commas
-   e) 3 hashtags at the very end (#niche #subniche #topic)
-   f) MANDATORY LAST LINE: "⚠️ This video uses AI-assisted narration and visuals."
-7. CONTEXT-AWARE EDITING: For every segment, you MUST act as the video editor. Choose a "transition" ("none", "fade_in", "glitch", or "blackout") and a "camera_motion" ("static" or "zoom_in"). Use "glitch" for shocking/scary moments, "fade_in" for tone shifts, "blackout" for pattern interrupts, and "zoom_in" for intense focus. Vary the distribution — do NOT use only "none" for every segment.
-8. COMMENT ENGAGEMENT: Include ONE natural engagement prompt somewhere in the middle of the script (around the 40-60% mark). Example: "Drop a comment below — which of these shocked you the most?" or "Let me know in the comments if you have ever experienced this."
-9. END SCREEN CTA: The LAST segment (final 15-20 seconds) MUST be a compelling call-to-action: "If this blew your mind, you need to see what we cover next. Subscribe and hit the bell so you never miss a deep dive like this." This segment's visual should be a clean, simple background suitable for YouTube end screen cards.
-10. ABSOLUTE SAFETY & COMPLIANCE: Gemini TTS has a hyper-sensitive safety filter. Even for True Crime or Horror, you MUST NOT use banned words like "kill", "murder", "rape", "drug", "suicide", "blood", or "gore". Use safe alternatives like "eliminated", "dark fate", "perished", "tragic end", "substance", or "mystery". If you use banned words, the generation will instantly fail.
+ABSOLUTELY BANNED PHRASES (these will cause immediate rejection):
+- "In this video we will..."
+- "Stay tuned to find out..."
+- "You won't believe what comes next..."
+- "We're about to reveal..."
+- "Later in this video..."
+- "What you're about to hear will shock you..."
+- "We'll uncover / We'll explore / We'll dive into..."
+- Any sentence that PROMISES content instead of DELIVERING it.
 
-We are using Gemini 3.1 Flash TTS for the voiceover.
-- DO NOT use inline expressive tags like [whispering] or [fast]. The delivery MUST be professional, consistent, and perfectly paced.
-- DO NOT change the tone wildly between segments. The voiceover should sound like a premium, steady, professional documentary narrator.
-- Write pure, clean narration text.
+CONTENT DELIVERY LAW:
+Every segment MUST deliver the actual information. If the segment topic is "Tesla's morning routine",
+that segment MUST describe the actual routine in specific detail — what time he woke up,
+exactly what he did, specific habits with names and details. NOT "Tesla had a remarkable
+morning routine that we're about to explore."
 
-Output pure JSON with the following structure:
+SEGMENT STRUCTURE RULE:
+Each segment = one complete self-contained piece of the story or topic.
+Think of each segment as a fully realized chapter, not a teaser.
+The viewer must LEARN or FEEL something specific from each segment.
+════════════════════════════════════════════════════════
+
+CONTENT ARCHITECTURE:
+1. HOOK (Segment 1): Start INSIDE the most dramatic moment. Reveal a shocking specific fact immediately.
+   Example: NOT "Tesla had secrets that shocked the world." YES: "Every morning at 5:47 AM, Tesla consumed exactly three cups of warm milk, refused all vegetables, and claimed he had not slept more than two hours. His doctor was alarmed. His investors were terrified. And yet he was designing the future."
+
+2. SUBSTANCE (Segments 2 through ${targetSegments - 2}): Each segment covers ONE specific topic deeply.
+   - Include real names, dates, numbers, quotes, and specific details
+   - Tell it like a story with a clear beginning, middle, and revelation
+   - Minimum one genuinely surprising fact per segment
+   - One open loop planted in segment 2: a single mystery question answered in segment ${targetSegments - 1}
+
+3. PAYOFF (Segment ${targetSegments - 1}): Answer the open loop mystery from segment 2. Full resolution.
+
+4. CTA (Segment ${targetSegments}): Natural, warm call-to-action. Subscribe, bell icon, what comes next.
+
+NUMBERED LIST MANDATE:
+If the topic specifies a numbered list ("10 habits", "7 secrets"), you MUST cover EVERY item
+with equal depth. Item 1 through Item N must all appear with full narration.
+
+SEO & METADATA RULES:
+- Title: Psychologically compelling. MrBeast-level curiosity but factually accurate.
+- Tags: 25-30 tags mixing short-tail (1 word), medium-tail (2-3 words), long-tail (5+ words), trending (2026).
+- Description: Hook paragraph → Timestamps → About → Keywords → hashtags → AI disclosure line.
+
+TTS COMPLIANCE (Gemini TTS safety filter — violations cause generation failure):
+- NEVER use: kill, murder, rape, drug, suicide, blood, gore, bomb, terrorist
+- USE INSTEAD: eliminated, dark fate, perished, substance, tragic end, explosive device
+- Write PURE clean narration. NO stage directions. NO [whispering]. NO [fast]. NO brackets.
+
+EDITING METADATA (per segment):
+- "transition": one of "none", "fade_in", "glitch", "blackout"
+  Use "glitch" for shocking revelations, "blackout" for dramatic pauses, "fade_in" for tone shifts.
+- "camera_motion": "static" or "zoom_in"
+  Use "zoom_in" for intense emotional moments.
+
+Output ONLY a raw JSON object. No markdown. No code fences. No explanation. Start with { end with }.
+
+JSON STRUCTURE:
 {
-  "title": "A highly clickable, viral YouTube title",
-  "description": "YouTube video description following the DESCRIPTION STRUCTURE above",
-  "tags": ["psychology", "dark psychology", "wealth building tips", "dark psychology tactics used by narcissists", "2026 new research"],
-  "hasThumbnailText": true,
-  "thumbnailText": "THE SECRET",
-  "thumbnailTextReason": "Short 2-word curiosity trigger that complements the title without repeating it",
-  "thumbnailPrompt": "A masterwork YouTube thumbnail BACKGROUND (no baked-in text). 1. ONE dramatic central focal point — a mysterious human silhouette, dramatic object, or high-stakes visual mystery. 2. Dramatic 3-point volumetric lighting with glowing neon accents contrasting deep shadows. 3. Extreme depth-of-field background blur (bokeh). 4. Clean empty space on one side for external text overlay. 5. Cinematic teal-orange color grade. DO NOT include any text in the image.",
+  "title": "...",
+  "description": "...",
+  "tags": [...],
+  "hasThumbnailText": true or false,
+  "thumbnailText": "2-3 WORD MAX",
+  "thumbnailPrompt": "Detailed image generation prompt for background only. NO TEXT in image.",
   "segments": [
     {
-      "narration": "Did you know that your memory can be mathematically optimized? The science behind it is shocking.",
-      "transition": "glitch",
-      "camera_motion": "zoom_in",
+      "narration": "FULL CONTENT HERE. Minimum ${minWordsPerSegment} words of actual information, stories, facts, and specific details. NOT teasers. NOT promises. Real content.",
+      "transition": "none",
+      "camera_motion": "static",
       ${visualInstruction}
     }
   ]
 }
-Ensure the JSON is strictly valid and contains no markdown formatting around it.`;
 
-        addLog("Generating viral script & masterwork prompt...");
+REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment} words each. ${wordCount}+ total words. DELIVER content, never promise it.`;
+
+
+        addLog(`Generating ${durationMinutes}-min script: ${targetSegments} segments × ~${wordsPerSegment} words = ${wordCount}+ total words...`);
+        // Primary: LLaMA 3.1 405B (best quality, follows complex instructions reliably)
+        // Fallback chain: 70B → Mixtral
         const scriptModels = [
+            "meta/meta-llama-3.1-405b-instruct",
             "meta/meta-llama-3-70b-instruct",
             "mistralai/mixtral-8x7b-instruct-v0.1"
         ];
@@ -678,8 +716,8 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                     const result = await replicate.run(modelId, {
                         input: {
                             system_prompt: systemPrompt,
-                            prompt: "Output ONLY the raw JSON object described above. Do not include any text, explanation, markdown, or code fences before or after the JSON. Begin your response with { and end with }",
-                            max_new_tokens: 8000
+                            prompt: `Output ONLY the raw JSON object. No markdown. No code fences. No explanations. Start immediately with { and end with }. Generate EXACTLY ${targetSegments} segments with ${minWordsPerSegment}-${maxWordsPerSegment} words of REAL CONTENT per narration.`,
+                            max_new_tokens: 12000
                         }
                     });
                     if (!result || result.length === 0) throw new Error('Empty LLM response');
@@ -739,11 +777,21 @@ Ensure the JSON is strictly valid and contains no markdown formatting around it.
                 throw new Error(`Script JSON parse failed: ${parseErr.message}`);
             }
         }
-        addLog(`Script generated successfully. Total segments: ${scriptData.segments.length}`);
+        addLog(`Script generated: ${scriptData.segments.length} segments`);
 
-        // Enforce minimum segment count server-side
+        // Server-side content quality validation
+        const totalWords = scriptData.segments.reduce((sum, s) => sum + (s.narration || '').split(/\s+/).filter(w => w.length > 0).length, 0);
+        const shortSegments = scriptData.segments.filter(s => (s.narration || '').split(/\s+/).filter(w => w.length > 0).length < minWordsPerSegment);
+        addLog(`[CONTENT QA] Total narration words: ${totalWords} / ${wordCount} required. Short segments: ${shortSegments.length}`);
+
         if (!scriptData.segments || scriptData.segments.length < minSegments) {
-            throw new Error(`Script too short: got ${scriptData.segments?.length || 0} segments, need at least ${minSegments} for a ${durationMinutes}-min video. Regenerating...`);
+            throw new Error(`Script too short: ${scriptData.segments?.length || 0} segments (need ${minSegments}+). LLM hit token limit or stopped early. Retrying...`);
+        }
+        if (totalWords < wordCount * 0.7) {
+            throw new Error(`Narration too short: ${totalWords} words generated, need ${wordCount}+ for a ${durationMinutes}-min video. LLM wrote teasers instead of content. Retrying...`);
+        }
+        if (shortSegments.length > scriptData.segments.length * 0.4) {
+            addLog(`[CONTENT QA] [WARN] ${shortSegments.length} segments under ${minWordsPerSegment} words. Script may feel rushed.`);
         }
 
         const videoId = jobId || crypto.randomUUID();
