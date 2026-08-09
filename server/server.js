@@ -1498,7 +1498,7 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
             
             const thumbBuffer = await withRetry(() => axios.get(thumbUrl[0], { responseType: 'arraybuffer' }), "Download Thumbnail");
             
-            // 4. SERVER-SIDE TEXT COMPOSITOR — crisp professional text overlay via sharp
+            // 4. SERVER-SIDE TEXT COMPOSITOR — Anton font embedded as base64 (guaranteed render in Docker)
             if (shouldAddText && thumbTextRaw) {
                 try {
                     const sharp = require('sharp');
@@ -1507,58 +1507,106 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                     const W = meta.width || 1920;
                     const H = meta.height || 1080;
 
-                    // Niche accent color for text
+                    // Embed Anton font as base64 — bypasses librsvg font lookup, works in any Docker container
+                    const fontPath = path.join(__dirname, 'assets', 'fonts', 'Anton-Regular.ttf');
+                    let fontFaceCSS = '';
+                    if (fs.existsSync(fontPath)) {
+                        const fontB64 = fs.readFileSync(fontPath).toString('base64');
+                        fontFaceCSS = `@font-face { font-family: 'Anton'; src: url('data:font/truetype;base64,${fontB64}') format('truetype'); }`;
+                    }
+                    const fontFamily = fontFaceCSS ? 'Anton' : 'Arial Black, sans-serif';
+
                     const textColor = highlightColorHex || '#FFD700';
-                    // Smart font sizing: scale down for longer text to prevent overflow
-                    const baseScale = thumbWords.length <= 2 ? 0.10 : thumbWords.length <= 3 ? 0.075 : 0.058;
-                    // Estimate text width: ~0.55 * fontSize per character (Impact font is wide)
                     const thumbDisplay = thumbTextRaw.toUpperCase();
-                    let fontSize = Math.round(W * baseScale);
-                    const estimatedWidth = thumbDisplay.length * fontSize * 0.58;
-                    const maxTextWidth = W * 0.88; // never exceed 88% of image width
-                    if (estimatedWidth > maxTextWidth) fontSize = Math.round(fontSize * (maxTextWidth / estimatedWidth));
-                    const strokeW = Math.max(3, Math.round(fontSize * 0.07));
 
-                    // Position: upper zone, horizontally centered
-                    const textX = Math.round(W / 2);
-                    const textY = Math.round(H * 0.10);
+                    // Split into lines: if single word keep as-is, if 2+ words try to split at midpoint
+                    const thumbWordsSplit = thumbDisplay.split(' ');
+                    let lines = [thumbDisplay];
+                    if (thumbWordsSplit.length >= 3) {
+                        const mid = Math.ceil(thumbWordsSplit.length / 2);
+                        lines = [thumbWordsSplit.slice(0, mid).join(' '), thumbWordsSplit.slice(mid).join(' ')];
+                    } else if (thumbWordsSplit.length === 2) {
+                        // Keep as 2 lines if words are long, else 1 line
+                        const longestWord = Math.max(...thumbWordsSplit.map(w => w.length));
+                        if (longestWord > 7 || thumbDisplay.length > 12) lines = thumbWordsSplit;
+                    }
 
-                    const svgText = `<svg width="${W}" height="${H}">
-                        <defs>
-                            <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-                                <feDropShadow dx="3" dy="3" stdDeviation="10" flood-color="#000000" flood-opacity="0.95"/>
-                            </filter>
-                        </defs>
-                        <text
-                            x="${textX}" y="${textY + fontSize}"
-                            font-family="Impact, Arial Black, sans-serif"
+                    // Font size: fit longest line within 90% of image width
+                    // Anton character width ratio ≈ 0.52 of font size
+                    const longestLine = lines.reduce((a, b) => a.length > b.length ? a : b, '');
+                    const maxW = W * 0.90;
+                    let fontSize = Math.min(
+                        Math.round(H * 0.22),                              // max 22% of height
+                        Math.round(maxW / (longestLine.length * 0.52))     // fit within width
+                    );
+                    fontSize = Math.max(fontSize, Math.round(H * 0.08));   // min 8% of height
+                    const lineH = Math.round(fontSize * 1.05);
+                    const strokeW = Math.max(4, Math.round(fontSize * 0.055));
+
+                    // Total text block height
+                    const textBlockH = lines.length * lineH;
+
+                    // Position: bottom zone — text sits 12% up from bottom
+                    const textBlockBottom = H - Math.round(H * 0.08);
+                    const textBlockTop = textBlockBottom - textBlockH;
+
+                    // Dark gradient backing bar: covers bottom 40% of image, full width
+                    const gradY = Math.round(H * 0.60);
+                    const gradH = H - gradY;
+
+                    // Build text elements for each line
+                    const textEls = lines.map((line, idx) => {
+                        const y = textBlockTop + (idx + 1) * lineH;
+                        return `<text
+                            x="${Math.round(W / 2)}" y="${y}"
+                            font-family="${fontFamily}, Impact, Arial Black, sans-serif"
                             font-size="${fontSize}"
                             font-weight="900"
                             fill="${textColor}"
                             stroke="#000000"
                             stroke-width="${strokeW}"
+                            stroke-linejoin="round"
                             paint-order="stroke fill"
-                            filter="url(#shadow)"
+                            filter="url(#glow)"
                             text-anchor="middle"
                             dominant-baseline="auto"
-                            letter-spacing="-1"
-                        >${thumbDisplay}</text>
+                            letter-spacing="1"
+                        >${line}</text>`;
+                    }).join('\n');
+
+                    const svgOverlay = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <style>${fontFaceCSS}</style>
+                            <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+                                <stop offset="60%" stop-color="#000000" stop-opacity="0.55"/>
+                                <stop offset="100%" stop-color="#000000" stop-opacity="0.85"/>
+                            </linearGradient>
+                            <filter id="glow" x="-8%" y="-8%" width="116%" height="116%">
+                                <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000000" flood-opacity="1"/>
+                                <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="${textColor}" flood-opacity="0.4"/>
+                            </filter>
+                        </defs>
+                        <!-- Dark gradient backing for readability -->
+                        <rect x="0" y="${gradY}" width="${W}" height="${gradH}" fill="url(#bar)"/>
+                        <!-- Text -->
+                        ${textEls}
                     </svg>`;
 
                     const composited = await sharp(imgBuf)
-                        .composite([{ input: Buffer.from(svgText), blend: 'over' }])
-                        .jpeg({ quality: 95 })
+                        .composite([{ input: Buffer.from(svgOverlay), blend: 'over' }])
+                        .jpeg({ quality: 96 })
                         .toBuffer();
 
                     fs.writeFileSync(thumbLocalPath, composited);
-                    addLog(`[THUMBNAIL] Text overlay composited: "${thumbTextRaw.toUpperCase()}" (${W}x${H})`);
+                    addLog(`[THUMBNAIL] Anton font composited: "${thumbDisplay}" (${lines.length} line${lines.length > 1 ? 's' : ''}, ${fontSize}px, ${W}x${H})`);
                 } catch (sharpErr) {
-                    // sharp failed — save raw background without text overlay
-                    console.warn('[THUMBNAIL] sharp text compositor failed, saving raw background:', sharpErr.message);
+                    console.warn('[THUMBNAIL] Compositor failed, saving raw background:', sharpErr.message);
                     fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
                 }
             } else {
                 fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
+
             }
 
             try { fs.copyFileSync(thumbLocalPath, legacyThumbPath); } catch (_) {}
