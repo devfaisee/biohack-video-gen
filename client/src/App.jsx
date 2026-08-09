@@ -263,12 +263,10 @@ function CreatorStudio() {
     }
   }, [baseUrl, toast]);
 
-  // Filter out metadata keys from niches, get display name without star prefix
+  // Filter out metadata keys; stars are unicode and render natively in <option>
   const nicheKeys = useMemo(() => Object.keys(NICHES).filter(k => !k.startsWith('_')), []);
-  const firstNiche = nicheKeys[0];
   const subNiches = useMemo(() => NICHES[mainNiche] || [], [mainNiche]);
-  const getNicheDisplay = (key) => key; // stars are part of the key and render as unicode in option
-  const isStarred = (key) => key.startsWith('⭐');
+
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="page-content">
