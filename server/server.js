@@ -1042,13 +1042,26 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
             const clean = text.replace(/\[.*?\]/g, '').replace(/[*_#~`]/g, '').trim();
             const words = clean.split(/\s+/).filter(w => w.length > 0);
             if (!words.length || durationSec <= 0) return [];
-            const totalChars = words.reduce((s, w) => s + Math.max(w.length, 2), 0);
-            const secPerChar = durationSec / totalChars;
+            
+            // TTS doesn't speak evenly; it pauses on punctuation. Weighting prevents subtitles from racing ahead.
+            let totalWeight = 0;
+            const wordWeights = words.map(w => {
+                let weight = Math.max(w.length, 2);
+                if (w.endsWith('.') || w.endsWith('!') || w.endsWith('?')) weight += 8; // Heavy pause
+                else if (w.endsWith(',') || w.endsWith(';')) weight += 4; // Short pause
+                totalWeight += weight;
+                return weight;
+            });
+            
+            const startOffset = 0.15; // Account for typical TTS leading silence
+            const activeDur = Math.max(0.1, durationSec - 0.4); // Account for trailing silence
+            const secPerWeight = activeDur / totalWeight;
+            
             const timings = [];
-            let t = 0;
-            for (const w of words) {
-                const dur = Math.max(w.length, 2) * secPerChar;
-                timings.push({ word: w, start: t, end: Math.min(t + dur, durationSec) });
+            let t = startOffset;
+            for (let i = 0; i < words.length; i++) {
+                const dur = wordWeights[i] * secPerWeight;
+                timings.push({ word: words[i], start: t, end: Math.min(t + dur, durationSec) });
                 t = timings[timings.length - 1].end;
             }
             return timings;
@@ -1067,18 +1080,17 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
             return `&H00${h.slice(4,6)}${h.slice(2,4)}${h.slice(0,2)}&`;
         }
 
-        // Generate ASS karaoke subtitle file — 3-word sliding window highlight
+        // Generate ASS karaoke subtitle file — Full phrase on screen, active word highlights in accent color
         function generateKaraokeAss(text, durationSec, isVertical, accentHex) {
             const timings = buildWordTimings(text, durationSec);
             if (!timings.length) return null;
 
             const W = isVertical ? 1080 : 1920;
             const H = isVertical ? 1920 : 1080;
-            const fontSz = isVertical ? 78 : 64;
-            const marginV = isVertical ? 370 : 145;
+            const fontSz = isVertical ? 72 : 62;
+            const marginV = isVertical ? 380 : 145;
             const accentAss = hexToAss(accentHex);
             const whiteAss  = '&H00FFFFFF&';
-            const greyAss   = '&H00CCCCCC&';
 
             const header = [
                 '[Script Info]',
@@ -1090,34 +1102,44 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                 '',
                 '[V4+ Styles]',
                 'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-                // Style: base is white, accent is applied inline per word
                 `Style: Default,Oswald,${fontSz},${whiteAss},&H000000FF,&H00000000,&HA0000000,-1,0,0,0,100,100,1,0,1,4,3,2,40,40,${marginV},1`,
                 '',
                 '[Events]',
                 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
             ].join('\n');
 
-            // For each word, build a 3-word window: [prev?] [CURRENT] [next?]
-            const lines = [];
+            // Group words into phrases (sentences or max ~6 words)
+            const phrases = [];
+            let currentPhrase = [];
             for (let i = 0; i < timings.length; i++) {
-                const curr = timings[i];
-                const prev = timings[i - 1];
-                const next = timings[i + 1];
+                currentPhrase.push(timings[i]);
+                const w = timings[i].word;
+                const isPunctuation = w.endsWith('.') || w.endsWith('!') || w.endsWith('?') || w.endsWith(',');
+                if (isPunctuation || currentPhrase.length >= 6 || i === timings.length - 1) {
+                    phrases.push(currentPhrase);
+                    currentPhrase = [];
+                }
+            }
 
-                const st = toAssTime(curr.start);
-                const et = toAssTime(curr.end);
+            const lines = [];
+            for (const phrase of phrases) {
+                for (let i = 0; i < phrase.length; i++) {
+                    const curr = phrase[i];
+                    const st = toAssTime(curr.start);
+                    // Active word holds until the next word starts (or phrase ends)
+                    const et = toAssTime(i < phrase.length - 1 ? phrase[i+1].start : curr.end);
+                    
+                    const formattedWords = phrase.map((item, idx) => {
+                        let clean = item.word.toUpperCase().replace(/[{}\\|<>]/g, '');
+                        if (idx === i) {
+                            return `{\\c${accentAss}\\b1\\fs${Math.round(fontSz * 1.15)}\\bord5\\shad4}${clean}{\\r}`; // Pop active word
+                        } else {
+                            return clean; // Default white
+                        }
+                    });
 
-                const fmt = (w, colorAss, bold) => {
-                    const clean = w.toUpperCase().replace(/[{}\\|<>]/g, '');
-                    return `{\\c${colorAss}${bold ? '\\b1\\fs' + Math.round(fontSz * 1.05) : '\\b0'}\\bord4\\shad3}${clean}`;
-                };
-
-                let parts = [];
-                if (prev) parts.push(fmt(prev.word, greyAss, false));
-                parts.push(fmt(curr.word, accentAss, true));
-                if (next) parts.push(fmt(next.word, greyAss, false));
-
-                lines.push(`Dialogue: 0,${st},${et},Default,,0,0,0,,${parts.join(' ')}`);
+                    lines.push(`Dialogue: 0,${st},${et},Default,,0,0,0,,${formattedWords.join(' ')}`);
+                }
             }
 
             return `${header}\n${lines.join('\n')}\n`;
@@ -1341,8 +1363,8 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
         // -------------------------
         // Mix Background Music
         // -------------------------
-        // Anti-template: randomize BGM volume between 20%-28% per generation
-        const bgmVolume = (0.20 + Math.random() * 0.08).toFixed(2);
+        // Anti-template: randomize BGM volume between 7%-11% per generation
+        const bgmVolume = (0.07 + Math.random() * 0.04).toFixed(2);
         addLog(`Mixing Background Music at ${Math.round(bgmVolume * 100)}% Volume...`);
         
         await bgmPromise; // Ensure Lyria-3 generation is complete
@@ -1399,10 +1421,10 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                     .input(finalBgmToMix)
                     .inputOptions(['-stream_loop', '-1'])
                     .complexFilter([
-                        // BGM at set volume, fade out last 3 seconds
+                        // BGM at set lower volume, fade out last 3 seconds
                         `[1:a]volume=${bgmVolume},afade=t=out:st=${fadeOutStart}:d=3[bgm]`,
-                        // Voiceover: fade in first 0.5s, fade out last 1s
-                        `[0:a]afade=t=in:st=0:d=0.5,afade=t=out:st=${Math.max(0, totalVideoDuration - 1)}:d=1[vo]`,
+                        // Voiceover: apply broadcast normalization (loudnorm) to make it punchy and consistent, fade in first 0.5s, fade out last 1s
+                        `[0:a]loudnorm=I=-16:TP=-1.5:LRA=11,afade=t=in:st=0:d=0.5,afade=t=out:st=${Math.max(0, totalVideoDuration - 1)}:d=1[vo]`,
                         `[vo][bgm]amix=inputs=2:duration=first[a]`
                     ])
                     .outputOptions([
