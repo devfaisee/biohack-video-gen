@@ -700,99 +700,99 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
 
 
         addLog(`Generating ${durationMinutes}-min script: ${targetSegments} segments × ~${wordsPerSegment} words = ${wordCount}+ total words...`);
-        // Primary: LLaMA 3.1 405B (best quality, follows complex instructions reliably)
-        // Fallback chain: 70B → Mixtral
+
+        // CTA variation pool — rotated per generation so repeat viewers hear different closing
+        const ctaVariants = [
+            "If this opened your eyes, don't let the algorithm forget you exist. Hit subscribe and the notification bell — we go deep every week.",
+            "Most people scroll past and never find content like this again. Be the exception — subscribe and turn on notifications.",
+            "You made it to the end. That means you're exactly who this channel is built for. Subscribe so you never miss what we uncover next.",
+            "The research behind this video took hours. Your subscribe takes one second. It means everything — hit it now.",
+            "If one thing from this video changed how you see the world, imagine what the next one will do. Subscribe and find out.",
+            "Every week we go somewhere most channels won't. If you want to come along, subscribe and ring that bell.",
+            "Channels like this live or die by your support. If this delivered value, subscribe — it costs nothing and means everything.",
+            "You've just seen what most people will never know. If you want more of that, the subscribe button is right there — use it."
+        ];
+        const selectedCTA = ctaVariants[Math.floor(Math.random() * ctaVariants.length)];
+
+        // Script generation with auto-retry on content QA failure (up to 3 full attempts)
         const scriptModels = [
             "meta/meta-llama-3.1-405b-instruct",
             "meta/meta-llama-3-70b-instruct",
             "mistralai/mixtral-8x7b-instruct-v0.1"
         ];
-        
-        let chatCompletionText = "";
-        let lastError = null;
-        for (const modelId of scriptModels) {
-            try {
-                const responseStream = await withRetry(async () => {
-                    const result = await replicate.run(modelId, {
-                        input: {
-                            system_prompt: systemPrompt,
-                            prompt: `Output ONLY the raw JSON object. No markdown. No code fences. No explanations. Start immediately with { and end with }. Generate EXACTLY ${targetSegments} segments with ${minWordsPerSegment}-${maxWordsPerSegment} words of REAL CONTENT per narration.`,
-                            max_new_tokens: 12000
-                        }
-                    });
-                    if (!result || result.length === 0) throw new Error('Empty LLM response');
-                    return result;
-                }, `Script Gen (${modelId})`, 3, 3000);
-                
-                chatCompletionText = responseStream.join("");
-                if (chatCompletionText.length > 0) break;
-            } catch (mErr) {
-                lastError = mErr;
-            }
-        }
-
-        if (!chatCompletionText) {
-            throw new Error(`AI Scriptwriter failed to connect to Replicate LLM: ${lastError?.message || 'Unknown'}`);
-        }
-
-        // Aggressive JSON extraction for models that wrap output in text/markdown
-        function extractJson(raw) {
-            // 1. Try to find JSON between code fences anywhere in the text
-            const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
-            if (fenceMatch) return fenceMatch[1].trim();
-            // 2. Find the outermost JSON object by locating first { and last }
-            const firstBrace = raw.indexOf('{');
-            const lastBrace = raw.lastIndexOf('}');
-            if (firstBrace !== -1 && lastBrace > firstBrace) {
-                return raw.slice(firstBrace, lastBrace + 1);
-            }
-            return raw.trim();
-        }
-
-        function repairJson(str) {
-            // Remove trailing commas before ] or }
-            str = str.replace(/,\s*([\]}])/g, '$1');
-            // Remove single-line JS-style comments
-            str = str.replace(/\/\/.*$/gm, '');
-            return str;
-        }
-
-        let jsonStr = repairJson(extractJson(chatCompletionText));
 
         let scriptData;
-        try {
-            scriptData = JSON.parse(jsonStr);
-        } catch (parseErr) {
-            addLog(`[WARN] JSON parse failed, attempting aggressive recovery...`);
-            // Last-ditch: extract largest {...} block and repair
-            const allMatches = [...chatCompletionText.matchAll(/\{[\s\S]*?\}/g)];
-            const largest = allMatches.sort((a, b) => b[0].length - a[0].length)[0];
-            if (largest) {
+        for (let scriptAttempt = 1; scriptAttempt <= 3; scriptAttempt++) {
+            let chatCompletionText = "";
+            let lastError = null;
+            for (const modelId of scriptModels) {
                 try {
-                    scriptData = JSON.parse(repairJson(largest[0]));
-                } catch (_) {
-                    throw new Error(`Script JSON parse failed: ${parseErr.message}`);
+                    const responseStream = await withRetry(async () => {
+                        const result = await replicate.run(modelId, {
+                            input: {
+                                system_prompt: systemPrompt,
+                                prompt: `Output ONLY the raw JSON object. No markdown. No code fences. No explanations. Start immediately with { and end with }. Generate EXACTLY ${targetSegments} segments with ${minWordsPerSegment}-${maxWordsPerSegment} words of REAL CONTENT per narration. Use this exact CTA for the last segment narration: "${selectedCTA}"`,
+                                max_new_tokens: 12000
+                            }
+                        });
+                        if (!result || result.length === 0) throw new Error('Empty LLM response');
+                        return result;
+                    }, `Script Gen attempt ${scriptAttempt} (${modelId})`, 3, 3000);
+                    chatCompletionText = responseStream.join("");
+                    if (chatCompletionText.length > 0) break;
+                } catch (mErr) {
+                    lastError = mErr;
                 }
-            } else {
-                throw new Error(`Script JSON parse failed: ${parseErr.message}`);
             }
-        }
-        addLog(`Script generated: ${scriptData.segments.length} segments`);
+            if (!chatCompletionText) throw new Error(`AI Scriptwriter failed: ${lastError?.message || 'Unknown'}`);
 
-        // Server-side content quality validation
-        const totalWords = scriptData.segments.reduce((sum, s) => sum + (s.narration || '').split(/\s+/).filter(w => w.length > 0).length, 0);
-        const shortSegments = scriptData.segments.filter(s => (s.narration || '').split(/\s+/).filter(w => w.length > 0).length < minWordsPerSegment);
-        addLog(`[CONTENT QA] Total narration words: ${totalWords} / ${wordCount} required. Short segments: ${shortSegments.length}`);
+            // Aggressive JSON extraction for models that wrap output in text/markdown
+            function extractJson(raw) {
+                const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+                if (fenceMatch) return fenceMatch[1].trim();
+                const firstBrace = raw.indexOf('{');
+                const lastBrace = raw.lastIndexOf('}');
+                if (firstBrace !== -1 && lastBrace > firstBrace) return raw.slice(firstBrace, lastBrace + 1);
+                return raw.trim();
+            }
+            function repairJson(str) {
+                str = str.replace(/,\s*([\]}])/g, '$1');
+                str = str.replace(/\/\/.*$/gm, '');
+                return str;
+            }
 
-        if (!scriptData.segments || scriptData.segments.length < minSegments) {
-            throw new Error(`Script too short: ${scriptData.segments?.length || 0} segments (need ${minSegments}+). LLM hit token limit or stopped early. Retrying...`);
+            let jsonStr = repairJson(extractJson(chatCompletionText));
+            let parsedScript;
+            try {
+                parsedScript = JSON.parse(jsonStr);
+            } catch (parseErr) {
+                addLog(`[WARN] JSON parse failed, attempting aggressive recovery...`);
+                const allMatches = [...chatCompletionText.matchAll(/\{[\s\S]*?\}/g)];
+                const largest = allMatches.sort((a, b) => b[0].length - a[0].length)[0];
+                if (largest) {
+                    try { parsedScript = JSON.parse(repairJson(largest[0])); }
+                    catch (_) { addLog(`[WARN] Attempt ${scriptAttempt}: JSON parse failed completely. Retrying script gen...`); continue; }
+                } else {
+                    addLog(`[WARN] Attempt ${scriptAttempt}: No JSON found. Retrying script gen...`); continue;
+                }
+            }
+
+            if (!parsedScript?.segments || parsedScript.segments.length < minSegments) {
+                addLog(`[WARN] Attempt ${scriptAttempt}: Only ${parsedScript?.segments?.length || 0} segments (need ${minSegments}+). Retrying...`);
+                continue;
+            }
+            const totalWords = parsedScript.segments.reduce((sum, s) => sum + (s.narration || '').split(/\s+/).filter(w => w.length > 0).length, 0);
+            addLog(`[CONTENT QA] Attempt ${scriptAttempt}: ${parsedScript.segments.length} segments, ${totalWords}/${wordCount} words`);
+            if (totalWords < wordCount * 0.7) {
+                addLog(`[WARN] Attempt ${scriptAttempt}: Only ${totalWords} words (need ${wordCount}+). Script is too thin. Retrying...`);
+                continue;
+            }
+            // QA passed — accept this script
+            scriptData = parsedScript;
+            addLog(`Script generated successfully: ${scriptData.segments.length} segments, ${totalWords} words.`);
+            break;
         }
-        if (totalWords < wordCount * 0.7) {
-            throw new Error(`Narration too short: ${totalWords} words generated, need ${wordCount}+ for a ${durationMinutes}-min video. LLM wrote teasers instead of content. Retrying...`);
-        }
-        if (shortSegments.length > scriptData.segments.length * 0.4) {
-            addLog(`[CONTENT QA] [WARN] ${shortSegments.length} segments under ${minWordsPerSegment} words. Script may feel rushed.`);
-        }
+        if (!scriptData) throw new Error(`Script generation failed after 3 attempts. Content too short or JSON malformed every time.`);
 
         const videoId = jobId || crypto.randomUUID();
         const projectDir = path.join(tmpDir, videoId);
@@ -854,16 +854,16 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
         async function fetchStockVideo(query) {
             const isVertical = format === 'vertical';
             try {
-                const res = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=3&orientation=${isVertical ? 'portrait' : 'landscape'}`, {
+                const res = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=5&orientation=${isVertical ? 'portrait' : 'landscape'}`, {
                     headers: { Authorization: pexelsKey },
                     timeout: 8000,
                     signal: abortController.signal
                 });
                 if (res.data.videos && res.data.videos.length > 0) {
-                    const randomIdx = Math.floor(Math.random() * Math.min(res.data.videos.length, 3));
+                    const randomIdx = Math.floor(Math.random() * Math.min(res.data.videos.length, 5));
                     const video = res.data.videos[randomIdx];
                     const hdFile = video.video_files.find(f => f.quality === 'hd' || f.width >= 1280) || video.video_files[0];
-                    return hdFile.link;
+                    return { type: 'video', url: hdFile.link };
                 }
             } catch (e) {
                 console.warn("Pexels failed, falling back to Pixabay", e.message);
@@ -876,19 +876,13 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                 if (res.data.hits && res.data.hits.length > 0) {
                     const randomIdx = Math.floor(Math.random() * Math.min(res.data.hits.length, 3));
                     const video = res.data.hits[randomIdx];
-                    return video.videos.large.url || video.videos.medium.url || video.videos.small.url;
+                    return { type: 'video', url: video.videos.large.url || video.videos.medium.url || video.videos.small.url };
                 }
             } catch (e) {
                 console.warn("Pixabay failed", e.message);
             }
-            
-            // Ultimate fallback to guarantee the pipeline never crashes
-            if (query !== "abstract background") {
-                addLog(`No video found for "${query}", using generic fallback...`);
-                return fetchStockVideo("abstract background");
-            }
-            
-            throw new Error(`No stock videos found for query: ${query}`);
+            // Stock search exhausted — signal caller to use AI image fallback instead
+            return { type: 'ai_fallback', url: null };
         }
 
         const getAudioDuration = (filePath) => new Promise((resolve, reject) => {
@@ -904,43 +898,51 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
             if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
             const isVertical = format === 'vertical';
             const segment = scriptData.segments[i];
-            const visualExt = visualSource === 'stock_videos' ? 'mp4' : 'webp';
-            const visualPath = path.join(projectDir, `visual_${i}.${visualExt}`);
+            const visualPath = path.join(projectDir, `visual_${i}.mp4`);
+            const visualPathWebp = path.join(projectDir, `visual_${i}.webp`);
 
             if (visualSource === 'stock_videos') {
-                const query = segment.searchQuery || segment.imagePrompt || "science";
+                const query = segment.searchQuery || segment.imagePrompt || "cinematic abstract";
                 addLog(`[Segment ${i + 1}] Searching stock video for: ${query}...`);
-                const videoUrl = await withRetry(() => fetchStockVideo(query), `Stock Search ${i+1}`);
-                const videoBuffer = await withRetry(() => axios.get(videoUrl, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Stock Video ${i+1}`);
-                fs.writeFileSync(visualPath, videoBuffer.data);
-                addLog(`[Segment ${i + 1}] Stock Video downloaded.`);
+                const result = await withRetry(() => fetchStockVideo(query), `Stock Search ${i+1}`);
+
+                if (result.type === 'video' && result.url) {
+                    const videoBuffer = await withRetry(() => axios.get(result.url, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Stock Video ${i+1}`);
+                    fs.writeFileSync(visualPath, videoBuffer.data);
+                    visualPaths[i] = visualPath;
+                    addLog(`[Segment ${i + 1}] Stock Video downloaded.`);
+                } else {
+                    // Stock video not found — auto-fallback to AI image for this segment
+                    addLog(`[Segment ${i + 1}] No stock video found for "${query}" — generating AI image fallback...`);
+                    const fallbackPrompt = segment.imagePrompt || segment.searchQuery || `cinematic ${safeSubNiche} scene, dramatic lighting, 4k`;
+                    const imgResult = await safeReplicateRun(
+                        "black-forest-labs/flux-schnell:c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
+                        { input: { prompt: fallbackPrompt + ", cinematic, highly detailed, 4k", aspect_ratio: isVertical ? "9:16" : "16:9", output_format: "webp", num_outputs: 1 } },
+                        `AI Image Fallback ${i+1}`
+                    );
+                    const imageOutput = Array.isArray(imgResult) ? imgResult[0] : imgResult;
+                    let imgData;
+                    if (imageOutput && typeof imageOutput.arrayBuffer === 'function') { const ab = await imageOutput.arrayBuffer(); imgData = Buffer.from(ab); }
+                    else { const b = await withRetry(() => axios.get(String(imageOutput), { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `DL AI Fallback ${i+1}`); imgData = b.data; }
+                    fs.writeFileSync(visualPathWebp, imgData);
+                    visualPaths[i] = visualPathWebp;
+                    addLog(`[Segment ${i + 1}] AI image fallback saved.`);
+                }
             } else {
                 addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
                 const imgResult = await safeReplicateRun(
                     "black-forest-labs/flux-schnell:c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
-                    {
-                        input: {
-                            prompt: segment.imagePrompt + ", 16:9, cinematic, highly detailed, 4k resolution, youtube thumbnail style",
-                            aspect_ratio: isVertical ? "9:16" : "16:9",
-                            output_format: "webp",
-                            num_outputs: 1
-                        }
-                    },
+                    { input: { prompt: (segment.imagePrompt || '') + ", cinematic, highly detailed, 4k resolution", aspect_ratio: isVertical ? "9:16" : "16:9", output_format: "webp", num_outputs: 1 } },
                     `Image Gen ${i+1}`
                 );
                 const imageOutput = Array.isArray(imgResult) ? imgResult[0] : imgResult;
                 let imgData;
-                if (imageOutput && typeof imageOutput.arrayBuffer === 'function') {
-                    const ab = await imageOutput.arrayBuffer();
-                    imgData = Buffer.from(ab);
-                } else {
-                    const imgBuffer = await withRetry(() => axios.get(String(imageOutput), { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Image ${i+1}`);
-                    imgData = imgBuffer.data;
-                }
-                fs.writeFileSync(visualPath, imgData);
+                if (imageOutput && typeof imageOutput.arrayBuffer === 'function') { const ab = await imageOutput.arrayBuffer(); imgData = Buffer.from(ab); }
+                else { const b = await withRetry(() => axios.get(String(imageOutput), { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Image ${i+1}`); imgData = b.data; }
+                fs.writeFileSync(visualPathWebp, imgData);
+                visualPaths[i] = visualPathWebp;
                 addLog(`[Segment ${i + 1}] Image downloaded.`);
             }
-            visualPaths[i] = visualPath;
         };
 
         const VISUAL_CHUNK_SIZE = 5;
@@ -954,52 +956,62 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
             }
         })();
 
-        // 2. Fetch Audio (Gemini TTS) sequentially with a 1.2s stagger to protect Replicate burst limits on low-credit accounts
+        // Sanitize narration text before TTS — remove all characters that cause Gemini TTS to fail silently
+        function sanitizeForTTS(text) {
+            return text
+                .replace(/\[.*?\]/g, '')          // Remove stage directions [whispering]
+                .replace(/[*_#~`]/g, '')           // Remove markdown formatting
+                .replace(/\u2014/g, ' - ')         // Em dash → hyphen
+                .replace(/\u2013/g, ' - ')         // En dash → hyphen
+                .replace(/\u2018|\u2019/g, "'")    // Curly single quotes → straight
+                .replace(/\u201C|\u201D/g, '"')    // Curly double quotes → straight
+                .replace(/&/g, ' and ')            // Ampersand → and
+                .replace(/[<>]/g, '')              // Strip angle brackets
+                .replace(/\s+/g, ' ')              // Collapse multiple spaces
+                .trim();
+        }
+
+        // 2. Fetch Audio (Gemini TTS) sequentially
         const audioPaths = new Array(scriptData.segments.length);
         for (let i = 0; i < scriptData.segments.length; i++) {
             if (abortController.signal.aborted) throw new Error("Generation Cancelled by User");
             const segment = scriptData.segments[i];
             const audioPath = path.join(projectDir, `audio_${i}.wav`);
+            const cleanNarration = sanitizeForTTS(segment.narration || '');
 
-            addLog(`[Segment ${i + 1}/${scriptData.segments.length}] Requesting voiceover (${voiceId}) from Gemini 3.1 Flash TTS...`);
-            const audioUrl = await safeReplicateRun(
-                "google/gemini-3.1-flash-tts",
-                {
-                    input: {
-                        text: segment.narration.replace(/\[.*?\]/g, '').trim(),
-                        voice: voiceId,
-                        prompt: voicePrompt,
-                        language_code: "en-US"
-                    }
-                },
-                `Audio Gen ${i+1}`
-            );
-
-            // Replicate SDK v1.4.0+ returns FileOutput objects for file outputs, not plain URL strings.
-            // FileOutput has .arrayBuffer(), .blob(), .url(), etc. — axios.get(FileOutput) fails silently.
-            // Detect and handle both: FileOutput (SDK v1+) and legacy URL strings (SDK v0.x)
-            let audioData;
-            if (audioUrl && typeof audioUrl.arrayBuffer === 'function') {
-                // SDK v1.4.0+ FileOutput — download directly without axios
-                addLog(`[Segment ${i + 1}] Downloading voiceover from FileOutput...`);
-                const buffer = await withRetry(async () => {
+            addLog(`[Segment ${i + 1}/${scriptData.segments.length}] Requesting voiceover (${voiceId}) from Gemini TTS...`);
+            try {
+                const audioUrl = await safeReplicateRun(
+                    "google/gemini-3.1-flash-tts",
+                    { input: { text: cleanNarration, voice: voiceId, prompt: voicePrompt, language_code: "en-US" } },
+                    `Audio Gen ${i+1}`
+                );
+                let audioData;
+                if (audioUrl && typeof audioUrl.arrayBuffer === 'function') {
                     const ab = await audioUrl.arrayBuffer();
-                    return Buffer.from(ab);
-                }, `Download Audio ${i+1}`);
-                audioData = buffer;
-            } else {
-                // Legacy: URL string — download via axios
-                const urlStr = String(audioUrl);
-                const resp = await withRetry(() => axios.get(urlStr, {
-                    responseType: 'arraybuffer',
-                    timeout: 120000,
-                    signal: abortController.signal
-                }), `Download Audio ${i+1}`);
-                audioData = resp.data;
+                    audioData = Buffer.from(ab);
+                } else {
+                    const resp = await withRetry(() => axios.get(String(audioUrl), { responseType: 'arraybuffer', timeout: 120000, signal: abortController.signal }), `Download Audio ${i+1}`);
+                    audioData = resp.data;
+                }
+                fs.writeFileSync(audioPath, audioData);
+                audioPaths[i] = audioPath;
+                addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
+            } catch (ttsErr) {
+                // TTS failed for this segment — generate a short silent audio so pipeline continues
+                addLog(`[WARN] Segment ${i + 1} TTS failed (${ttsErr.message}). Using silent placeholder — video will continue.`);
+                // Create a 2-second silent WAV (44 bytes header + silence)
+                const silentWav = Buffer.alloc(44 + 88200); // 1s at 44100 Hz stereo 16-bit
+                silentWav.write('RIFF', 0); silentWav.writeUInt32LE(36 + 88200, 4);
+                silentWav.write('WAVE', 8); silentWav.write('fmt ', 12);
+                silentWav.writeUInt32LE(16, 16); silentWav.writeUInt16LE(1, 20);
+                silentWav.writeUInt16LE(2, 22); silentWav.writeUInt32LE(44100, 24);
+                silentWav.writeUInt32LE(176400, 28); silentWav.writeUInt16LE(4, 32);
+                silentWav.writeUInt16LE(16, 34); silentWav.write('data', 36);
+                silentWav.writeUInt32LE(88200, 40);
+                fs.writeFileSync(audioPath, silentWav);
+                audioPaths[i] = audioPath;
             }
-            fs.writeFileSync(audioPath, audioData);
-            audioPaths[i] = audioPath;
-            addLog(`[Segment ${i + 1}] Voiceover downloaded.`);
         }
 
         // Wait for visual downloads to complete
@@ -1376,21 +1388,30 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
             if (fs.existsSync(bgmPath)) finalBgmToMix = bgmPath;
         }
         
+        // Get total video duration for audio fade-out timing
+        let totalVideoDuration = 0;
+        try { totalVideoDuration = await getAudioDuration(stitchedVideoPath); } catch (_) {}
+        const fadeOutStart = Math.max(0, totalVideoDuration - 3); // Start audio fade 3s before end
+
         if (finalBgmToMix) {
             await new Promise((resolve, reject) => {
                 const cmd = ffmpeg(stitchedVideoPath)
                     .input(finalBgmToMix)
-                    .inputOptions(['-stream_loop', '-1']) // Loop BGM infinitely
+                    .inputOptions(['-stream_loop', '-1'])
                     .complexFilter([
-                        `[1:a]volume=${bgmVolume}[bgm];[0:a][bgm]amix=inputs=2:duration=first[a]`
+                        // BGM at set volume, fade out last 3 seconds
+                        `[1:a]volume=${bgmVolume},afade=t=out:st=${fadeOutStart}:d=3[bgm]`,
+                        // Voiceover: fade in first 0.5s, fade out last 1s
+                        `[0:a]afade=t=in:st=0:d=0.5,afade=t=out:st=${Math.max(0, totalVideoDuration - 1)}:d=1[vo]`,
+                        `[vo][bgm]amix=inputs=2:duration=first[a]`
                     ])
                     .outputOptions([
-                        '-map 0:v:0',           // Keep original video stream
-                        '-map [a]',             // Use mixed audio stream
-                        '-c:v copy',            // Instant video copy
+                        '-map 0:v:0',
+                        '-map [a]',
+                        '-c:v copy',
                         '-c:a aac',
                         '-b:a 192k',
-                        '-movflags +faststart'  // Relocate moov atom to start of file for web streaming
+                        '-movflags +faststart'
                     ])
                     .save(finalVideoTmpPath)
                     .on('end', () => {
@@ -1405,7 +1426,6 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                 global.currentJob.ffmpegProcesses.push(cmd);
             });
         } else {
-            // Fallback if BGM doesn't exist
             fs.copyFileSync(stitchedVideoPath, finalVideoPath);
             try { fs.copyFileSync(finalVideoPath, legacyVideoPath); } catch (_) {}
         }
@@ -1489,17 +1509,24 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
 
                     // Niche accent color for text
                     const textColor = highlightColorHex || '#FFD700';
-                    const fontSize = Math.round(W * (thumbWords.length <= 2 ? 0.09 : 0.065));
-                    const strokeW = Math.round(fontSize * 0.08);
+                    // Smart font sizing: scale down for longer text to prevent overflow
+                    const baseScale = thumbWords.length <= 2 ? 0.10 : thumbWords.length <= 3 ? 0.075 : 0.058;
+                    // Estimate text width: ~0.55 * fontSize per character (Impact font is wide)
+                    const thumbDisplay = thumbTextRaw.toUpperCase();
+                    let fontSize = Math.round(W * baseScale);
+                    const estimatedWidth = thumbDisplay.length * fontSize * 0.58;
+                    const maxTextWidth = W * 0.88; // never exceed 88% of image width
+                    if (estimatedWidth > maxTextWidth) fontSize = Math.round(fontSize * (maxTextWidth / estimatedWidth));
+                    const strokeW = Math.max(3, Math.round(fontSize * 0.07));
 
-                    // Position: upper-left zone for text (classic YouTube thumbnail layout)
-                    const textX = Math.round(W * 0.05);
-                    const textY = Math.round(H * 0.08);
+                    // Position: upper zone, horizontally centered
+                    const textX = Math.round(W / 2);
+                    const textY = Math.round(H * 0.10);
 
                     const svgText = `<svg width="${W}" height="${H}">
                         <defs>
-                            <filter id="shadow">
-                                <feDropShadow dx="4" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.9"/>
+                            <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+                                <feDropShadow dx="3" dy="3" stdDeviation="10" flood-color="#000000" flood-opacity="0.95"/>
                             </filter>
                         </defs>
                         <text
@@ -1512,10 +1539,10 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                             stroke-width="${strokeW}"
                             paint-order="stroke fill"
                             filter="url(#shadow)"
-                            text-anchor="start"
+                            text-anchor="middle"
                             dominant-baseline="auto"
-                            letter-spacing="-2"
-                        >${thumbTextRaw.toUpperCase()}</text>
+                            letter-spacing="-1"
+                        >${thumbDisplay}</text>
                     </svg>`;
 
                     const composited = await sharp(imgBuf)
