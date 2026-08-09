@@ -731,7 +731,7 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                         const result = await replicate.run(modelId, {
                             input: {
                                 system_prompt: systemPrompt,
-                                prompt: `Output ONLY the raw JSON object. No markdown. No code fences. No explanations. Start immediately with { and end with }. Generate EXACTLY ${targetSegments} segments with ${minWordsPerSegment}-${maxWordsPerSegment} words of REAL CONTENT per narration. Use this exact CTA for the last segment narration: "${selectedCTA}"`,
+                                prompt: `Output ONLY the raw JSON object. No markdown. No code fences. No explanations. Start immediately with { and end with }. Generate EXACTLY ${targetSegments} segments with ${minWordsPerSegment}-${maxWordsPerSegment} words of REAL CONTENT per narration. WRITE LONG, DETAILED PARAGRAPHS for every single segment. Do not write short sentences. Use this exact CTA for the last segment narration: "${selectedCTA}"`,
                                 max_new_tokens: 12000
                             }
                         });
@@ -783,8 +783,8 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
             }
             const totalWords = parsedScript.segments.reduce((sum, s) => sum + (s.narration || '').split(/\s+/).filter(w => w.length > 0).length, 0);
             addLog(`[CONTENT QA] Attempt ${scriptAttempt}: ${parsedScript.segments.length} segments, ${totalWords}/${wordCount} words`);
-            if (totalWords < wordCount * 0.7) {
-                addLog(`[WARN] Attempt ${scriptAttempt}: Only ${totalWords} words (need ${wordCount}+). Script is too thin. Retrying...`);
+            if (totalWords < wordCount * 0.55) {
+                addLog(`[WARN] Attempt ${scriptAttempt}: Only ${totalWords} words (need ${Math.floor(wordCount * 0.55)}+). Script is too thin. Retrying...`);
                 continue;
             }
             // QA passed — accept this script
