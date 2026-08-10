@@ -288,8 +288,7 @@ Output ONLY pure JSON:
   "description": "A very engaging, long SEO description with emojis and hashtags"
 }`;
         const scriptModels = [
-            "meta/meta-llama-3-70b-instruct",
-            "mistralai/mixtral-8x7b-instruct-v0.1"
+            "openai/gpt-5.6-luna"
         ];
         let chatCompletionText = "";
         for (const modelId of scriptModels) {
@@ -298,7 +297,8 @@ Output ONLY pure JSON:
                     input: {
                         system_prompt: prompt,
                         prompt: "Output ONLY the raw JSON object. Begin your response with { and end with }. No markdown, no explanation.",
-                        max_new_tokens: 1000
+                        max_completion_tokens: 2000,
+                        reasoning_effort: "low"
                     }
                 });
                 chatCompletionText = responseStream.join("");
@@ -708,9 +708,7 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
 
         // Script generation with auto-retry on content QA failure (up to 3 full attempts)
         const scriptModels = [
-            "meta/meta-llama-3.1-405b-instruct",
-            "meta/meta-llama-3-70b-instruct",
-            "mistralai/mixtral-8x7b-instruct-v0.1"
+            "openai/gpt-5.6-luna"
         ];
 
         let scriptData;
@@ -724,7 +722,8 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                             input: {
                                 system_prompt: systemPrompt,
                                 prompt: `Output ONLY the raw JSON object. No markdown. No code fences. No explanations. Start immediately with { and end with }. Generate EXACTLY ${targetSegments} segments with ${minWordsPerSegment}-${maxWordsPerSegment} words of REAL CONTENT per narration. WRITE LONG, DETAILED PARAGRAPHS for every single segment. Do not write short sentences. Use this exact CTA for the last segment narration: "${selectedCTA}"`,
-                                max_new_tokens: 12000
+                                max_completion_tokens: 15000,
+                                reasoning_effort: "medium"
                             }
                         });
                         if (!result || result.length === 0) throw new Error('Empty LLM response');
@@ -789,7 +788,8 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                             input: {
                                 system_prompt: "You are an expert documentary script editor. You MUST output ONLY raw JSON.",
                                 prompt: `Here is a JSON video script. It currently has ${totalWords} words, but the user requested a ${durationMinutes}-minute video which requires at least ${wordCount} words.\n\nExpand the 'narration' of every single segment by adding more fascinating details, deep explanations, quotes, and immersive storytelling. DO NOT change the JSON structure or remove any segments. Just make every narration paragraph much longer and richer.\n\nScript:\n${JSON.stringify(parsedScript)}\n\nOutput ONLY the expanded raw JSON. Do not use markdown blocks. Start with { and end with }.`,
-                                max_new_tokens: 12000
+                                max_completion_tokens: 15000,
+                                reasoning_effort: "low"
                             }
                         });
                         if (!result || result.length === 0) throw new Error('Empty expansion response');
