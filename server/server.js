@@ -599,7 +599,7 @@ CRITICAL LONG-FORM (16:9) PACING RULES:
 
         const visualInstruction = visualSource === 'stock_videos'
             ? `"searchQuery": "A 1-3 word highly literal search query for a stock video API (e.g. 'dark alley', 'stock market crash', 'running snow'). Be extremely simple and literal."`
-            : `"imagePrompt": "A highly detailed visual prompt for an AI image generator adhering strictly to this aesthetic: [${visualStylePreset}]. Describe the exact scene, subject, lighting, and camera composition."`;
+            : `"imagePrompt": "A highly detailed visual prompt for an AI image generator adhering strictly to the 'global_visual_style' you defined above. Describe the exact scene, subject, lighting, and camera composition."`;
 
         const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the "${safeMainNiche}" niche, specifically focusing on "${safeSubNiche}". 
 Your goal is to write a highly viral, retention-optimized script for a ${format} YouTube video.
@@ -642,19 +642,9 @@ Think of each segment as a fully realized chapter, not a teaser.
 The viewer must LEARN or FEEL something specific from each segment.
 ════════════════════════════════════════════════════════
 
-CONTENT ARCHITECTURE:
-1. HOOK (Segment 1): Start INSIDE the most dramatic moment. Reveal a shocking specific fact immediately.
-   Example: NOT "Tesla had secrets that shocked the world." YES: "Every morning at 5:47 AM, Tesla consumed exactly three cups of warm milk, refused all vegetables, and claimed he had not slept more than two hours. His doctor was alarmed. His investors were terrified. And yet he was designing the future."
-
-2. SUBSTANCE (Segments 2 through ${targetSegments - 2}): Each segment covers ONE specific topic deeply.
-   - Include real names, dates, numbers, quotes, and specific details
-   - Tell it like a story with a clear beginning, middle, and revelation
-   - Minimum one genuinely surprising fact per segment
-   - One open loop planted in segment 2: a single mystery question answered in segment ${targetSegments - 1}
-
-3. PAYOFF (Segment ${targetSegments - 1}): Answer the open loop mystery from segment 2. Full resolution.
-
-4. CTA (Segment ${targetSegments}): Natural, warm call-to-action. Subscribe, bell icon, what comes next.
+DYNAMIC CONTENT ARCHITECTURE & VISUALS:
+Instead of a rigid structure, you MUST INVENT a unique storytelling framework for this video (e.g. Chronological Timeline, Top 10 Countdown, Investigative Journey, Myth vs Fact, Case Study). Make it dynamic!
+You MUST ALSO INVENT a unique, highly specific visual aesthetic for this video (e.g. '1970s vintage polaroid film', 'cyberpunk neon noir', 'medical textbook diagrams'). Let your creativity run wild.
 
 NUMBERED LIST MANDATE:
 If the topic specifies a numbered list ("10 habits", "7 secrets"), you MUST cover EVERY item
@@ -681,6 +671,8 @@ Output ONLY a raw JSON object. No markdown. No code fences. No explanation. Star
 JSON STRUCTURE:
 {
   "title": "...",
+  "global_visual_style": "Detailed description of the unique visual aesthetic you invented.",
+  "narrative_framework": "The specific storytelling structure you chose.",
   "description": "...",
   "tags": [...],
   "hasThumbnailText": true or false,
@@ -781,15 +773,48 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                 addLog(`[WARN] Attempt ${scriptAttempt}: Only ${parsedScript?.segments?.length || 0} segments (need ${minSegments}+). Retrying...`);
                 continue;
             }
-            const totalWords = parsedScript.segments.reduce((sum, s) => sum + (s.narration || '').split(/\s+/).filter(w => w.length > 0).length, 0);
+            let totalWords = parsedScript.segments.reduce((sum, s) => sum + (s.narration || '').split(/\s+/).filter(w => w.length > 0).length, 0);
             addLog(`[CONTENT QA] Attempt ${scriptAttempt}: ${parsedScript.segments.length} segments, ${totalWords}/${wordCount} words`);
             if (totalWords < wordCount * 0.55) {
                 addLog(`[WARN] Attempt ${scriptAttempt}: Only ${totalWords} words (need ${Math.floor(wordCount * 0.55)}+). Script is too thin. Retrying...`);
                 continue;
             }
+
+            // --- SCRIPT EXPANSION PASS (Fixes Duration for Long Videos) ---
+            if (totalWords < wordCount * 0.90) {
+                addLog(`[EXPANSION] Script passed QA but is under requested duration (${totalWords}/${wordCount} words). Running AI expansion pass...`);
+                try {
+                    const expansionResult = await withRetry(async () => {
+                        const result = await replicate.run(scriptModels[0], {
+                            input: {
+                                system_prompt: "You are an expert documentary script editor. You MUST output ONLY raw JSON.",
+                                prompt: `Here is a JSON video script. It currently has ${totalWords} words, but the user requested a ${durationMinutes}-minute video which requires at least ${wordCount} words.\n\nExpand the 'narration' of every single segment by adding more fascinating details, deep explanations, quotes, and immersive storytelling. DO NOT change the JSON structure or remove any segments. Just make every narration paragraph much longer and richer.\n\nScript:\n${JSON.stringify(parsedScript)}\n\nOutput ONLY the expanded raw JSON. Do not use markdown blocks. Start with { and end with }.`,
+                                max_new_tokens: 12000
+                            }
+                        });
+                        if (!result || result.length === 0) throw new Error('Empty expansion response');
+                        return result;
+                    }, "Script Expansion", 2, 4000);
+                    
+                    const expText = expansionResult.join("");
+                    const expParsed = JSON.parse(repairJson(extractJson(expText)));
+                    if (expParsed?.segments?.length >= parsedScript.segments.length * 0.8) {
+                        const newTotal = expParsed.segments.reduce((sum, s) => sum + (s.narration || '').split(/\s+/).filter(w => w.length > 0).length, 0);
+                        addLog(`[EXPANSION SUCCESS] Script expanded from ${totalWords} to ${newTotal} words!`);
+                        parsedScript = expParsed;
+                        totalWords = newTotal;
+                    } else {
+                        addLog(`[WARN] Expansion broke segment structure. Using original.`);
+                    }
+                } catch (expErr) {
+                    addLog(`[WARN] Script expansion failed (${expErr.message}). Using original script (video will be shorter than requested).`);
+                }
+            }
+            // -------------------------------------------------------------
+
             // QA passed — accept this script
             scriptData = parsedScript;
-            addLog(`Script generated successfully: ${scriptData.segments.length} segments, ${totalWords} words.`);
+            addLog(`Script finalized: ${scriptData.segments.length} segments, ${totalWords} words (est. ${Math.round(totalWords/130)} min).`);
             break;
         }
         if (!scriptData) throw new Error(`Script generation failed after 3 attempts. Content too short or JSON malformed every time.`);
@@ -1496,11 +1521,12 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
             // 3. AI BACKGROUND GENERATION — always generates clean background (no baked text)
             let thumbPrompt = scriptData.thumbnailPrompt;
             if (!thumbPrompt || thumbPrompt.length < 50) {
-                thumbPrompt = `Masterwork YouTube thumbnail background. ${nicheVisualStyle}. ONE dramatic central focal point. 3-point volumetric lighting with glowing accent colors contrasting deep shadows. Extreme depth-of-field background blur (bokeh). ${shouldAddText ? 'Clean empty space at the top or left for text overlay.' : 'Full dramatic composition.'} Ultra-high contrast, ultra-vibrant. NO TEXT, NO WORDS, NO LETTERS in the image.`;
+                const aesthetic = scriptData.global_visual_style || nicheVisualStyle;
+                thumbPrompt = `Masterwork YouTube thumbnail background. ${aesthetic}. ONE dramatic central focal point. 3-point volumetric lighting with glowing accent colors contrasting deep shadows. Extreme depth-of-field background blur (bokeh). ${shouldAddText ? 'Clean empty space at the top or left for text overlay.' : 'Full dramatic composition.'} Ultra-high contrast, ultra-vibrant. NO TEXT, NO WORDS, NO LETTERS in the image.`;
             } else {
                 // Strip any text instructions from the AI-provided prompt for clean background
                 thumbPrompt = thumbPrompt.replace(/with.*?text.*?reading.*?['""][^'"]+['""][,.]?/gi, '').trim();
-                thumbPrompt += '. NO TEXT, NO WORDS, NO LETTERS in the image.';
+                thumbPrompt = `${scriptData.global_visual_style || nicheVisualStyle}. ${thumbPrompt}. NO TEXT, NO WORDS, NO LETTERS in the image.`;
             }
 
             addLog(`[THUMBNAIL] Style: ${nicheKey || 'universal'} | Text overlay: ${shouldAddText ? `"${thumbTextRaw}"` : 'none (background only)'}`);
