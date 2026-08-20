@@ -876,45 +876,50 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
         const pexelsKey = process.env.PEXELS_API_KEY || "vGnr3wLcpfgybFLKKXjcPcqMOPc4MM89JJA1j2WpGfrKNh29XTHVualY";
         const pixabayKey = process.env.PIXABAY_API_KEY || "54069102-5cb5de9252e9808a1e0d5f201";
 
-        // Returns an array of up to `maxClips` different stock video URLs for a query
-        async function fetchStockClips(query, maxClips = 5) {
+        async function fetchStockClips(queries, maxClips = 5) {
             const isVertical = format === 'vertical';
             const results = [];
-            try {
-                const res = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=15&orientation=${isVertical ? 'portrait' : 'landscape'}`, {
-                    headers: { Authorization: pexelsKey },
-                    timeout: 10000,
-                    signal: abortController.signal
-                });
-                if (res.data.videos && res.data.videos.length > 0) {
-                    // Shuffle the results to guarantee variety across calls
-                    const shuffled = res.data.videos.sort(() => Math.random() - 0.5);
-                    for (const video of shuffled.slice(0, maxClips)) {
-                        const hdFile = video.video_files.find(f => f.quality === 'hd' || f.width >= 1280) || video.video_files[0];
-                        if (hdFile?.link) results.push(hdFile.link);
+            const queryList = Array.isArray(queries) ? queries : [queries];
+
+            for (const query of queryList) {
+                if (results.length >= maxClips) break;
+                try {
+                    const res = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=15&orientation=${isVertical ? 'portrait' : 'landscape'}`, {
+                        headers: { Authorization: pexelsKey },
+                        timeout: 10000,
+                        signal: abortController.signal
+                    });
+                    if (res.data.videos && res.data.videos.length > 0) {
+                        const shuffled = res.data.videos.sort(() => Math.random() - 0.5);
+                        for (const video of shuffled.slice(0, maxClips - results.length)) {
+                            const hdFile = video.video_files.find(f => f.quality === 'hd' || f.width >= 1280) || video.video_files[0];
+                            if (hdFile?.link) results.push(hdFile.link);
+                        }
                     }
-                    if (results.length > 0) return results;
-                }
-            } catch (e) {
-                console.warn("Pexels failed, falling back to Pixabay", e.message);
+                } catch (e) { /* try next query */ }
             }
-            try {
-                const res = await axios.get(`https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodeURIComponent(query)}&video_type=film&orientation=${isVertical ? 'vertical' : 'horizontal'}&per_page=10`, {
-                    timeout: 10000,
-                    signal: abortController.signal
-                });
-                if (res.data.hits && res.data.hits.length > 0) {
-                    const shuffled = res.data.hits.sort(() => Math.random() - 0.5);
-                    for (const video of shuffled.slice(0, maxClips)) {
-                        const url = video.videos.large?.url || video.videos.medium?.url || video.videos.small?.url;
-                        if (url) results.push(url);
-                    }
-                    if (results.length > 0) return results;
+
+            if (results.length < maxClips) {
+                // Pixabay fallback
+                for (const query of queryList) {
+                    if (results.length >= maxClips) break;
+                    try {
+                        const res = await axios.get(`https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodeURIComponent(query)}&video_type=film&orientation=${isVertical ? 'vertical' : 'horizontal'}&per_page=10`, {
+                            timeout: 10000,
+                            signal: abortController.signal
+                        });
+                        if (res.data.hits && res.data.hits.length > 0) {
+                            const shuffled = res.data.hits.sort(() => Math.random() - 0.5);
+                            for (const video of shuffled.slice(0, maxClips - results.length)) {
+                                const url = video.videos.large?.url || video.videos.medium?.url || video.videos.small?.url;
+                                if (url) results.push(url);
+                            }
+                        }
+                    } catch (e) { /* skip */ }
                 }
-            } catch (e) {
-                console.warn("Pixabay failed", e.message);
             }
-            return []; // exhausted — caller will use AI image fallback
+
+            return results;
         }
 
         const getAudioDuration = (filePath) => new Promise((resolve, reject) => {
@@ -934,9 +939,13 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
             const visualPathWebp = path.join(projectDir, `visual_${i}.webp`);
 
             if (visualSource === 'stock_videos') {
-                const query = segment.searchQuery || segment.imagePrompt || "cinematic abstract";
-                addLog(`[Segment ${i + 1}] Searching stock clips for: "${query}"...`);
-                const clipUrls = await withRetry(() => fetchStockClips(query, 5), `Stock Search ${i+1}`);
+                const primaryQuery = segment.searchQuery || segment.imagePrompt || 'cinematic abstract';
+                // Build fallback query list: primary → simplified (first word only) → generic niche
+                const fallbackQuery = primaryQuery.split(' ')[0]; // simplest possible
+                const nicheQuery = (safeSubNiche || safeMainNiche || 'cinematic').split(' ').slice(0, 2).join(' ');
+                const queries = [...new Set([primaryQuery, fallbackQuery, nicheQuery, 'cinematic nature'])];
+                addLog(`[Segment ${i + 1}] Searching stock clips for: "${primaryQuery}"...`);
+                const clipUrls = await withRetry(() => fetchStockClips(queries, 5), `Stock Search ${i+1}`);
 
                 if (clipUrls.length > 0) {
                     // Download all returned clips and probe their durations
@@ -1386,10 +1395,31 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                 let vfFilters = `scale=${outW}:${outH}:force_original_aspect_ratio=increase,crop=${outW}:${outH},setpts=N/FRAME_RATE/TB`;
                 if (visualSource === 'stock_videos') {
                     // Enhanced visual transformation for stock footage (anti-reuse fingerprinting)
-                    const hueShift = Math.floor(Math.random() * 16) - 8; // Random ±8° hue shift
+                    const hueShift = Math.floor(Math.random() * 16) - 8;
                     vfFilters += `,eq=contrast=1.15:brightness=0.03:saturation=1.3,vignette=PI/3.5`;
                     if (hueShift !== 0) vfFilters += `,hue=h=${hueShift}`;
-                    vfFilters += `,unsharp=5:5:0.8:3:3:0.4`; // Cinematic sharpening
+                    vfFilters += `,unsharp=5:5:0.8:3:3:0.4`;
+                } else {
+                    // KEN BURNS EFFECT — slow zoom/pan on AI images (makes static images cinematic)
+                    const kenMode = j % 4; // cycle through 4 motion types for variety
+                    const fps = 30;
+                    const dFrames = Math.max(1, Math.round(clip.duration * fps));
+                    let zExpr, xExpr, yExpr;
+                    if (kenMode === 0) { // slow zoom-in to centre
+                        zExpr = `min(1+${(0.0004).toFixed(5)}*n,1.25)`;
+                        xExpr = `iw/2-(iw/zoom/2)`;  yExpr = `ih/2-(ih/zoom/2)`;
+                    } else if (kenMode === 1) { // slow zoom-out from centre
+                        zExpr = `max(1.25-${(0.0004).toFixed(5)}*n,1.0)`;
+                        xExpr = `iw/2-(iw/zoom/2)`;  yExpr = `ih/2-(ih/zoom/2)`;
+                    } else if (kenMode === 2) { // pan left-to-right while slightly zoomed
+                        zExpr = `1.12`;
+                        xExpr = `(iw-iw/zoom)/2*(n/${dFrames})`; yExpr = `ih/2-(ih/zoom/2)`;
+                    } else { // pan top-to-bottom while slightly zoomed
+                        zExpr = `1.12`;
+                        xExpr = `iw/2-(iw/zoom/2)`; yExpr = `(ih-ih/zoom)/2*(n/${dFrames})`;
+                    }
+                    vfFilters += `,zoompan=z='${zExpr}':x='${xExpr}':y='${yExpr}':d=${dFrames}:s=${outW}x${outH}:fps=${fps}`;
+                    vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.25`;
                 }
 
                 // Smart Transitions & Pattern Interrupts
@@ -1602,34 +1632,38 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                 nicheVisualStyle = 'Dramatic central focal point with volumetric lighting, deep shadows, cinematic teal-orange color grade, extreme depth of field';
             }
 
-            // 2. SMART TEXT DECISION — only add text when it adds genuine click value
-            const thumbTextRaw = (scriptData.thumbnailText || '').trim();
-            const titleWords = (scriptData.title || '').toLowerCase().split(/\s+/);
-            const thumbWords = thumbTextRaw.toLowerCase().split(/\s+/);
-            // Add text overlay only if: text exists, is short (≤4 words), and adds new info not in title
-            const thumbWordsInTitle = thumbWords.filter(w => w.length > 3 && titleWords.includes(w)).length;
-            const shouldAddText = thumbTextRaw.length > 0 &&
-                thumbWords.length <= 4 &&
-                thumbWordsInTitle < thumbWords.length * 0.6; // at least 40% unique words vs title
+            // 2. ALWAYS overlay text — but rewrite the thumbnail prompt to pre-compose space for it
+            const thumbTextRaw = (scriptData.thumbnailText || scriptData.title?.split(' ').slice(0, 3).join(' ') || 'SHOCKING').trim();
 
-            // 3. AI BACKGROUND GENERATION — always generates clean background (no baked text)
-            let thumbPrompt = scriptData.thumbnailPrompt;
-            if (!thumbPrompt || thumbPrompt.length < 50) {
-                const aesthetic = scriptData.global_visual_style || nicheVisualStyle;
-                thumbPrompt = `Masterwork YouTube thumbnail background. ${aesthetic}. ONE dramatic central focal point. 3-point volumetric lighting with glowing accent colors contrasting deep shadows. Extreme depth-of-field background blur (bokeh). ${shouldAddText ? 'Clean empty space at the top or left for text overlay.' : 'Full dramatic composition.'} Ultra-high contrast, ultra-vibrant. NO TEXT, NO WORDS, NO LETTERS in the image.`;
-            } else {
-                // Strip any text instructions from the AI-provided prompt for clean background
-                thumbPrompt = thumbPrompt.replace(/with.*?text.*?reading.*?['""][^'"]+['""][,.]?/gi, '').trim();
-                thumbPrompt = `${scriptData.global_visual_style || nicheVisualStyle}. ${thumbPrompt}. NO TEXT, NO WORDS, NO LETTERS in the image.`;
+            // 3. THUMBNAIL PROMPT — YouTube-proven compositional spec
+            // Left 55%: dramatic subject. Right 45%: clean gradient zone for text.
+            const videoTitle = (scriptData.title || '').replace(/"/g, "'");
+            const aesthetic = scriptData.global_visual_style || nicheVisualStyle;
+
+            let thumbPrompt = '';
+            if (scriptData.thumbnailPrompt && scriptData.thumbnailPrompt.length > 60) {
+                thumbPrompt = scriptData.thumbnailPrompt
+                    .replace(/with.*?text.*?reading.*?['"][^'"]+['"][,.]?/gi, '')
+                    .replace(/NO TEXT[^.]*\.?/gi, '')
+                    .trim();
             }
 
-            addLog(`[THUMBNAIL] Style: ${nicheKey || 'universal'} | Text overlay: ${shouldAddText ? `"${thumbTextRaw}"` : 'none (background only)'}`);
+            const thumbImagePrompt = [
+                `Ultra-high-quality YouTube thumbnail. ${aesthetic}.`,
+                thumbPrompt ? thumbPrompt + '.' : '',
+                `Topic: "${videoTitle}".`,
+                `COMPOSITION: Left 55% of frame — ONE dramatic photorealistic focal subject (person with extreme shocked/fearful/amazed expression, or a dramatic object/scene related to the topic). Right 45% of frame — intentionally clean, dark-to-transparent gradient fade, negative space reserved for text overlay (no objects, no faces, no details in right zone).`,
+                `STYLE: Cinematic, ultra-vivid colours, deep contrast, harsh directional lighting from left, shallow depth of field. Photorealistic, 4K sharp.`,
+                `NO TEXT. NO WORDS. NO LETTERS. NO WATERMARKS anywhere in the image.`
+            ].filter(Boolean).join(' ');
+
+            addLog(`[THUMBNAIL] Generating with topic-aware compositional prompt...`);
 
             const thumbUrl = await safeReplicateRun(
                 "bytedance/seedream-4.5",
                 {
                     input: {
-                        prompt: thumbPrompt,
+                        prompt: thumbImagePrompt,
                         size: "2K",
                         aspect_ratio: format === 'vertical' ? "9:16" : "16:9",
                         sequential_image_generation: "disabled"
@@ -1640,71 +1674,74 @@ duration ${c.duration.toFixed(3)}`).join('\n');
             
             const thumbBuffer = await withRetry(() => axios.get(thumbUrl[0], { responseType: 'arraybuffer' }), "Download Thumbnail");
             
-            // 4. SERVER-SIDE TEXT COMPOSITOR — Anton font embedded as base64 (guaranteed render in Docker)
-            if (shouldAddText && thumbTextRaw) {
-                try {
-                    const sharp = require('sharp');
-                    const imgBuf = Buffer.from(thumbBuffer.data);
-                    const meta = await sharp(imgBuf).metadata();
-                    const W = meta.width || 1920;
-                    const H = meta.height || 1080;
+            // 4. SERVER-SIDE TEXT COMPOSITOR — always overlay text in the RIGHT ZONE
+            try {
+                const sharp = require('sharp');
+                const imgBuf = Buffer.from(thumbBuffer.data);
+                const meta = await sharp(imgBuf).metadata();
+                const W = meta.width || 1920;
+                const H = meta.height || 1080;
 
-                    // Embed Anton font as base64 — bypasses librsvg font lookup, works in any Docker container
-                    const fontPath = path.join(__dirname, 'assets', 'fonts', 'Anton-Regular.ttf');
-                    let fontFaceCSS = '';
-                    if (fs.existsSync(fontPath)) {
-                        const fontB64 = fs.readFileSync(fontPath).toString('base64');
-                        fontFaceCSS = `@font-face { font-family: 'Anton'; src: url('data:font/truetype;base64,${fontB64}') format('truetype'); }`;
-                    }
-                    const fontFamily = fontFaceCSS ? 'Anton' : 'Arial Black, sans-serif';
+                // Embed Anton font as base64
+                const fontPath = path.join(__dirname, 'assets', 'fonts', 'Anton-Regular.ttf');
+                let fontFaceCSS = '';
+                if (fs.existsSync(fontPath)) {
+                    const fontB64 = fs.readFileSync(fontPath).toString('base64');
+                    fontFaceCSS = `@font-face { font-family: 'Anton'; src: url('data:font/truetype;base64,${fontB64}') format('truetype'); }`;
+                }
+                const fontFamily = fontFaceCSS ? 'Anton' : 'Arial Black, sans-serif';
+                const accentColor = highlightColorHex || '#FFD700';
+                const thumbDisplay = thumbTextRaw.toUpperCase();
 
-                    const textColor = highlightColorHex || '#FFD700';
-                    const thumbDisplay = thumbTextRaw.toUpperCase();
+                // Split into lines (one word per line if short, split at midpoint for longer)
+                const words = thumbDisplay.split(' ');
+                let lines;
+                if (words.length <= 2) {
+                    lines = words; // each word its own line — big and bold
+                } else {
+                    const mid = Math.ceil(words.length / 2);
+                    lines = [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
+                }
 
-                    // Split into lines: if single word keep as-is, if 2+ words try to split at midpoint
-                    const thumbWordsSplit = thumbDisplay.split(' ');
-                    let lines = [thumbDisplay];
-                    if (thumbWordsSplit.length >= 3) {
-                        const mid = Math.ceil(thumbWordsSplit.length / 2);
-                        lines = [thumbWordsSplit.slice(0, mid).join(' '), thumbWordsSplit.slice(mid).join(' ')];
-                    } else if (thumbWordsSplit.length === 2) {
-                        // Keep as 2 lines if words are long, else 1 line
-                        const longestWord = Math.max(...thumbWordsSplit.map(w => w.length));
-                        if (longestWord > 7 || thumbDisplay.length > 12) lines = thumbWordsSplit;
-                    }
+                // Text zone: right 45% of image, vertically centred
+                const zoneX = Math.round(W * 0.55);
+                const zoneW = W - zoneX;
 
-                    // Font size: fit longest line within 90% of image width
-                    // Anton character width ratio ≈ 0.52 of font size
-                    const longestLine = lines.reduce((a, b) => a.length > b.length ? a : b, '');
-                    const maxW = W * 0.90;
-                    let fontSize = Math.min(
-                        Math.round(H * 0.22),                              // max 22% of height
-                        Math.round(maxW / (longestLine.length * 0.52))     // fit within width
-                    );
-                    fontSize = Math.max(fontSize, Math.round(H * 0.08));   // min 8% of height
-                    const lineH = Math.round(fontSize * 1.05);
-                    const strokeW = Math.max(4, Math.round(fontSize * 0.055));
+                // Font size: fill ~90% of zone width
+                const longestLine = lines.reduce((a, b) => a.length > b.length ? a : b, '');
+                let fontSize = Math.min(
+                    Math.round(H * 0.28),                                    // cap at 28% of height
+                    Math.round(zoneW * 0.90 / (longestLine.length * 0.52))   // Anton ratio
+                );
+                fontSize = Math.max(fontSize, Math.round(H * 0.09)); // min 9%
+                const lineH = Math.round(fontSize * 1.10);
+                const strokeW = Math.max(5, Math.round(fontSize * 0.06));
+                const pad = Math.round(fontSize * 0.18); // pill padding
 
-                    // Total text block height
-                    const textBlockH = lines.length * lineH;
+                const totalTextH = lines.length * lineH;
+                const blockStartY = Math.round((H - totalTextH) / 2); // vertically centred
 
-                    // Position: bottom zone — text sits 12% up from bottom
-                    const textBlockBottom = H - Math.round(H * 0.08);
-                    const textBlockTop = textBlockBottom - textBlockH;
+                // Build one pill-rect + text per line
+                const lineEls = lines.map((line, idx) => {
+                    const textY = blockStartY + idx * lineH + lineH * 0.82;
+                    const textX = zoneX + Math.round(zoneW / 2); // centred in zone
+                    // Approximate text width for pill backing
+                    const approxTW = Math.round(line.length * fontSize * 0.52);
+                    const pillX = textX - Math.round(approxTW / 2) - pad;
+                    const pillY = blockStartY + idx * lineH - Math.round(lineH * 0.12);
+                    const pillW = approxTW + pad * 2;
+                    const pillH2 = lineH + Math.round(lineH * 0.12);
+                    const r = Math.round(pillH2 * 0.18); // rounded corner radius
 
-                    // Dark gradient backing bar: covers bottom 40% of image, full width
-                    const gradY = Math.round(H * 0.60);
-                    const gradH = H - gradY;
-
-                    // Build text elements for each line
-                    const textEls = lines.map((line, idx) => {
-                        const y = textBlockTop + (idx + 1) * lineH;
-                        return `<text
-                            x="${Math.round(W / 2)}" y="${y}"
+                    return `
+                        <rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH2}" rx="${r}" ry="${r}"
+                              fill="#000000" fill-opacity="0.78"/>
+                        <text
+                            x="${textX}" y="${textY}"
                             font-family="${fontFamily}, Impact, Arial Black, sans-serif"
                             font-size="${fontSize}"
                             font-weight="900"
-                            fill="${textColor}"
+                            fill="${accentColor}"
                             stroke="#000000"
                             stroke-width="${strokeW}"
                             stroke-linejoin="round"
@@ -1712,43 +1749,40 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                             filter="url(#glow)"
                             text-anchor="middle"
                             dominant-baseline="auto"
-                            letter-spacing="1"
+                            letter-spacing="2"
                         >${line}</text>`;
-                    }).join('\n');
+                }).join('\n');
 
-                    const svgOverlay = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <style>${fontFaceCSS}</style>
-                            <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
-                                <stop offset="60%" stop-color="#000000" stop-opacity="0.55"/>
-                                <stop offset="100%" stop-color="#000000" stop-opacity="0.85"/>
-                            </linearGradient>
-                            <filter id="glow" x="-8%" y="-8%" width="116%" height="116%">
-                                <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000000" flood-opacity="1"/>
-                                <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="${textColor}" flood-opacity="0.4"/>
-                            </filter>
-                        </defs>
-                        <!-- Dark gradient backing for readability -->
-                        <rect x="0" y="${gradY}" width="${W}" height="${gradH}" fill="url(#bar)"/>
-                        <!-- Text -->
-                        ${textEls}
-                    </svg>`;
+                // Vertical dark gradient on the right zone to ensure zone is always readable
+                const svgOverlay = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <style>${fontFaceCSS}</style>
+                        <linearGradient id="zone" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+                            <stop offset="40%" stop-color="#000000" stop-opacity="0.55"/>
+                            <stop offset="100%" stop-color="#000000" stop-opacity="0.80"/>
+                        </linearGradient>
+                        <filter id="glow" x="-10%" y="-10%" width="120%" height="120%">
+                            <feDropShadow dx="0" dy="3" stdDeviation="10" flood-color="#000000" flood-opacity="1"/>
+                            <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="${accentColor}" flood-opacity="0.5"/>
+                        </filter>
+                    </defs>
+                    <!-- Right-zone darkening gradient -->
+                    <rect x="${zoneX - Math.round(W * 0.08)}" y="0" width="${W - zoneX + Math.round(W * 0.08)}" height="${H}" fill="url(#zone)"/>
+                    <!-- Text with pill backings -->
+                    ${lineEls}
+                </svg>`;
 
-                    const composited = await sharp(imgBuf)
-                        .composite([{ input: Buffer.from(svgOverlay), blend: 'over' }])
-                        .jpeg({ quality: 96 })
-                        .toBuffer();
+                const composited = await sharp(imgBuf)
+                    .composite([{ input: Buffer.from(svgOverlay), blend: 'over' }])
+                    .jpeg({ quality: 97 })
+                    .toBuffer();
 
-                    fs.writeFileSync(thumbLocalPath, composited);
-                    addLog(`[THUMBNAIL] Anton font composited: "${thumbDisplay}" (${lines.length} line${lines.length > 1 ? 's' : ''}, ${fontSize}px, ${W}x${H})`);
-                } catch (sharpErr) {
-                    console.warn('[THUMBNAIL] Compositor failed, saving raw background:', sharpErr.message);
-                    fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
-                }
-            } else {
+                fs.writeFileSync(thumbLocalPath, composited);
+                addLog(`[THUMBNAIL] Composited: "${thumbDisplay}" | ${lines.length} line(s), ${fontSize}px, right-zone layout`);
+            } catch (sharpErr) {
+                console.warn('[THUMBNAIL] Compositor failed, saving raw:', sharpErr.message);
                 fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
-
             }
 
             try { fs.copyFileSync(thumbLocalPath, legacyThumbPath); } catch (_) {}
