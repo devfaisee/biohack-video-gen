@@ -876,38 +876,45 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
         const pexelsKey = process.env.PEXELS_API_KEY || "vGnr3wLcpfgybFLKKXjcPcqMOPc4MM89JJA1j2WpGfrKNh29XTHVualY";
         const pixabayKey = process.env.PIXABAY_API_KEY || "54069102-5cb5de9252e9808a1e0d5f201";
 
-        async function fetchStockVideo(query) {
+        // Returns an array of up to `maxClips` different stock video URLs for a query
+        async function fetchStockClips(query, maxClips = 5) {
             const isVertical = format === 'vertical';
+            const results = [];
             try {
-                const res = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=5&orientation=${isVertical ? 'portrait' : 'landscape'}`, {
+                const res = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=15&orientation=${isVertical ? 'portrait' : 'landscape'}`, {
                     headers: { Authorization: pexelsKey },
-                    timeout: 8000,
+                    timeout: 10000,
                     signal: abortController.signal
                 });
                 if (res.data.videos && res.data.videos.length > 0) {
-                    const randomIdx = Math.floor(Math.random() * Math.min(res.data.videos.length, 5));
-                    const video = res.data.videos[randomIdx];
-                    const hdFile = video.video_files.find(f => f.quality === 'hd' || f.width >= 1280) || video.video_files[0];
-                    return { type: 'video', url: hdFile.link };
+                    // Shuffle the results to guarantee variety across calls
+                    const shuffled = res.data.videos.sort(() => Math.random() - 0.5);
+                    for (const video of shuffled.slice(0, maxClips)) {
+                        const hdFile = video.video_files.find(f => f.quality === 'hd' || f.width >= 1280) || video.video_files[0];
+                        if (hdFile?.link) results.push(hdFile.link);
+                    }
+                    if (results.length > 0) return results;
                 }
             } catch (e) {
                 console.warn("Pexels failed, falling back to Pixabay", e.message);
             }
             try {
-                const res = await axios.get(`https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodeURIComponent(query)}&video_type=film&orientation=${isVertical ? 'vertical' : 'horizontal'}`, {
-                    timeout: 8000,
+                const res = await axios.get(`https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodeURIComponent(query)}&video_type=film&orientation=${isVertical ? 'vertical' : 'horizontal'}&per_page=10`, {
+                    timeout: 10000,
                     signal: abortController.signal
                 });
                 if (res.data.hits && res.data.hits.length > 0) {
-                    const randomIdx = Math.floor(Math.random() * Math.min(res.data.hits.length, 3));
-                    const video = res.data.hits[randomIdx];
-                    return { type: 'video', url: video.videos.large.url || video.videos.medium.url || video.videos.small.url };
+                    const shuffled = res.data.hits.sort(() => Math.random() - 0.5);
+                    for (const video of shuffled.slice(0, maxClips)) {
+                        const url = video.videos.large?.url || video.videos.medium?.url || video.videos.small?.url;
+                        if (url) results.push(url);
+                    }
+                    if (results.length > 0) return results;
                 }
             } catch (e) {
                 console.warn("Pixabay failed", e.message);
             }
-            // Stock search exhausted — signal caller to use AI image fallback instead
-            return { type: 'ai_fallback', url: null };
+            return []; // exhausted — caller will use AI image fallback
         }
 
         const getAudioDuration = (filePath) => new Promise((resolve, reject) => {
@@ -928,15 +935,33 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
 
             if (visualSource === 'stock_videos') {
                 const query = segment.searchQuery || segment.imagePrompt || "cinematic abstract";
-                addLog(`[Segment ${i + 1}] Searching stock video for: ${query}...`);
-                const result = await withRetry(() => fetchStockVideo(query), `Stock Search ${i+1}`);
+                addLog(`[Segment ${i + 1}] Searching stock clips for: "${query}"...`);
+                const clipUrls = await withRetry(() => fetchStockClips(query, 5), `Stock Search ${i+1}`);
 
-                if (result.type === 'video' && result.url) {
-                    const videoBuffer = await withRetry(() => axios.get(result.url, { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `Download Stock Video ${i+1}`);
-                    fs.writeFileSync(visualPath, videoBuffer.data);
-                    visualPaths[i] = visualPath;
-                    addLog(`[Segment ${i + 1}] Stock Video downloaded.`);
-                } else {
+                if (clipUrls.length > 0) {
+                    // Download all returned clips and probe their durations
+                    const rawPaths = [];
+                    for (let ci = 0; ci < clipUrls.length; ci++) {
+                        const rawPath = path.join(projectDir, `raw_${i}_${ci}.mp4`);
+                        try {
+                            const buf = await withRetry(() => axios.get(clipUrls[ci], { responseType: 'arraybuffer', timeout: 30000, signal: abortController.signal }), `DL Stock Clip ${i+1}-${ci+1}`);
+                            fs.writeFileSync(rawPath, buf.data);
+                            rawPaths.push(rawPath);
+                        } catch { /* skip this clip on download error */ }
+                    }
+
+                    if (rawPaths.length === 0) {
+                        // All downloads failed — fall to AI image fallback below
+                        clipUrls.length = 0;
+                    } else {
+                        // We'll assemble the final clip during FFmpeg phase (after audio duration is known)
+                        // Store raw clip paths for later assembly
+                        visualPaths[i] = { type: 'multi_clip', paths: rawPaths };
+                        addLog(`[Segment ${i + 1}] ${rawPaths.length} stock clip(s) ready for montage.`);
+                    }
+                }
+
+                if (clipUrls.length === 0 || !visualPaths[i]) {
                     // Stock video not found — auto-fallback to AI image for this segment
                     addLog(`[Segment ${i + 1}] No stock video found for "${query}" — generating AI image fallback...`);
                     const fallbackPrompt = segment.imagePrompt || segment.searchQuery || `cinematic ${safeSubNiche} scene, dramatic lighting, 4k`;
@@ -1046,13 +1071,77 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
         for (let i = 0; i < scriptData.segments.length; i++) {
             const segment = scriptData.segments[i];
             const audioDuration = await getAudioDuration(audioPaths[i]);
+            let resolvedVisual = visualPaths[i];
+
+            // Multi-clip montage assembly: stitch raw stock clips to exactly match audio duration
+            if (resolvedVisual && typeof resolvedVisual === 'object' && resolvedVisual.type === 'multi_clip') {
+                const { paths: rawPaths } = resolvedVisual;
+                const stitchedPath = path.join(projectDir, `stitched_${i}.mp4`);
+
+                // Probe each raw clip's duration
+                const clipDurations = await Promise.all(rawPaths.map(p => getAudioDuration(p).catch(() => 0)));
+
+                // Build a clip list that covers audioDuration without padding or excessive looping
+                let totalCovered = 0;
+                const clipList = [];
+                for (let ci = 0; ci < rawPaths.length && totalCovered < audioDuration; ci++) {
+                    const needed = audioDuration - totalCovered;
+                    const use = Math.min(clipDurations[ci], needed); // trim clip if it overshoots
+                    if (use > 0.5) { // skip clips shorter than 0.5s
+                        clipList.push({ path: rawPaths[ci], duration: use });
+                        totalCovered += use;
+                    }
+                }
+
+                // If we ran out of clips and still need more, cycle through them with short trims
+                // (Much better than looping a single clip for a minute)
+                if (totalCovered < audioDuration * 0.95) {
+                    let idx = 0;
+                    while (totalCovered < audioDuration && idx < rawPaths.length * 3) {
+                        const ci = idx % rawPaths.length;
+                        const needed = audioDuration - totalCovered;
+                        const maxUseFromCycle = Math.min(clipDurations[ci], needed, 8); // max 8s per clip in cycle
+                        if (maxUseFromCycle > 0.5) {
+                            clipList.push({ path: rawPaths[ci], duration: maxUseFromCycle });
+                            totalCovered += maxUseFromCycle;
+                        }
+                        idx++;
+                    }
+                }
+
+                if (clipList.length === 1) {
+                    // Only one clip — just use it directly (will be stream-looped by FFmpeg if too short)
+                    resolvedVisual = clipList[0].path;
+                } else {
+                    // Stitch multiple clips together with FFmpeg concat
+                    const concatListPath = path.join(projectDir, `concat_${i}.txt`);
+                    const concatContent = clipList.map(c => `file '${c.path.replace(/\\/g, '/')}'
+duration ${c.duration.toFixed(3)}`).join('\n');
+                    fs.writeFileSync(concatListPath, concatContent, 'utf8');
+
+                    await new Promise((resolve, reject) => {
+                        ffmpeg()
+                            .input(concatListPath)
+                            .inputOptions(['-f', 'concat', '-safe', '0'])
+                            .videoCodec('libx264')
+                            .outputOptions(['-pix_fmt', 'yuv420p', '-preset', 'ultrafast', '-an'])
+                            .save(stitchedPath)
+                            .on('end', resolve)
+                            .on('error', reject);
+                    });
+                    resolvedVisual = stitchedPath;
+                    addLog(`[Segment ${i + 1}] Montage stitched: ${clipList.length} clips over ${totalCovered.toFixed(1)}s`);
+                }
+            }
+
             clips[i] = {
-                visual: visualPaths[i],
+                visual: resolvedVisual,
                 audio: audioPaths[i],
                 text: segment.narration,
                 duration: audioDuration,
                 transition: segment.transition || "none",
-                camera_motion: segment.camera_motion || "static"
+                camera_motion: segment.camera_motion || "static",
+                isMultiClip: typeof resolvedVisual === 'string' && resolvedVisual.includes('stitched')
             };
         }
 
@@ -1328,9 +1417,14 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
 
                 chunk.push(new Promise((resolve, reject) => {
                     let cmd = ffmpeg();
-                    if (visualSource === 'stock_videos') {
+                    if (clip.isMultiClip) {
+                        // Pre-stitched montage: already exact duration, no loop needed
+                        cmd = cmd.input(clip.visual).inputOptions(['-t', String(clip.duration)]);
+                    } else if (clip.visual && clip.visual.endsWith('.mp4')) {
+                        // Single stock mp4: stream-loop if it's shorter than audio
                         cmd = cmd.input(clip.visual).inputOptions(['-stream_loop', '-1', '-t', String(clip.duration)]);
                     } else {
+                        // Static image (AI-generated webp): use -loop 1
                         cmd = cmd.input(clip.visual).inputOptions(['-loop', '1', '-t', String(clip.duration)]);
                     }
                     cmd.input(clip.audio);
