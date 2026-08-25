@@ -1879,6 +1879,33 @@ duration ${c.duration.toFixed(3)}`).join('\n');
 
         addLog(`Video generated successfully: ${finalUrl}`);
         
+        // YouTube Auto-Upload Check
+        try {
+            const youtubeModule = require('./youtube');
+            const channelsDb = youtubeModule.getChannelsDb();
+            const matchedChannel = channelsDb.find(c => c.mappedNiches && c.mappedNiches.includes(mainNiche));
+            
+            if (matchedChannel) {
+                addLog(`[YOUTUBE] Mapped channel found (${matchedChannel.channelName}). Initiating auto-upload...`);
+                const ytVideoId = await youtubeModule.uploadToYouTube(
+                    matchedChannel.channelId,
+                    stitchedVideoPath,
+                    fs.existsSync(thumbLocalPath) ? thumbLocalPath : null,
+                    {
+                        title: customTitle || scriptData.title,
+                        description: customDescription || scriptData.description,
+                        tags: scriptData.tags
+                    }
+                );
+                addLog(`[YOUTUBE] Upload complete! Private Video ID: ${ytVideoId}`);
+            } else {
+                addLog(`[YOUTUBE] No channel mapped for niche '${mainNiche}'. Skipping auto-upload.`);
+            }
+        } catch (ytErr) {
+            console.error("[YOUTUBE ERROR]", ytErr);
+            addLog(`[WARN] YouTube auto-upload failed: ${ytErr.message}`);
+        }
+
         // Broadcast success to frontend
         addLog(JSON.stringify({
             event: "complete",
@@ -1917,6 +1944,44 @@ duration ${c.duration.toFixed(3)}`).join('\n');
         }
     }
 }
+
+const youtube = require('./youtube');
+
+app.get('/api/youtube/auth', (req, res) => {
+    res.json({ url: youtube.getAuthUrl() });
+});
+
+app.get('/api/youtube/callback', async (req, res) => {
+    try {
+        const code = req.query.code;
+        await youtube.handleCallback(code);
+        res.redirect('http://localhost:5173/channels?success=true');
+    } catch (err) {
+        console.error("YouTube Auth Error:", err);
+        res.redirect('http://localhost:5173/channels?error=true');
+    }
+});
+
+app.get('/api/youtube/channels', (req, res) => {
+    res.json(youtube.getChannelsDb());
+});
+
+app.post('/api/youtube/channels/:id/niches', (req, res) => {
+    const { niches } = req.body;
+    const db = youtube.getChannelsDb();
+    const channel = db.find(c => c.channelId === req.params.id);
+    if (!channel) return res.status(404).json({ error: "Channel not found" });
+    channel.mappedNiches = niches || [];
+    youtube.saveChannelsDb(db);
+    res.json(channel);
+});
+
+app.delete('/api/youtube/channels/:id', (req, res) => {
+    let db = youtube.getChannelsDb();
+    db = db.filter(c => c.channelId !== req.params.id);
+    youtube.saveChannelsDb(db);
+    res.json({ success: true });
+});
 
 app.post('/api/cancel', (req, res) => {
     if (global.currentJob) {

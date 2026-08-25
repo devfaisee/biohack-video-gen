@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from 'react';
-import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Clock, CheckCircle2, RefreshCw, Eye, Download, X, Copy, Check, ChevronDown, Zap, TrendingUp, XCircle, BarChart3, Hash, Globe, Cpu, Calendar, Activity, Layers, PieChart } from 'lucide-react';
+import { Sparkles, Play, Video, Terminal, LayoutDashboard, Film, Search, Clock, CheckCircle2, RefreshCw, Eye, Download, X, Copy, Check, ChevronDown, Zap, TrendingUp, XCircle, BarChart3, Hash, Globe, Cpu, Calendar, Activity, Layers, PieChart, Youtube } from 'lucide-react';
 import axios from 'axios';
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import NICHES from './niches.json';
+import Channels from './Channels';
 
 const RAILWAY_URL = 'https://biohack-video-gen-server-production.up.railway.app';
 const LOCAL_URL = 'http://localhost:5001';
@@ -102,6 +103,9 @@ function Navbar() {
         </Link>
         <Link to="/library" className={`nav-link ${location.pathname === '/library' ? 'active' : ''}`}>
           <Film size={16} /> Library
+        </Link>
+        <Link to="/channels" className={`nav-link ${location.pathname === '/channels' ? 'active' : ''}`}>
+          <Youtube size={16} /> Channels
         </Link>
         <Link to="/analytics" className={`nav-link ${location.pathname === '/analytics' ? 'active' : ''}`}>
           <BarChart3 size={16} /> Analytics
@@ -901,6 +905,12 @@ function Analytics() {
 }
 
 
+function ChannelsWrapper() {
+  const { baseUrl } = useServer();
+  const toast = useToast();
+  return <Channels baseUrl={baseUrl} toast={toast} />;
+}
+
 // ─── App Root ───────────────────────────────────────────────
 function App() {
   return (
@@ -912,6 +922,7 @@ function App() {
             <Routes>
               <Route path="/" element={<CreatorStudio />} />
               <Route path="/library" element={<VideoLibrary />} />
+              <Route path="/channels" element={<ChannelsWrapper />} />
               <Route path="/analytics" element={<Analytics />} />
             </Routes>
           </div>
