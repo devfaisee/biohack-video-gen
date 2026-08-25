@@ -390,7 +390,6 @@ FORBIDDEN: Do NOT write generic overviews or surface-level advice. Pick a concre
         if (nicheKey.includes("revenge") || nicheKey.includes("justice")) {
             voiceId = "Algenib";
             voicePrompt = "Grave, serious narrator recounting a dark payback tale. Steady, deliberate pacing.";
-            visualStylePreset = "Dark cinematic drama, dramatic volumetric shadows, high contrast, moody urban environment, 35mm lens.";
             nicheRules = `
 CRITICAL STORYTELLING RULES FOR REVENGE/JUSTICE:
 1. NARRATIVE ARC: Write an emotionally gripping story with a clear victim, villain, tension build-up, and SATISFYING payback climax.
@@ -399,26 +398,23 @@ CRITICAL STORYTELLING RULES FOR REVENGE/JUSTICE:
         } else if (nicheKey.includes("true crime") || nicheKey.includes("criminal")) {
             voiceId = "Algenib";
             voicePrompt = "Seasoned crime documentary narrator. Grave, measured, and highly authoritative.";
-            visualStylePreset = "Gritty crime documentary noir, dimly lit evidence boards, shadowy courtrooms, neon rain-soaked streets, vintage film grain.";
             nicheRules = `
 CRITICAL TRUE CRIME RULES:
 1. TONE: Sound like a seasoned crime documentary narrator — grave, measured, and authoritative.
 2. SUSPENSE: Build tension methodically through story structure.
 3. FACTS: Include specific dates, locations, and investigator names to build credibility.
 4. SAFETY: Use safe alternatives for violent words: "eliminated", "tragic end", "perished", "vanished".`;
-        } else if (nicheKey.includes("horror") || nicheKey.includes("creepypasta")) {
+        } else if (nicheKey.includes("horror") || nicheKey.includes("paranormal") || nicheKey.includes("creepypasta")) {
             voiceId = "Enceladus";
             voicePrompt = "Ominous, dread-inducing narrator. Calm but incredibly unsettling.";
-            visualStylePreset = "Psychological horror aesthetic, liminal spaces, fog-draped environments, eerie chiaroscuro lighting, unsettling composition.";
             nicheRules = `
 CRITICAL HORROR RULES:
 1. ATMOSPHERE: Build dread slowly. Start normal, then let wrongness creep in gradually.
 2. VISUALS: Dark, unsettling, liminal space imagery. Empty hallways, fog, distorted shadows, eerie landscapes.
 3. NEVER RESOLVE FULLY: Leave a lingering sense of unease. The best horror doesn't fully explain everything.`;
-        } else if (nicheKey.includes("psychology") || nicheKey.includes("dark")) {
+        } else if (nicheKey.includes("dark psychology") || nicheKey.includes("psychology") || nicheKey.includes("manipulation")) {
             voiceId = "Charon";
             voicePrompt = "Knowledgeable insider revealing hidden mental truths. Confident, slightly conspiratorial, but professional.";
-            visualStylePreset = "Dark psychological thriller style, dramatic silhouettes, chess pieces, puppet strings, sleek glass architecture, high contrast shadows.";
             nicheRules = `
 CRITICAL DARK PSYCHOLOGY RULES:
 1. TONE: Sound like a knowledgeable insider revealing hidden human behavior truths.
@@ -427,7 +423,6 @@ CRITICAL DARK PSYCHOLOGY RULES:
         } else if (nicheKey.includes("stoicism") || nicheKey.includes("philosophy")) {
             voiceId = "Schedar";
             voicePrompt = "Wise, contemplative, and profound. Slow, deliberate, and deeply calming delivery.";
-            visualStylePreset = "Cinematic classical art style, ancient marble statues, misty mountain peaks, rain on ancient temple stone, golden hour sunlight.";
             nicheRules = `
 CRITICAL PHILOSOPHY RULES:
 1. TONE: Sound wise, contemplative, and profound — like Marcus Aurelius speaking to a student.
@@ -436,95 +431,132 @@ CRITICAL PHILOSOPHY RULES:
         } else if (nicheKey.includes("military") || nicheKey.includes("warfare")) {
             voiceId = "Orus";
             voicePrompt = "Military analyst briefing. Authoritative, tactical, precise, no-nonsense.";
-            visualStylePreset = "Ultra-detailed tactical military documentary feel, aircraft, tactical radar, armored vehicles, smoke and volumetric dust, 70mm IMAX feel.";
             nicheRules = `
 CRITICAL MILITARY RULES:
 1. TONE: Sound like a military analyst briefing — authoritative, tactical, precise.
 2. TECHNICAL DETAIL: Include specific equipment specs, troop numbers, tactical formations when relevant.
 3. DRAMA: Highlight the human element — soldiers' decisions under pressure, turning points in battles.`;
-        } else if (nicheKey.includes("unethical") || nicheKey.includes("grey")) {
+        } else if (nicheKey.includes("unethical") || nicheKey.includes("grey area") || nicheKey.includes("legal loophole")) {
             voiceId = "Sadaltager";
             voicePrompt = "Investigative journalist exposing hidden corporate systems. Knowledgeable and fast-paced.";
-            visualStylePreset = "Corporate investigative aesthetic, fine print legal contracts, high-rise glass boardrooms, bank vaults, surveillance feeds.";
             nicheRules = `
 CRITICAL GREY AREA RULES:
 1. TONE: Sound like an investigative journalist exposing hidden systems.
 2. FRAMING: Always frame as EDUCATIONAL — "Here's how this works so you can PROTECT YOURSELF."
 3. EVIDENCE: Cite specific companies, laws, or case studies to build credibility.`;
-        } else if (nicheKey.includes("space") || nicheKey.includes("universe")) {
+        } else if (nicheKey.includes("space") || nicheKey.includes("universe") || nicheKey.includes("cosmos")) {
             voiceId = "Charon";
             voicePrompt = "Top-tier astronomical documentary narrator. Epic, expansive, and awe-inspiring.";
-            visualStylePreset = "Hyper-realistic cosmic photorealism, glowing nebulae, deep space black holes, ray-traced planet surfaces, James Webb telescope aesthetic.";
             nicheRules = `
 CRITICAL SPACE RULES:
 1. TONE: Sound like a top-tier space documentary narrator.
 2. SCALE: Emphasize mind-blowing scale comparisons ("If Earth were a grain of sand...").
 3. FACTS: Provide deep, specific, fascinating insights with exact light-year distances and physics concepts.`;
-        } else if (nicheKey.includes("science") || nicheKey.includes("biology") || nicheKey.includes("tech")) {
+        } else if (nicheKey.includes("ai") || nicheKey.includes("artificial intelligence") || nicheKey.includes("machine learning")) {
+            voiceId = "Charon";
+            voicePrompt = "Sharp, visionary AI researcher and tech communicator. Fast, precise, and exciting.";
+            nicheRules = `
+CRITICAL AI & TECH RULES:
+1. TONE: Sound like a top-tier AI researcher at a TED Talk — brilliant, fast, thrilling.
+2. SIMPLIFY: Break down complex algorithms and breakthroughs into vivid, simple analogies the general public understands.
+3. STAKES: Emphasize why this technology matters for the future of humanity.`;
+        } else if (nicheKey.includes("crypto") || nicheKey.includes("blockchain") || nicheKey.includes("bitcoin") || nicheKey.includes("web3")) {
+            voiceId = "Sadaltager";
+            voicePrompt = "Crypto insider. Fast, intense, with an undercurrent of controlled chaos.";
+            nicheRules = `
+CRITICAL CRYPTO RULES:
+1. TONE: Sound like a crypto insider who has seen cycles come and go — experienced, not hyped.
+2. FACTS: Include specific blockchain protocols, wallet addresses, historical prices, and on-chain data.
+3. BALANCED: Present both the opportunity AND the risk. Never pure hype, never pure doom.`;
+        } else if (nicheKey.includes("fitness") || nicheKey.includes("gym") || nicheKey.includes("workout") || nicheKey.includes("bodybuilding")) {
+            voiceId = "Puck";
+            voicePrompt = "High-energy fitness coach. Motivating, intense, commanding.";
+            nicheRules = `
+CRITICAL FITNESS RULES:
+1. TONE: Sound like an elite fitness coach — direct, no-nonsense, motivating.
+2. SCIENCE: Back every claim with exercise physiology, peer-reviewed studies, or elite athlete examples.
+3. ACTIONABLE: Give the viewer a specific protocol, rep scheme, or nutrition strategy they can use immediately.`;
+        } else if (nicheKey.includes("entrepreneurship") || nicheKey.includes("startup") || nicheKey.includes("business")) {
+            voiceId = "Puck";
+            voicePrompt = "Battle-hardened entrepreneur. Practical, direct, no fluff, high-value.";
+            nicheRules = `
+CRITICAL ENTREPRENEURSHIP RULES:
+1. TONE: Sound like a founder who has built and failed and built again — authentic, direct, zero fluff.
+2. CASE STUDIES: Use specific founders, companies, funding rounds, and pivots as evidence.
+3. MENTAL MODELS: Teach the viewer frameworks and mental models they can immediately apply.`;
+        } else if (nicheKey.includes("comedy") || nicheKey.includes("entertainment") || nicheKey.includes("funny")) {
+            voiceId = "Zubenelgenubi";
+            voicePrompt = "Witty, fast-talking entertainment narrator. Sharp observations, perfect comic timing.";
+            nicheRules = `
+CRITICAL COMEDY/ENTERTAINMENT RULES:
+1. TONE: Witty, self-aware, with sharp observational comedy woven into facts.
+2. TIMING: Use short punchy sentences followed by a longer reveal — classic comedy rhythm.
+3. RELATABILITY: Ground every joke or observation in something the audience has personally experienced.`;
+        } else if (nicheKey.includes("gaming") || nicheKey.includes("esports") || nicheKey.includes("video game")) {
+            voiceId = "Puck";
+            voicePrompt = "Seasoned gaming commentator. Energetic, knowledgeable, conversational.";
+            nicheRules = `
+CRITICAL GAMING RULES:
+1. TONE: Sound like a passionate gaming journalist or documentarian — deep knowledge, high energy.
+2. HISTORY: Include specific game release dates, developer studios, speedrun records, and iconic community moments.
+3. DRAMA: Focus on the human stories — rivalries, controversies, underdog victories.`;
+        } else if (nicheKey.includes("science") || nicheKey.includes("biology") || nicheKey.includes("tech") || nicheKey.includes("technology")) {
             voiceId = "Charon";
             voicePrompt = "Futuristic tech & science visionary. Sharp, precise, and highly engaging.";
-            visualStylePreset = "Cyberpunk scientific render, glowing DNA helixes, microscopic cell photography, futuristic laboratory neon lighting, clean tech aesthetics.";
             nicheRules = `
 CRITICAL SCIENCE & TECH RULES:
 1. TONE: High-level tech communicator explaining breakthrough innovations.
 2. MECHANICS: Clearly explain HOW the mechanism or technology works in simple, vivid visual analogies.`;
-        } else if (nicheKey.includes("history") || nicheKey.includes("civiliz") || nicheKey.includes("geopolit")) {
+        } else if (nicheKey.includes("history") || nicheKey.includes("civiliz") || nicheKey.includes("geopolit") || nicheKey.includes("ancient")) {
             voiceId = "Rasalgethi";
             voicePrompt = "Epic documentary narrator. Dramatic, grand, painting vast historical canvases.";
-            visualStylePreset = "Oil painting historical documentary aesthetic, dramatic golden lighting, ancient ruins, detailed period-accurate armor and attire, parchment textures.";
             nicheRules = `
 CRITICAL HISTORY RULES:
 1. TONE: Sound like an epic documentary narrator — dramatic, grand, painting vast historical canvases.
 2. STORYTELLING: Frame history as a STORY with characters, motivations, betrayals, and consequences.
 3. DETAILS: Include specific dates, names of key figures, and cause-effect chains.`;
-        } else if (nicheKey.includes("rise") || nicheKey.includes("fall")) {
+        } else if (nicheKey.includes("corporate collapse") || nicheKey.includes("downfall") || nicheKey.includes("rise") || nicheKey.includes("empire")) {
             voiceId = "Charon";
             voicePrompt = "Corporate empire documentary narrator. Analytical, dramatic, and compelling.";
-            visualStylePreset = "High-end corporate documentary look, sleek glass skyscrapers, boardroom drama, crashing stock tickers, dramatic executive portraits.";
             nicheRules = `
 CRITICAL RISE & FALL RULES:
 1. STRUCTURE: Follow the classic arc — humble beginnings, meteoric rise, fatal flaw, spectacular collapse.
 2. HUMAN ELEMENT: Focus on the specific decisions and executives that caused the rise AND the collapse.`;
-        } else if (nicheKey.includes("luxury") || nicheKey.includes("motivation") || nicheKey.includes("success mindset")) {
+        } else if (nicheKey.includes("luxury") || nicheKey.includes("motivation") || nicheKey.includes("success") || nicheKey.includes("mindset")) {
             voiceId = "Puck";
             voicePrompt = "High-level elite mentor. Authoritative, intense, fast-paced, high energy.";
-            visualStylePreset = "Ultra-luxurious 8k editorial photography, supercars, private jet interiors, penthouse skylines at dusk, sleek golden hour lighting.";
             nicheRules = `
 CRITICAL LUXURY & MOTIVATION RULES:
 1. TONE: Sound like an elite high-level mentor — authoritative, intense, fast-paced, no fluff.
 2. VISUALS: Supercars, penthouses, yachts, luxury timepieces, private jets, city skylines at night.
 3. ASPIRATION: Every segment must make the viewer feel they are witnessing a secret of the ultra-successful.`;
-        } else if (nicheKey.includes("finance") || nicheKey.includes("wealth") || nicheKey.includes("money")) {
+        } else if (nicheKey.includes("finance") || nicheKey.includes("wealth") || nicheKey.includes("money") || nicheKey.includes("investing")) {
             voiceId = "Charon";
             voicePrompt = "Wall Street insider and wealth strategist. Authoritative, sharp, fast-paced delivery.";
-            visualStylePreset = "Wall Street financial aesthetic, golden money vaults, 3D financial charts, luxury brokerage offices, high-stakes trading floors.";
             nicheRules = `
 CRITICAL FINANCE RULES:
 1. AUTHORITY: Sound like a high-level financial insider. Use authoritative, fast-paced delivery.
 2. ACTIONABLE: Provide actual value, mathematical breakdowns, or case studies the viewer can use.
 3. PSYCHOLOGY: Tie every financial concept back to a human behavioral insight or cognitive bias.`;
-        } else if (nicheKey.includes("survival") || nicheKey.includes("disaster")) {
+        } else if (nicheKey.includes("survival") || nicheKey.includes("disaster") || nicheKey.includes("prepper")) {
             voiceId = "Algenib";
             voicePrompt = "Grave, serious narrator detailing an intense timeline of disaster events.";
-            visualStylePreset = "Dramatic disaster photojournalism, volumetric storm clouds, flooded city streets, emergency flare lighting, rugged survival gear.";
             nicheRules = `
 CRITICAL SURVIVAL RULES:
 1. TONE: Start calm, then escalate urgency as the disaster or survival situation unfolds.
 2. TIMELINE: Present events chronologically with specific timestamps for maximum immersion.
 3. STAKES: Make the viewer feel they are witnessing the event unfold in real-time.`;
-        } else if (nicheKey.includes("nature") || nicheKey.includes("wildlife")) {
+        } else if (nicheKey.includes("nature") || nicheKey.includes("wildlife") || nicheKey.includes("animal")) {
             voiceId = "Achird";
             voicePrompt = "Warm, awestruck, deeply respectful of nature. Calm, inviting, BBC Earth style.";
-            visualStylePreset = "National Geographic wildlife photography, macro telephoto lens depth-of-field, lush rainforest canopy light, crisp animal detail.";
             nicheRules = `
 CRITICAL NATURE RULES:
 1. TONE: Warm, awestruck, deeply respectful of nature like David Attenborough.
 2. FACTS: Include specific species names, behaviors, and fascinating biological adaptations.
 3. WONDER: Every segment must end on a fact that makes the viewer say they had no idea.`;
-        } else if (nicheKey.includes("food")) {
+        } else if (nicheKey.includes("food") || nicheKey.includes("cooking") || nicheKey.includes("culinary")) {
             voiceId = "Zubenelgenubi";
             voicePrompt = "Investigative food journalist. Curious, engaging, and fascinating.";
-            visualStylePreset = "Commercial food photography, macro close-ups, vibrant culinary lighting, industrial food processing lines, glowing spices.";
             nicheRules = `
 CRITICAL FOOD SCIENCE RULES:
 1. TONE: Investigative journalist meets food scientist. Curious, slightly outraged at industrial food engineering.
@@ -532,7 +564,6 @@ CRITICAL FOOD SCIENCE RULES:
         } else if (nicheKey.includes("relationship") || nicheKey.includes("social") || nicheKey.includes("dating")) {
             voiceId = "Sulafat";
             voicePrompt = "Empathetic, articulate interpersonal strategist. Warm, perceptive, and direct.";
-            visualStylePreset = "Cinematic mood photography, warm golden hour portraits, urban coffee shops, rain-streaked windows, expressive human faces.";
             nicheRules = `
 CRITICAL RELATIONSHIP RULES:
 1. TONE: Sound like a perceptive interpersonal psychologist. Empathetic but direct.
@@ -541,43 +572,22 @@ CRITICAL RELATIONSHIP RULES:
         } else if (nicheKey.includes("unsolved") || nicheKey.includes("conspiracy") || nicheKey.includes("mystery")) {
             voiceId = "Charon";
             voicePrompt = "Enigmatic, measured investigator. Builds suspense with deliberate pauses and a conspiratorial undertone.";
-            visualStylePreset = "Moody noir photography, redacted documents, foggy night streets, unsolved case files, paranormal investigation aesthetic.";
             nicheRules = `
 CRITICAL MYSTERY RULES:
 1. TONE: Build suspense layer by layer. Use rhetorical questions to keep viewers guessing.
 2. EVIDENCE: Present clues, timelines, and competing theories systematically.
 3. OPEN LOOPS: Never fully resolve the mystery. Leave the viewer with one unanswered question.`;
-        } else if (nicheKey.includes("health") || nicheKey.includes("biohack")) {
+        } else if (nicheKey.includes("health") || nicheKey.includes("biohack") || nicheKey.includes("longevity")) {
             voiceId = "Charon";
             voicePrompt = "Science-backed health expert. Clear, authoritative, cutting-edge research communicator.";
-            visualStylePreset = "Clean medical infographic aesthetic, molecular structures, lab environments, biometric data overlays, human anatomy renders.";
             nicheRules = `
 CRITICAL HEALTH AND BIOHACKING RULES:
 1. TONE: Sound like a cutting-edge health researcher. Evidence-based, no pseudoscience.
 2. CITATIONS: Reference specific studies, journals, or researchers for credibility.
 3. APPLICATION: Give the viewer an actionable protocol they can implement immediately after watching.`;
-        } else if (nicheKey.includes("horror") || nicheKey.includes("paranormal") || nicheKey.includes("creepypasta")) {
-            voiceId = "Enceladus";
-            voicePrompt = "Ominous, dread-inducing narrator. Calm but incredibly unsettling.";
-            visualStylePreset = "Psychological horror aesthetic, liminal spaces, fog-draped environments, eerie chiaroscuro lighting, unsettling composition.";
-            nicheRules = `
-CRITICAL HORROR RULES:
-1. ATMOSPHERE: Build dread slowly. Start normal, then let wrongness creep in gradually.
-2. VISUALS: Dark, unsettling, liminal space imagery. Empty hallways, fog, distorted shadows, eerie landscapes.
-3. NEVER RESOLVE FULLY: Leave a lingering sense of unease. The best horror does not fully explain everything.`;
-        } else if (nicheKey.includes("unethical") || nicheKey.includes("grey area") || nicheKey.includes("legal loophole")) {
-            voiceId = "Sadaltager";
-            voicePrompt = "Investigative journalist exposing hidden corporate systems. Knowledgeable and fast-paced.";
-            visualStylePreset = "Corporate investigative aesthetic, fine print legal contracts, high-rise glass boardrooms, bank vaults, surveillance feeds.";
-            nicheRules = `
-CRITICAL GREY AREA RULES:
-1. TONE: Sound like an investigative journalist exposing hidden systems to protect the public.
-2. FRAMING: Always frame as EDUCATIONAL. Here is how this works so you can protect yourself.
-3. EVIDENCE: Cite specific companies, laws, or case studies to build credibility.`;
-        } else if (nicheKey.includes("geography") || nicheKey.includes("architecture") || nicheKey.includes("cinematic")) {
+        } else if (nicheKey.includes("geography") || nicheKey.includes("architecture") || nicheKey.includes("travel") || nicheKey.includes("cities")) {
             voiceId = "Rasalgethi";
             voicePrompt = "Worldly, cultured travel narrator. Deeply reverent of place and design.";
-            visualStylePreset = "Architectural photography, golden hour cityscapes, aerial drone shots, sweeping landscape vistas, geometric structure details.";
             nicheRules = `
 CRITICAL GEOGRAPHY AND ARCHITECTURE RULES:
 1. TONE: Sound like a cultured world traveler. Reverent, awestruck, deeply knowledgeable.
@@ -586,7 +596,6 @@ CRITICAL GEOGRAPHY AND ARCHITECTURE RULES:
         } else {
             voiceId = "Charon";
             voicePrompt = "Top-tier documentary narrator. Factual, professional, and fascinating.";
-            visualStylePreset = "High-end documentary cinematography, rich contrast, balanced 3-point lighting, clean subject isolation.";
             nicheRules = `
 CRITICAL DOCUMENTARY RULES:
 1. AUTHORITY: Sound like a top-tier documentary narrator. Factual, professional, fascinating.
@@ -957,11 +966,16 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
 
             if (visualSource === 'stock_videos') {
                 const primaryQuery = segment.searchQuery || segment.imagePrompt || 'cinematic abstract';
-                // Build fallback query list: primary → simplified (first word only) → generic niche
-                const fallbackQuery = primaryQuery.split(' ')[0]; // simplest possible
+                // Sanitize: strip sentence prefixes and punctuation that confuse stock search APIs
+                const cleanQuery = primaryQuery
+                    .replace(/^(a |an |the |show |showing |depicting |of |with )/gi, '')
+                    .replace(/["'.,!?]/g, '')
+                    .split(' ').slice(0, 3).join(' ') // max 3 keywords
+                    .trim();
+                const fallbackQuery = cleanQuery.split(' ')[0];
                 const nicheQuery = (safeSubNiche || safeMainNiche || 'cinematic').split(' ').slice(0, 2).join(' ');
-                const queries = [...new Set([primaryQuery, fallbackQuery, nicheQuery, 'cinematic nature'])];
-                addLog(`[Segment ${i + 1}] Searching stock clips for: "${primaryQuery}"...`);
+                const queries = [...new Set([cleanQuery, fallbackQuery, nicheQuery, 'cinematic nature'])];
+                addLog(`[Segment ${i + 1}] Searching stock clips for: "${cleanQuery}"...`);
                 const clipUrls = await withRetry(() => fetchStockClips(queries, 5), `Stock Search ${i+1}`);
 
                 if (clipUrls.length > 0) {
@@ -1757,26 +1771,27 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                 // Font size: fill ~90% of zone width
                 const longestLine = lines.reduce((a, b) => a.length > b.length ? a : b, '');
                 let fontSize = Math.min(
-                    Math.round(H * 0.28),                                    // cap at 28% of height
-                    Math.round(zoneW * 0.90 / (longestLine.length * 0.52))   // Anton ratio
+                    Math.round(H * 0.28),                                    
+                    Math.round(zoneW * 0.90 / (longestLine.length * 0.52))   
                 );
-                fontSize = Math.max(fontSize, Math.round(H * 0.09)); // min 9%
+                fontSize = Math.max(fontSize, Math.round(H * 0.09)); 
                 const lineH = Math.round(fontSize * 1.10);
                 const strokeW = Math.max(5, Math.round(fontSize * 0.06));
-                const pad = Math.round(fontSize * 0.18); // pill padding
+                const pad = Math.round(fontSize * 0.18); 
 
                 const totalTextH = lines.length * lineH;
-                const blockStartY = Math.round((H - totalTextH) / 2); // vertically centred
+                const blockStartY = Math.round((H - totalTextH) / 2); 
 
-                // Build one pill-rect + text per line
                 const lineEls = lines.map((line, idx) => {
                     const textY = blockStartY + idx * lineH + lineH * 0.82;
                     const textX = zoneX + Math.round(zoneW / 2); // centred in zone
                     // Approximate text width for pill backing
                     const approxTW = Math.round(line.length * fontSize * 0.52);
-                    const pillX = textX - Math.round(approxTW / 2) - pad;
+                    const minPillW = Math.round(fontSize * 2.5); // min pill so short words still look good
+                    const finalPillW = Math.max(approxTW, minPillW);
+                    const pillX = textX - Math.round(finalPillW / 2) - pad;
                     const pillY = blockStartY + idx * lineH - Math.round(lineH * 0.12);
-                    const pillW = approxTW + pad * 2;
+                    const pillW = finalPillW + pad * 2;
                     const pillH2 = lineH + Math.round(lineH * 0.12);
                     const r = Math.round(pillH2 * 0.18); // rounded corner radius
 
