@@ -549,7 +549,7 @@ function VideoLibrary() {
       }
       setLoading(false);
     })();
-  }, [toast]);
+  }, [baseUrl, toast]);
 
   const filteredVideos = useMemo(() => {
     let list = videos;

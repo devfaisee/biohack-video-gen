@@ -16,7 +16,6 @@
     "Emotional Intelligence & Self-Mastery",
     "Trauma Bonding & Toxic Attachment"
   ],
-
   "⭐ Finance & Wealth Building": [
     "Stock Market Psychology & Trading",
     "Passive Income & Dividend Investing",
@@ -34,7 +33,6 @@
     "The Psychology of Poverty & Wealth",
     "Automation & Faceless Business Models"
   ],
-
   "⭐ True Crime & Criminal Minds": [
     "Serial Killers & Criminal Profiling",
     "Unsolved Cold Cases & Mysteries",
@@ -52,7 +50,6 @@
     "Terrorism & Radicalization Psychology",
     "Famous Trials That Changed History"
   ],
-
   "⭐ Luxury & Success Mindset": [
     "Billionaire Habits & Daily Routines",
     "Luxury Lifestyle & Ultra-High Net Worth",
@@ -70,7 +67,6 @@
     "Morning Routines of Elite Performers",
     "Legacy & Long-Term Thinking"
   ],
-
   "⭐ Unsolved Mysteries & Conspiracies": [
     "Historical Unsolved Cases & Vanishings",
     "Government Secrets & Declassified Files",
@@ -88,7 +84,6 @@
     "Cold War-Era Secrets Still Classified",
     "Media Blackouts & Suppressed Stories"
   ],
-
   "Ancient History & Civilizations": [
     "Lost & Legendary Ancient Civilizations",
     "Great Empires of the Ancient World",
@@ -106,7 +101,6 @@
     "Viking Age & Norse World",
     "Medieval World & the Middle Ages"
   ],
-
   "Modern History & Geopolitics": [
     "World Wars — Untold & Secret Stories",
     "Cold War Intelligence & Espionage",
@@ -124,7 +118,6 @@
     "The Space Race & Cold War Science",
     "Modern Terrorism & Counter-Terrorism"
   ],
-
   "Military & Warfare": [
     "Elite Special Forces Units",
     "Modern Naval & Air Warfare",
@@ -142,7 +135,6 @@
     "Siege Warfare Through the Ages",
     "Military Medicine & Survival Science"
   ],
-
   "Space & The Universe": [
     "Black Holes & Extreme Physics",
     "The Search for Extraterrestrial Life",
@@ -160,7 +152,6 @@
     "Space Economy & Commercial Space Race",
     "Consciousness, Mind & The Cosmos"
   ],
-
   "Science & Human Biology": [
     "Neuroscience & The Brain",
     "Genetic Science & CRISPR Revolution",
@@ -178,7 +169,6 @@
     "Medical History & Surgical Breakthroughs",
     "Bioethics & The Limits of Science"
   ],
-
   "⭐ Health & Biohacking": [
     "Sleep Optimization & Circadian Biology",
     "Hormonal Health & Testosterone Science",
@@ -196,7 +186,6 @@
     "Dopamine, Addiction & Reward Systems",
     "EMF, Environmental Toxins & Detox Science"
   ],
-
   "Tech & Future Technology": [
     "Artificial Intelligence & AGI Development",
     "Robotics & The Automation Revolution",
@@ -214,7 +203,6 @@
     "Big Tech Power, Monopoly & Ethics",
     "The Future of Work & Human-AI Collaboration"
   ],
-
   "⭐ Rise & Fall — Corporate Empires": [
     "Tech Giants — Rise, Dominance & Disruption",
     "Retail Empires — Boom & Extinction",
@@ -232,7 +220,6 @@
     "Real Estate & Construction Empires",
     "Corporate Scandals & Fraud Exposés"
   ],
-
   "Historical Empires & Their Collapse": [
     "The Roman Empire Cycle",
     "Mongol Empire — The World's Largest Conquest",
@@ -250,7 +237,6 @@
     "The Napoleonic Empire",
     "Patterns of Imperial Collapse Across History"
   ],
-
   "Nature & Wildlife": [
     "Apex Predators & Hunting Strategies",
     "Ocean Ecosystems & Deep Sea Life",
@@ -268,7 +254,6 @@
     "Evolution in Action — Rapid Adaptation",
     "Cryptids, Mythical Beasts & Unusual Sightings"
   ],
-
   "Survival & Disaster": [
     "Natural Disasters — Science & Stories",
     "Nuclear & Industrial Catastrophes",
@@ -286,7 +271,6 @@
     "Pandemic & Biological Disaster History",
     "Survival Psychology — Decision Making Under Pressure"
   ],
-
   "Stoicism & Philosophy": [
     "Stoic Philosophy & Its Modern Application",
     "Existentialism & The Search for Meaning",
@@ -304,7 +288,6 @@
     "Aesthetics & The Philosophy of Art",
     "Transhumanism & Post-Human Philosophy"
   ],
-
   "Horror & Paranormal": [
     "True Paranormal Encounters & Evidence",
     "Creepypasta & Internet Horror Lore",
@@ -322,7 +305,6 @@
     "Film & Literature Horror Analysis",
     "Occult History & Secret Rituals"
   ],
-
   "Revenge & Justice Stories": [
     "Workplace Injustice & Revenge",
     "Relationship Betrayal & Consequences",
@@ -340,7 +322,6 @@
     "Consumer Rights & Fighting Corporations",
     "Whistleblowers Who Changed History"
   ],
-
   "Unethical But Legal — Grey Area": [
     "Corporate Manipulation & Dark Patterns",
     "Psychological Manipulation in Advertising",
@@ -358,7 +339,6 @@
     "Corporate Wage Theft & Worker Exploitation",
     "The Wellness Industry's Pseudoscience Playbook"
   ],
-
   "Cinematic Geography & Architecture": [
     "Hidden Gems & Underrated Destinations",
     "Megacities — Design, Life & Future",
@@ -376,7 +356,6 @@
     "Future City Design & Urban Planning",
     "Natural Wonders — Geological & Scenic"
   ],
-
   "Relationship & Social Dynamics": [
     "Modern Dating — What's Gone Wrong",
     "Attachment Theory & Relationship Patterns",
@@ -394,7 +373,6 @@
     "Power Dynamics & Relationship Control",
     "The Psychology of Jealousy, Envy & Competition"
   ],
-
   "Food Science & History": [
     "Food Industry Deception & Corporate Secrets",
     "The Science of Taste, Flavour & Addiction",
@@ -412,7 +390,6 @@
     "Water — Scarcity, Quality & Global Politics",
     "Banned, Regulated & Controversial Foods"
   ],
-
   "Money Psychology & Street Smarts": [
     "The Psychology of Spending & Saving",
     "Scam Detection & Con Artist Tactics",
@@ -429,5 +406,53 @@
     "Financial Literacy Gaps & Education Failures",
     "How Advertising Creates Artificial Needs",
     "Status Symbols & Conspicuous Consumption"
+  ],
+  "AI & Future Tech": [
+    "Machine Learning & Neural Networks",
+    "AGI & The Singularity",
+    "AI in Healthcare & Biology",
+    "Robotics & Automation",
+    "The Dark Side of AI",
+    "AI Agents & Autonomous Systems"
+  ],
+  "Crypto & Web3": [
+    "Bitcoin & Macroeconomics",
+    "DeFi & Smart Contracts",
+    "Crypto History & Major Hacks",
+    "Blockchain Technology Explained",
+    "On-chain Analysis & Metrics",
+    "The Psychology of Crypto Markets"
+  ],
+  "Fitness & Bodybuilding": [
+    "Hypertrophy Science",
+    "Nutrition & Macros",
+    "Bodybuilding History & Legends",
+    "Exercise Physiology",
+    "Recovery & Sleep Optimization",
+    "Performance Enhancing Compounds"
+  ],
+  "Entrepreneurship & Startups": [
+    "Startup Case Studies",
+    "Bootstrapping vs Venture Capital",
+    "Founder Psychology & Burnout",
+    "Product Market Fit",
+    "Growth Hacking & Marketing",
+    "Failed Startups & Post-Mortems"
+  ],
+  "Comedy & Entertainment": [
+    "Standup Comedy Analysis",
+    "Internet Culture & Memes",
+    "Pop Culture Deep Dives",
+    "Satire & Social Commentary",
+    "The History of Late Night",
+    "Sketch Comedy Breakdowns"
+  ],
+  "Gaming & Esports": [
+    "Esports History & Legends",
+    "Video Game Development Stories",
+    "Speedrunning & Glitches",
+    "Competitive Gaming Psychology",
+    "Retro Gaming Deep Dives",
+    "The Economics of Video Games"
   ]
 }

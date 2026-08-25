@@ -636,6 +636,7 @@ The user requested a ${durationMinutes}-minute video. This is NON-NEGOTIABLE.
 - Total narration word count across ALL segments MUST reach AT LEAST ${wordCount} words.
 - The video is ${durationMinutes} minutes. Not 2. Not 3. ${durationMinutes} full minutes of substance.
 - If you stop early or write short segments, the generation FAILS and is retried.
+- MID-VIDEO CTA: In exactly ONE segment near the middle of the video, seamlessly weave in a very brief, natural call to action (e.g. "If you're finding this valuable, hit subscribe.").
 
 ════════════════════════════════════════════════════════
 ⚠️  ANTI-FILLER MANDATE — THIS IS THE MOST CRITICAL RULE
@@ -1526,6 +1527,7 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                         .outputOptions([
                             '-map 0:v:0', // Only take video from input 0
                             '-map 1:a:0', // Take voiceover audio from input 1
+                            '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', // Per-segment normalization
                             '-shortest',
                             '-r 30', // Force uniform 30fps for all clips (prevents concat desync)
                             '-ar 44100', // Force uniform 44.1kHz audio (prevents concat desync)
@@ -1721,13 +1723,12 @@ duration ${c.duration.toFixed(3)}`).join('\n');
             addLog(`[THUMBNAIL] Generating with topic-aware compositional prompt...`);
 
             const thumbUrl = await safeReplicateRun(
-                "bytedance/seedream-4.5",
+                "black-forest-labs/flux-1.1-pro",
                 {
                     input: {
                         prompt: thumbImagePrompt,
-                        size: "2K",
                         aspect_ratio: format === 'vertical' ? "9:16" : "16:9",
-                        sequential_image_generation: "disabled"
+                        output_format: "jpg"
                     }
                 },
                 "Thumbnail Gen"
