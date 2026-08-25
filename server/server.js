@@ -329,14 +329,28 @@ Output ONLY pure JSON:
 
 async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", format = 'horizontal', jobId }) {
     try {
-        const wordCount = Math.round(durationMinutes * 130); // 130 wpm speaking pace
-        // Use 2 segments/min so each segment has 60-90 words (vs 4/min × 30-50 words).
-        // This keeps JSON small enough for LLM token limits while hitting exact duration.
-        const targetSegments = Math.max(Math.round(durationMinutes * 2), 6);
-        const minSegments = Math.max(Math.round(durationMinutes * 1.5), 5);
-        const wordsPerSegment = Math.round(wordCount / targetSegments); // ~65 words for 8 min
-        const minWordsPerSegment = Math.max(50, wordsPerSegment - 15);
-        const maxWordsPerSegment = wordsPerSegment + 25;
+        // ── FORMAT-AWARE DURATION MATH ────────────────────────────────────────
+        // Shorts (vertical): TTS speaks faster (~155 WPM), max 60s YouTube limit
+        // Long-form (horizontal): documentary pace ~130 WPM
+        const isVertical = format === 'vertical';
+        const wpm = isVertical ? 155 : 130;
+        const effectiveDuration = isVertical ? Math.min(durationMinutes, 1) : durationMinutes;
+        const wordCount = Math.round(effectiveDuration * wpm);
+
+        // Shorts: fewer segments so each has enough words to be spoken clearly (never under 3s)
+        // Long-form: 2 segments/min keeps each segment at 60-90 words
+        const targetSegments = isVertical
+            ? Math.max(Math.min(Math.round(effectiveDuration * 6), 6), 4) // 4-6 segs for Shorts
+            : Math.max(Math.round(effectiveDuration * 2), 6);
+        const minSegments = isVertical
+            ? Math.max(targetSegments - 1, 3)
+            : Math.max(Math.round(effectiveDuration * 1.5), 5);
+        const wordsPerSegment = Math.round(wordCount / targetSegments);
+        // Never let minWordsPerSegment exceed the per-segment budget (was causing LLM confusion)
+        const minWordsPerSegment = isVertical
+            ? Math.max(10, wordsPerSegment - 5)   // Shorts: ~25 words min
+            : Math.max(50, wordsPerSegment - 15);  // Long-form: 50+ words min
+        const maxWordsPerSegment = wordsPerSegment + (isVertical ? 10 : 25);
         const randomSeed = `${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
         
         let specificIdeaInstruction = "";
@@ -371,7 +385,6 @@ FORBIDDEN: Do NOT write generic overviews or surface-level advice. Pick a concre
         // Sanitize niche strings — remove special chars that break LLM JSON generation
         const safeMainNiche = mainNiche.replace(/[⭐]/g, '').replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
         const safeSubNiche = subNiche.replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
-        const isVertical = format === 'vertical';
 
 
         if (nicheKey.includes("revenge") || nicheKey.includes("justice")) {
@@ -678,6 +691,7 @@ JSON STRUCTURE:
   "hasThumbnailText": true or false,
   "thumbnailText": "2-3 WORD MAX",
   "thumbnailPrompt": "Detailed image generation prompt for background only. NO TEXT in image.",
+  "bgmPrompt": "A highly specific Lyria AI music prompt matching the mood of this exact video. E.g. 'Slow-burn orchestral thriller, low cello drones building to brass crescendo, eerie ambience, no vocals.' Be creative and niche-specific.",
   "segments": [
     {
       "narration": "FULL CONTENT HERE. Minimum ${minWordsPerSegment} words of actual information, stories, facts, and specific details. NOT teasers. NOT promises. Real content.",
@@ -844,7 +858,10 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
         const bgmPromise = (async () => {
             try {
                 addLog("Starting Lyria-3 AI Background Music Generation...");
-                const bgmPrompt = scriptData.bgmPrompt || "A calm atmospheric ambient track. Instrumental only, no vocals.";
+                const bgmStyle = isVertical
+                    ? `An energetic, punchy, high-tension background track for a YouTube Short. Fast-paced, driving rhythm, no vocals. Matches the niche: ${safeMainNiche}.`
+                    : `A cinematic, atmospheric, dramatic underscore for a ${safeMainNiche} documentary. Instrumental only, no vocals, builds gradually.`;
+                const bgmPrompt = scriptData.bgmPrompt || bgmStyle;
                 const lyriaAudioUrl = await safeReplicateRun(
                     "google/lyria-3",
                     {
@@ -1075,6 +1092,31 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
 
         // Wait for visual downloads to complete
         await visualPromise;
+
+        // ── MINIMUM SEGMENT DURATION ENFORCEMENT ─────────────────────────────
+        // If TTS returned barely anything (malformed segment, very few words) the
+        // clip will be under ~2.5s — causing the visible "skip" in Shorts.
+        // Pad audio with silence to a guaranteed minimum.
+        const MIN_CLIP_SECONDS = isVertical ? 2.5 : 3.0;
+        for (let i = 0; i < audioPaths.length; i++) {
+            const dur = await getAudioDuration(audioPaths[i]).catch(() => 0);
+            if (dur > 0 && dur < MIN_CLIP_SECONDS) {
+                const needed = MIN_CLIP_SECONDS - dur;
+                const paddedPath = audioPaths[i].replace('.wav', '_padded.wav');
+                await new Promise((res, rej) => {
+                    ffmpeg()
+                        .input(audioPaths[i])
+                        .outputOptions([
+                            `-af apad=pad_dur=${needed.toFixed(3)}`,
+                            '-ar 44100', '-ac 2'
+                        ])
+                        .save(paddedPath)
+                        .on('end', res).on('error', rej);
+                });
+                audioPaths[i] = paddedPath;
+                addLog(`[Segment ${i + 1}] Audio padded from ${dur.toFixed(2)}s to ${MIN_CLIP_SECONDS}s (was too short to render)`);
+            }
+        }
 
         // Build clips array
         for (let i = 0; i < scriptData.segments.length; i++) {
@@ -1400,26 +1442,31 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                     if (hueShift !== 0) vfFilters += `,hue=h=${hueShift}`;
                     vfFilters += `,unsharp=5:5:0.8:3:3:0.4`;
                 } else {
-                    // KEN BURNS EFFECT — slow zoom/pan on AI images (makes static images cinematic)
-                    const kenMode = j % 4; // cycle through 4 motion types for variety
-                    const fps = 30;
-                    const dFrames = Math.max(1, Math.round(clip.duration * fps));
-                    let zExpr, xExpr, yExpr;
-                    if (kenMode === 0) { // slow zoom-in to centre
-                        zExpr = `min(1+${(0.0004).toFixed(5)}*n,1.25)`;
-                        xExpr = `iw/2-(iw/zoom/2)`;  yExpr = `ih/2-(ih/zoom/2)`;
-                    } else if (kenMode === 1) { // slow zoom-out from centre
-                        zExpr = `max(1.25-${(0.0004).toFixed(5)}*n,1.0)`;
-                        xExpr = `iw/2-(iw/zoom/2)`;  yExpr = `ih/2-(ih/zoom/2)`;
-                    } else if (kenMode === 2) { // pan left-to-right while slightly zoomed
-                        zExpr = `1.12`;
-                        xExpr = `(iw-iw/zoom)/2*(n/${dFrames})`; yExpr = `ih/2-(ih/zoom/2)`;
-                    } else { // pan top-to-bottom while slightly zoomed
-                        zExpr = `1.12`;
-                        xExpr = `iw/2-(iw/zoom/2)`; yExpr = `(ih-ih/zoom)/2*(n/${dFrames})`;
+                    // KEN BURNS EFFECT — only apply for clips >= 3s to prevent FFmpeg frame glitches on short clips
+                    if (clip.duration >= 3.0) {
+                        const kenMode = j % 4;
+                        const fps = 30;
+                        const dFrames = Math.max(1, Math.round(clip.duration * fps));
+                        let zExpr, xExpr, yExpr;
+                        if (kenMode === 0) {
+                            zExpr = `min(1+${(0.0004).toFixed(5)}*n,1.25)`;
+                            xExpr = `iw/2-(iw/zoom/2)`;  yExpr = `ih/2-(ih/zoom/2)`;
+                        } else if (kenMode === 1) {
+                            zExpr = `max(1.25-${(0.0004).toFixed(5)}*n,1.0)`;
+                            xExpr = `iw/2-(iw/zoom/2)`;  yExpr = `ih/2-(ih/zoom/2)`;
+                        } else if (kenMode === 2) {
+                            zExpr = `1.12`;
+                            xExpr = `(iw-iw/zoom)/2*(n/${dFrames})`; yExpr = `ih/2-(ih/zoom/2)`;
+                        } else {
+                            zExpr = `1.12`;
+                            xExpr = `iw/2-(iw/zoom/2)`; yExpr = `(ih-ih/zoom)/2*(n/${dFrames})`;
+                        }
+                        vfFilters += `,zoompan=z='${zExpr}':x='${xExpr}':y='${yExpr}':d=${dFrames}:s=${outW}x${outH}:fps=${fps}`;
+                        vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.25`;
+                    } else {
+                        // Short clip: simple color grade, no motion (zoompan on <3s causes frame glitches)
+                        vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.25`;
                     }
-                    vfFilters += `,zoompan=z='${zExpr}':x='${xExpr}':y='${yExpr}':d=${dFrames}:s=${outW}x${outH}:fps=${fps}`;
-                    vfFilters += `,eq=contrast=1.12:brightness=0.02:saturation=1.25`;
                 }
 
                 // Smart Transitions & Pattern Interrupts
