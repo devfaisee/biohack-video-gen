@@ -1952,13 +1952,14 @@ app.get('/api/youtube/auth', (req, res) => {
 });
 
 app.get('/api/youtube/callback', async (req, res) => {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     try {
         const code = req.query.code;
         await youtube.handleCallback(code);
-        res.redirect('http://localhost:5173/channels?success=true');
+        res.redirect(`${frontendUrl}/#/channels?success=true`);
     } catch (err) {
         console.error("YouTube Auth Error:", err);
-        res.redirect('http://localhost:5173/channels?error=true');
+        res.redirect(`${frontendUrl}/#/channels?error=true`);
     }
 });
 
