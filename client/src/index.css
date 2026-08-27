@@ -1293,3 +1293,51 @@ select option {
     grid-column: 1 / -1;
   }
 }
+/* ─── Channels UI ──────────────────────────────────────────── */
+.channels-page { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+.channels-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+.channels-header-text h2 { display: flex; align-items: center; gap: 12px; font-size: 1.8rem; margin-bottom: 8px; }
+.channels-header-text p { max-width: 700px; line-height: 1.6; color: var(--text-muted); }
+.channels-connect-btn { padding: 10px 20px; display: flex; gap: 8px; align-items: center; }
+
+.empty-channels { text-align: center; padding: 60px 20px; max-width: 600px; margin: 40px auto; }
+.empty-icon-wrap { display: inline-flex; background: var(--bg-surface); padding: 20px; border-radius: 20px; margin-bottom: 24px; }
+.empty-channels h3 { font-size: 1.5rem; margin-bottom: 12px; }
+.empty-channels p { color: var(--text-muted); margin-bottom: 32px; }
+
+.channels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); gap: 24px; margin-top: 32px; }
+.channel-card { display: flex; flex-direction: column; height: 600px; padding: 0; overflow: hidden; }
+.channel-card-header { padding: 24px; border-bottom: 1px solid var(--border); background: linear-gradient(to bottom, rgba(255,255,255,0.03), transparent); display: flex; justify-content: space-between; align-items: flex-start; }
+.channel-info { display: flex; gap: 16px; align-items: center; }
+.channel-avatar { position: relative; }
+.channel-avatar img { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--primary-glow); }
+.channel-avatar.fallback { width: 56px; height: 56px; border-radius: 50%; background: var(--primary-soft); display: flex; align-items: center; justify-content: center; }
+.verified-badge { position: absolute; bottom: -4px; right: -4px; background: var(--success); border-radius: 50%; padding: 2px; border: 2px solid var(--bg-elevated); color: #000; }
+.channel-text h3 { font-size: 1.25rem; display: flex; align-items: center; gap: 8px; }
+.channel-text a { font-size: 0.85rem; color: var(--text-secondary); text-decoration: none; display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.disconnect-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 8px; border-radius: 8px; transition: color 0.2s; }
+.disconnect-btn:hover { color: var(--danger); }
+
+.channel-status { margin: -10px 24px 10px; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); }
+.status-icon-warn { color: var(--warning); }
+.status-warn { font-size: 0.85rem; color: var(--warning); }
+
+.channel-card-body { flex: 1; display: flex; flex-direction: column; padding: 24px; overflow: hidden; }
+.search-box { position: relative; margin-bottom: 16px; }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+.search-box input { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 8px; padding: 10px 10px 10px 36px; color: var(--text); outline: none; }
+.search-box input:focus { border-color: var(--primary); }
+
+.niche-lists { flex: 1; overflow-y: auto; padding-right: 8px; }
+.niche-section { margin-bottom: 24px; }
+.niche-section h4 { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.niche-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+.niche-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.niche-pill { font-size: 0.85rem; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; }
+.active-pill { background: var(--primary-soft); border: 1px solid var(--primary-glow); color: var(--primary); }
+.active-pill:hover { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
+.available-pill { background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-secondary); }
+.available-pill:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+.pill-icon { opacity: 0.6; }
+.empty-search { text-align: center; padding: 40px 0; color: var(--text-secondary); font-size: 0.85rem; }

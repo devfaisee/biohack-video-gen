@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Youtube, Trash2, Check, ExternalLink, Search, ShieldCheck, AlertCircle, Plus, X, Video } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Youtube, Trash2, Check, ExternalLink, Search, ShieldCheck, AlertCircle, Plus, X } from 'lucide-react';
+import { motion } from 'framer-motion';
 import nichesData from './niches.json';
 
 const allNiches = Object.keys(nichesData).map(n => n.replace('⭐ ', ''));
@@ -71,50 +71,44 @@ export default function Channels({ baseUrl, toast }) {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="page-content max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
-            <div className="p-2 bg-brand/10 rounded-lg">
-              <Youtube size={24} className="text-brand" />
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="page-content channels-page">
+      <div className="channels-header">
+        <div className="channels-header-text">
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '1.8rem', marginBottom: '8px' }}>
+            <div className="icon-wrap" style={{ background: 'var(--primary-soft)', padding: '8px', borderRadius: '8px', display: 'flex' }}>
+              <Youtube size={24} style={{ color: 'var(--primary)' }} />
             </div>
             Auto-Publish Pipelines
           </h2>
-          <p className="text-gray-400 max-w-2xl text-sm leading-relaxed">
+          <p className="text-muted" style={{ maxWidth: '700px', lineHeight: '1.6' }}>
             Link your YouTube channels and map them to specific niches. When a video finishes generating, it will automatically bypass your local drive and upload directly to the mapped channel as Private.
           </p>
         </div>
-        <button onClick={handleConnect} className="btn-primary flex items-center gap-2 whitespace-nowrap shadow-[0_0_20px_rgba(255,215,0,0.3)] hover:shadow-[0_0_30px_rgba(255,215,0,0.5)] transition-all">
+        <button onClick={handleConnect} className="btn-primary channels-connect-btn" style={{ padding: '10px 20px', display: 'flex', gap: '8px', alignItems: 'center' }}>
           <Plus size={18} /> Connect Channel
         </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center py-32">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand"></div>
-        </div>
+        <div className="loading-spinner" style={{ margin: '100px auto', width: '40px', height: '40px', border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       ) : channels.length === 0 ? (
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="relative overflow-hidden rounded-2xl border border-white/10 bg-darker/50 backdrop-blur-sm p-12 text-center"
+          className="glass-card empty-channels"
+          style={{ textAlign: 'center', padding: '60px 20px', maxWidth: '600px', margin: '40px auto' }}
         >
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand/5 rounded-full blur-[100px] pointer-events-none" />
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 shadow-2xl">
-              <Youtube size={40} className="text-gray-400" />
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-3">No Channels Connected</h3>
-            <p className="text-gray-400 mb-8 max-w-md mx-auto">
-              Build your automated YouTube empire. Connect your first channel to start mapping niches for hands-off publishing.
-            </p>
-            <button onClick={handleConnect} className="btn-primary inline-flex items-center gap-2">
-              <Youtube size={18} /> Authenticate via Google
-            </button>
+          <div className="empty-icon-wrap" style={{ display: 'inline-flex', background: 'var(--bg-surface)', padding: '20px', borderRadius: '20px', marginBottom: '24px' }}>
+            <Youtube size={48} style={{ color: 'var(--text-secondary)' }} />
           </div>
+          <h3 style={{ fontSize: '1.5rem', marginBottom: '12px' }}>No Channels Connected</h3>
+          <p className="text-muted" style={{ marginBottom: '32px' }}>Build your automated YouTube empire. Connect your first channel to start mapping niches for hands-off publishing.</p>
+          <button onClick={handleConnect} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <Youtube size={18} /> Authenticate via Google
+          </button>
         </motion.div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="channels-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(450px, 1fr))', gap: '24px', marginTop: '32px' }}>
           {channels.map((channel, i) => {
             const sq = (searchQueries[channel.channelId] || '').toLowerCase();
             const rawMapped = channel.mappedNiches || [];
@@ -130,84 +124,79 @@ export default function Channels({ baseUrl, toast }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="bg-darker/80 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden flex flex-col h-[600px] shadow-2xl"
+                className="glass-card channel-card"
+                style={{ display: 'flex', flexDirection: 'col', height: '600px', padding: 0, overflow: 'hidden' }}
               >
-                <div className="p-6 border-b border-white/5 bg-gradient-to-b from-white/5 to-transparent">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
+                <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', background: 'linear-gradient(to bottom, rgba(255,255,255,0.03), transparent)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                       {channel.channelAvatar ? (
-                        <div className="relative">
-                          <img src={channel.channelAvatar} alt={channel.channelName} className="w-14 h-14 rounded-full border-2 border-brand/50 shadow-[0_0_15px_rgba(255,215,0,0.2)]" />
-                          <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5 border-2 border-darker">
-                            <ShieldCheck size={12} className="text-darker" />
+                        <div style={{ position: 'relative' }}>
+                          <img src={channel.channelAvatar} alt={channel.channelName} style={{ width: '56px', height: '56px', borderRadius: '50%', border: '2px solid var(--primary-glow)' }} />
+                          <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', background: 'var(--success)', borderRadius: '50%', padding: '2px', border: '2px solid var(--bg-elevated)' }}>
+                            <ShieldCheck size={12} color="#000" />
                           </div>
                         </div>
                       ) : (
-                        <div className="w-14 h-14 rounded-full bg-brand/20 border border-brand/50 flex items-center justify-center">
-                          <Youtube size={24} className="text-brand" />
+                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--primary-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Youtube size={24} style={{ color: 'var(--primary)' }} />
                         </div>
                       )}
                       <div>
-                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <h3 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           {channel.channelName}
                         </h3>
-                        <a href={`https://youtube.com/channel/${channel.channelId}`} target="_blank" rel="noreferrer" className="text-sm text-gray-400 hover:text-brand transition-colors flex items-center gap-1 mt-1">
+                        <a href={`https://youtube.com/channel/${channel.channelId}`} target="_blank" rel="noreferrer" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
                           View on YouTube <ExternalLink size={12} />
                         </a>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => handleDisconnect(channel.channelId)} 
-                      className="text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-all p-2 rounded-lg" 
-                      title="Disconnect Channel"
-                    >
+                    <button onClick={() => handleDisconnect(channel.channelId)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '8px', borderRadius: '8px' }} title="Disconnect Channel">
                       <Trash2 size={18} />
                     </button>
                   </div>
 
-                  <div className="mt-5 flex items-center gap-3 bg-black/30 rounded-lg p-3 border border-white/5">
+                  <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                     {mappedClean.length > 0 ? (
                       <>
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-sm text-gray-300">Automating <strong>{mappedClean.length}</strong> niches</span>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 10px var(--success)' }}></div>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text)' }}>Automating <strong>{mappedClean.length}</strong> niches</span>
                       </>
                     ) : (
                       <>
-                        <AlertCircle size={14} className="text-amber-500" />
-                        <span className="text-sm text-amber-500/80">No niches mapped. Auto-upload paused.</span>
+                        <AlertCircle size={14} style={{ color: 'var(--warning)' }} />
+                        <span style={{ fontSize: '0.85rem', color: 'var(--warning)' }}>No niches mapped. Auto-upload paused.</span>
                       </>
                     )}
                   </div>
                 </div>
                 
-                <div className="flex-1 flex flex-col p-6 overflow-hidden">
-                  <div className="relative mb-4">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', overflow: 'hidden' }}>
+                  <div style={{ position: 'relative', marginBottom: '16px' }}>
+                    <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                     <input 
                       type="text" 
                       placeholder="Search niches to map..." 
                       value={searchQueries[channel.channelId] || ''}
                       onChange={(e) => setSearchQueries({...searchQueries, [channel.channelId]: e.target.value})}
-                      className="w-full bg-black/40 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:border-brand focus:outline-none transition-colors placeholder:text-gray-600"
+                      style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 10px 10px 36px', color: 'var(--text)', outline: 'none' }}
                     />
                   </div>
 
-                  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
+                  <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }} className="custom-scrollbar">
                     {mappedFiltered.length > 0 && (
-                      <div>
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-brand" />
-                          Active Automations
+                      <div style={{ marginBottom: '24px' }}>
+                        <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)' }}></div> Active Automations
                         </h4>
-                        <div className="flex flex-wrap gap-2">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                           {mappedFiltered.map(niche => (
                             <button
                               key={niche}
                               onClick={() => toggleNiche(channel.channelId, niche, rawMapped)}
-                              className="group text-sm px-3 py-1.5 rounded-full bg-brand/10 border border-brand/50 text-brand hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400 transition-all flex items-center gap-2 shadow-[0_0_10px_rgba(255,215,0,0.1)]"
+                              style={{ fontSize: '0.85rem', padding: '6px 12px', borderRadius: '20px', background: 'var(--primary-soft)', border: '1px solid var(--primary-glow)', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
                             >
-                              {niche}
-                              <X size={14} className="opacity-50 group-hover:opacity-100" />
+                              {niche} <X size={14} style={{ opacity: 0.6 }} />
                             </button>
                           ))}
                         </div>
@@ -216,16 +205,15 @@ export default function Channels({ baseUrl, toast }) {
 
                     {unmappedFiltered.length > 0 && (
                       <div>
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Available Niches</h4>
-                        <div className="flex flex-wrap gap-2">
+                        <h4 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Available Niches</h4>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                           {unmappedFiltered.map(niche => (
                             <button
                               key={niche}
                               onClick={() => toggleNiche(channel.channelId, niche, rawMapped)}
-                              className="text-sm px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white hover:border-white/30 transition-all flex items-center gap-1"
+                              style={{ fontSize: '0.85rem', padding: '6px 12px', borderRadius: '20px', background: 'var(--bg-surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
                             >
-                              <Plus size={14} className="opacity-50" />
-                              {niche}
+                              <Plus size={14} style={{ opacity: 0.5 }} /> {niche}
                             </button>
                           ))}
                         </div>
@@ -233,7 +221,7 @@ export default function Channels({ baseUrl, toast }) {
                     )}
                     
                     {filteredNiches.length === 0 && (
-                      <div className="text-center py-10 text-gray-500 text-sm">
+                      <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                         No niches found matching "{sq}"
                       </div>
                     )}
