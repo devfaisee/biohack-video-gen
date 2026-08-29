@@ -93,37 +93,78 @@ async function autoGenerateVideos() {
         const channelsRes = await db.query("SELECT channel_id, channel_name, mapped_niches FROM channels");
         const channels = channelsRes.rows;
 
+        // Advanced Niche Configurations
+        const nicheRules = {
+            "Science": { targetShortsRatio: 0.5, videosPerDay: 1 },
+            "Tech": { targetShortsRatio: 0.5, videosPerDay: 1 },
+            "Gaming": { targetShortsRatio: 0.8, videosPerDay: 2 }, // Fast paced, needs high volume shorts
+            "Finance": { targetShortsRatio: 0.4, videosPerDay: 1 }, // Deep dives perform better
+            "True Crime": { targetShortsRatio: 0.2, videosPerDay: 1 }, // Heavily long-form
+            "Motivation": { targetShortsRatio: 0.9, videosPerDay: 3 }, // Extremely high volume shorts
+            "Comedy": { targetShortsRatio: 0.8, videosPerDay: 1 },
+            "History": { targetShortsRatio: 0.3, videosPerDay: 1 },
+            "default": { targetShortsRatio: 0.5, videosPerDay: 1 }
+        };
+
         for (const channel of channels) {
             const niches = channel.mapped_niches || [];
             if (niches.length === 0) continue;
 
-            // Pick a random mapped niche
             const randomNiche = niches[Math.floor(Math.random() * niches.length)];
             
-            // Randomize format: Exactly 50% chance of vertical (Short) vs horizontal (Long-form) to perfectly balance channel growth
-            const format = Math.random() > 0.5 ? 'vertical' : 'horizontal';
-            const durationMinutes = format === 'vertical' ? 1 : 5;
-
-            console.log(`[AUTO-GEN] Queuing ${format} video for channel ${channel.channel_name}, Niche: ${randomNiche}`);
-
-            // Hit the local API to queue it (using internal port)
-            const port = process.env.PORT || 5000;
-            try {
-                await axios.post(`http://localhost:${port}/api/generate`, {
-                    durationMinutes,
-                    format,
-                    mainNiche: randomNiche,
-                    subNiche: 'General',
-                    topic: '', // LLM will auto-pick a viral topic
-                    visualSource: 'ai_images',
-                    autoSchedule: true // Let the Peak-Hour system handle the upload timing
-                });
-            } catch (postErr) {
-                console.error(`[AUTO-GEN] Failed to queue video for ${channel.channel_name}:`, postErr.message);
+            let rules = nicheRules["default"];
+            for (const key of Object.keys(nicheRules)) {
+                if (randomNiche.includes(key) || randomNiche === key) {
+                    rules = nicheRules[key];
+                    break;
+                }
             }
-            
-            // Robust scaling: Sleep for 60 seconds between queueing channels to prevent API overwhelming and rate limits
-            await new Promise(r => setTimeout(r, 60000));
+
+            for (let v = 0; v < rules.videosPerDay; v++) {
+                // Deterministic Balancing: Query the last 10 videos generated for this niche
+                // Shorts have <= 6 segments, Longs have > 6 segments
+                const pastVideos = await db.query(
+                    "SELECT jsonb_array_length(script->'segments') as seg_count FROM videos WHERE niche = $1 AND script->'segments' IS NOT NULL ORDER BY created_at DESC LIMIT 10", 
+                    [randomNiche]
+                );
+                
+                let pastShorts = 0;
+                let pastTotal = 0;
+                for (const row of pastVideos.rows) {
+                    pastTotal++;
+                    if (row.seg_count <= 6) pastShorts++;
+                }
+                
+                // Calculate current ratio, if we have too many shorts compared to target, force a long-form video.
+                const currentShortsRatio = pastTotal > 0 ? (pastShorts / pastTotal) : 0;
+                
+                let format = 'vertical'; // default short
+                if (currentShortsRatio > rules.targetShortsRatio) {
+                    format = 'horizontal'; // force long-form to balance
+                }
+
+                const durationMinutes = format === 'vertical' ? 1 : 5;
+
+                console.log(`[AUTO-GEN] Queuing ${format} video for channel ${channel.channel_name}, Niche: ${randomNiche} (Video ${v+1}/${rules.videosPerDay})`);
+
+                const port = process.env.PORT || 5000;
+                try {
+                    await axios.post(`http://localhost:${port}/api/generate`, {
+                        durationMinutes,
+                        format,
+                        mainNiche: randomNiche,
+                        subNiche: 'General',
+                        topic: '', 
+                        visualSource: 'stock_footage', // CRITICAL: Forced to always use stock_footage, never AI images in auto-mode
+                        autoSchedule: true 
+                    });
+                } catch (postErr) {
+                    console.error(`[AUTO-GEN] Failed to queue video for ${channel.channel_name}:`, postErr.message);
+                }
+                
+                // Robust scaling: Sleep for 60 seconds between queueing to prevent overwhelming the server memory and API quotas
+                await new Promise(r => setTimeout(r, 60000));
+            }
         }
     } catch (e) {
         console.error('[AUTO-GEN] Error:', e);
