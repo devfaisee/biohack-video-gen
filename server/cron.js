@@ -100,8 +100,8 @@ async function autoGenerateVideos() {
             // Pick a random mapped niche
             const randomNiche = niches[Math.floor(Math.random() * niches.length)];
             
-            // Randomize format: 70% chance of vertical (Short), 30% horizontal (Long-form)
-            const format = Math.random() > 0.3 ? 'vertical' : 'horizontal';
+            // Randomize format: Exactly 50% chance of vertical (Short) vs horizontal (Long-form) to perfectly balance channel growth
+            const format = Math.random() > 0.5 ? 'vertical' : 'horizontal';
             const durationMinutes = format === 'vertical' ? 1 : 5;
 
             console.log(`[AUTO-GEN] Queuing ${format} video for channel ${channel.channel_name}, Niche: ${randomNiche}`);
@@ -122,8 +122,8 @@ async function autoGenerateVideos() {
                 console.error(`[AUTO-GEN] Failed to queue video for ${channel.channel_name}:`, postErr.message);
             }
             
-            // Sleep for 30 seconds between queueing to prevent overwhelming the server instantly
-            await new Promise(r => setTimeout(r, 30000));
+            // Robust scaling: Sleep for 60 seconds between queueing channels to prevent API overwhelming and rate limits
+            await new Promise(r => setTimeout(r, 60000));
         }
     } catch (e) {
         console.error('[AUTO-GEN] Error:', e);

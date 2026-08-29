@@ -54,7 +54,12 @@ async function initDB() {
         updated_at TIMESTAMP DEFAULT NOW()
       );
     `);
-    console.log('[DB] PostgreSQL schemas initialized successfully.');
+    // 4. Performance Indexes for Scale (1000s of videos)
+    await client.query("CREATE INDEX IF NOT EXISTS idx_videos_niche ON videos(niche);");
+    await client.query("CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);");
+    await client.query("CREATE INDEX IF NOT EXISTS idx_analytics_retention ON analytics(retention);");
+    
+    console.log('[DB] PostgreSQL schemas and scale indexes initialized successfully.');
     client.release();
   } catch (err) {
     console.error('[DB] Initialization error:', err);

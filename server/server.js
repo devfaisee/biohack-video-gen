@@ -1916,10 +1916,29 @@ duration ${c.duration.toFixed(3)}`).join('\n');
 
         let publishAtIso = null;
         if (autoSchedule) {
-            // Peak-hour calculation: schedule for 15:00 UTC (10 AM EST) the next day
+            // Peak-hour calculation: Dynamic based on Niche to maximize algorithm push
+            const nichePeakHours = {
+                "Science": 14,      // 10 AM EST
+                "Tech": 16,         // 12 PM EST
+                "Gaming": 20,       // 4 PM EST
+                "Finance": 12,      // 8 AM EST
+                "True Crime": 22,   // 6 PM EST
+                "Motivation": 10,   // 6 AM EST
+                "Comedy": 23,       // 7 PM EST
+                "History": 18       // 2 PM EST
+            };
+            
+            let peakHour = 15; // Default 11 AM EST
+            for (const [key, hour] of Object.entries(nichePeakHours)) {
+                if (mainNiche.includes(key) || mainNiche === key) {
+                    peakHour = hour;
+                    break;
+                }
+            }
+            
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setUTCHours(15, 0, 0, 0); 
+            tomorrow.setUTCHours(peakHour, 0, 0, 0); 
             publishAtIso = tomorrow.toISOString();
         }
 
