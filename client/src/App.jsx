@@ -153,6 +153,7 @@ function CreatorStudio() {
   const [visualSource, setVisualSource] = useState('ai_images');
   const [customTitle, setCustomTitle] = useState('');
   const [customDescription, setCustomDescription] = useState('');
+  const [autoSchedule, setAutoSchedule] = useState(true);
   const [ideaLoading, setIdeaLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -242,15 +243,24 @@ function CreatorStudio() {
           await new Promise(r => setTimeout(r, 800));
         }
       }
-      await axios.post(`${baseUrl}/api/generate`, {
-        durationMinutes: duration, format, topic, mainNiche, subNiche, visualSource, customTitle, customDescription
-      });
+      const payload = {
+        durationMinutes: duration,
+        topic: topic,
+        customTitle: customTitle,
+        customDescription: customDescription,
+        visualSource: visualSource,
+        mainNiche: mainNiche,
+        subNiche: subNiche,
+        format: format,
+        autoSchedule: autoSchedule
+      };
+      await axios.post(`${baseUrl}/api/generate`, payload);
       toast('Pipeline started! Generating your masterpiece...', 'info');
     } catch {
       toast('Failed to start generation. Server may be starting, try again in 3 seconds.', 'error');
       setLoading(false);
     }
-  }, [baseUrl, duration, format, topic, mainNiche, subNiche, visualSource, customTitle, customDescription, toast]);
+  }, [baseUrl, duration, format, topic, mainNiche, subNiche, visualSource, customTitle, customDescription, autoSchedule, toast]);
 
   const cancelGeneration = useCallback(async () => {
     try {
@@ -362,6 +372,19 @@ function CreatorStudio() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <div className="input-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+          <input 
+            type="checkbox" 
+            id="autoSchedule" 
+            checked={autoSchedule} 
+            onChange={(e) => setAutoSchedule(e.target.checked)} 
+            style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+          />
+          <label htmlFor="autoSchedule" style={{ cursor: 'pointer', margin: 0, fontWeight: 500 }}>
+            Enable Peak-Hour Scheduling & Auto-Upload
+          </label>
+        </div>
 
         <div className="action-row">
           <button className="btn btn-primary btn-full" onClick={generateVideo} disabled={loading}>

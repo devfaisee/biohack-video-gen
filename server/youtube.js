@@ -1,21 +1,7 @@
 const { google } = require('googleapis');
 const fs = require('fs');
 const path = require('path');
-
-const CHANNELS_FILE = path.join(__dirname, 'channels.json');
-
-function getChannelsDb() {
-    if (!fs.existsSync(CHANNELS_FILE)) return [];
-    try {
-        return JSON.parse(fs.readFileSync(CHANNELS_FILE, 'utf8'));
-    } catch (e) {
-        return [];
-    }
-}
-
-function saveChannelsDb(db) {
-    fs.writeFileSync(CHANNELS_FILE, JSON.stringify(db, null, 2));
-}
+const db = require('./db');
 
 function getOAuth2Client() {
     return new google.auth.OAuth2(
@@ -53,48 +39,51 @@ async function handleCallback(code) {
     const channelName = channel.snippet.title;
     const channelAvatar = channel.snippet.thumbnails?.default?.url || '';
 
-    const db = getChannelsDb();
-    const existingIdx = db.findIndex(c => c.channelId === channelId);
-    
-    const channelData = {
-        channelId,
-        channelName,
-        channelAvatar,
-        tokens,
-        mappedNiches: existingIdx !== -1 ? db[existingIdx].mappedNiches : []
-    };
-
-    if (existingIdx !== -1) {
-        db[existingIdx] = channelData;
-    } else {
-        db.push(channelData);
+    const existing = await db.query('SELECT mapped_niches FROM channels WHERE channel_id = $1', [channelId]);
+    let mappedNiches = '[]';
+    if (existing.rows.length > 0) {
+        mappedNiches = JSON.stringify(existing.rows[0].mapped_niches);
     }
     
-    saveChannelsDb(db);
-    return channelData;
+    await db.query(`
+        INSERT INTO channels (channel_id, channel_name, avatar, tokens, mapped_niches)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (channel_id) DO UPDATE 
+        SET channel_name = EXCLUDED.channel_name, avatar = EXCLUDED.avatar, tokens = EXCLUDED.tokens
+    `, [channelId, channelName, channelAvatar, JSON.stringify(tokens), mappedNiches]);
+
+    return { channelId, channelName, channelAvatar };
 }
 
 async function uploadToYouTube(channelId, videoPath, thumbPath, metadata) {
-    const db = getChannelsDb();
-    const channelData = db.find(c => c.channelId === channelId);
-    if (!channelData) throw new Error(`Channel ${channelId} not found in DB.`);
-
+    const res = await db.query('SELECT * FROM channels WHERE channel_id = $1', [channelId]);
+    if (res.rows.length === 0) throw new Error(`Channel ${channelId} not found in DB.`);
+    
+    const channelData = res.rows[0];
     const oauth2Client = getOAuth2Client();
     oauth2Client.setCredentials(channelData.tokens);
     
-    oauth2Client.on('tokens', (tokens) => {
-        if (tokens.refresh_token) {
-            channelData.tokens.refresh_token = tokens.refresh_token;
-        }
-        channelData.tokens.access_token = tokens.access_token;
-        if (tokens.expiry_date) channelData.tokens.expiry_date = tokens.expiry_date;
-        saveChannelsDb(db);
+    oauth2Client.on('tokens', async (tokens) => {
+        const currentTokens = channelData.tokens;
+        if (tokens.refresh_token) currentTokens.refresh_token = tokens.refresh_token;
+        currentTokens.access_token = tokens.access_token;
+        if (tokens.expiry_date) currentTokens.expiry_date = tokens.expiry_date;
+        await db.query('UPDATE channels SET tokens = $1 WHERE channel_id = $2', [JSON.stringify(currentTokens), channelId]);
     });
 
     const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
     
-    console.log(`[YOUTUBE] Uploading video to ${channelData.channelName}...`);
+    console.log(`[YOUTUBE] Uploading video to ${channelData.channel_name}...`);
     
+    const statusObj = {
+        privacyStatus: 'private', 
+        selfDeclaredMadeForKids: false
+    };
+    
+    if (metadata.publishAt) {
+        statusObj.publishAt = metadata.publishAt;
+    }
+
     const videoRes = await youtube.videos.insert({
         part: 'snippet,status',
         requestBody: {
@@ -104,10 +93,7 @@ async function uploadToYouTube(channelId, videoPath, thumbPath, metadata) {
                 tags: metadata.tags ? metadata.tags.slice(0, 500).slice(0, 15) : [],
                 categoryId: '27'
             },
-            status: {
-                privacyStatus: 'private', 
-                selfDeclaredMadeForKids: false
-            }
+            status: statusObj
         },
         media: {
             body: fs.createReadStream(videoPath)
@@ -135,4 +121,4 @@ async function uploadToYouTube(channelId, videoPath, thumbPath, metadata) {
     return videoId;
 }
 
-module.exports = { getChannelsDb, saveChannelsDb, getAuthUrl, handleCallback, uploadToYouTube };
+module.exports = { getAuthUrl, handleCallback, uploadToYouTube };

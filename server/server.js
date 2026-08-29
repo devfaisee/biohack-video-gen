@@ -7,6 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const ffmpeg = require('fluent-ffmpeg');
 const ffprobeStatic = require('ffprobe-static');
+const db = require('./db');
+const cronModule = require('./cron');
 
 // Unconditionally use static ffprobe to guarantee audio duration checks work safely everywhere
 ffmpeg.setFfprobePath(ffprobeStatic.path);
@@ -327,7 +329,7 @@ Output ONLY pure JSON:
     }
 });
 
-async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", format = 'horizontal', jobId }) {
+async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", format = 'horizontal', autoSchedule = false, jobId }) {
     try {
         // ── FORMAT-AWARE DURATION MATH ────────────────────────────────────────
         // Shorts (vertical): TTS speaks faster (~155 WPM), max 60s YouTube limit
@@ -527,7 +529,9 @@ CRITICAL RISE & FALL RULES:
             voicePrompt = "High-level elite mentor. Authoritative, intense, fast-paced, high energy.";
             nicheRules = `
 CRITICAL LUXURY & MOTIVATION RULES:
-1. TONE: Sound like an elite high-level mentor — authoritative, intense, fast-paced, no fluff.
+1. TONE: You must design a script that forces high retention. Start with an aggressive, visually striking hook. No "hello guys". 
+${analyticsFeedback}
+Never promise what you will talk about; just start talking about it. Every segment must deliver high-value information, not filler.
 2. VISUALS: Supercars, penthouses, yachts, luxury timepieces, private jets, city skylines at night.
 3. ASPIRATION: Every segment must make the viewer feel they are witnessing a secret of the ultra-successful.`;
         } else if (nicheKey.includes("finance") || nicheKey.includes("wealth") || nicheKey.includes("money") || nicheKey.includes("investing")) {
@@ -599,7 +603,7 @@ CRITICAL GEOGRAPHY AND ARCHITECTURE RULES:
             nicheRules = `
 CRITICAL DOCUMENTARY RULES:
 1. AUTHORITY: Sound like a top-tier documentary narrator. Factual, professional, fascinating.
-2. DETAILS: Provide deep, specific insights with exact names, dates, and evidence-backed claims.
+2. DETAILS: Provide deep, specific insights with actual names, dates, and evidence-backed claims.
 3. STORYTELLING: Every fact must be delivered as part of a compelling narrative arc.`;
         }
 
@@ -626,6 +630,7 @@ CRITICAL LONG-FORM (16:9) PACING RULES:
         const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the "${safeMainNiche}" niche, specifically focusing on "${safeSubNiche}". 
 Your goal is to write a highly viral, retention-optimized script for a ${format} YouTube video.
 ${specificIdeaInstruction}
+${analyticsFeedback}
 ${nicheRules}
 ${formatPacingRules}
 
@@ -1877,26 +1882,65 @@ duration ${c.duration.toFixed(3)}`).join('\n');
         fs.writeFileSync(path.join(videoFolder, `metadata.json`), JSON.stringify(metadata, null, 2));
         fs.writeFileSync(path.join(outputDir, `${videoId}.json`), JSON.stringify(metadata, null, 2)); // Legacy root copy
 
+        let publishAtIso = null;
+        if (autoSchedule) {
+            // Peak-hour calculation: schedule for 15:00 UTC (10 AM EST) the next day
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setUTCHours(15, 0, 0, 0); 
+            publishAtIso = tomorrow.toISOString();
+        }
+
+        // Save to Postgres videos table
+        try {
+            if (process.env.DATABASE_URL) {
+                await db.query(`
+                    INSERT INTO videos (youtube_id, title, description, tags, niche, published_at, status, thumbnail_url, script)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                `, [
+                    null, // No youtube_id yet
+                    metadata.title,
+                    metadata.description,
+                    JSON.stringify(metadata.tags),
+                    metadata.mainNiche,
+                    publishAtIso ? new Date(publishAtIso) : new Date(),
+                    'generated',
+                    metadata.thumbnailUrl,
+                    JSON.stringify(scriptData)
+                ]);
+            }
+        } catch (e) {
+            console.error("[DB] Failed to save video to database:", e.message);
+        }
+
         addLog(`Video generated successfully: ${finalUrl}`);
         
         // YouTube Auto-Upload Check
         try {
             const youtubeModule = require('./youtube');
-            const channelsDb = youtubeModule.getChannelsDb();
-            const matchedChannel = channelsDb.find(c => c.mappedNiches && c.mappedNiches.includes(mainNiche));
+            const channelsRes = await db.query('SELECT * FROM channels');
+            const channelsDb = channelsRes.rows;
+            // mapped_niches is stored as JSONB array, pg returns it as an array
+            const matchedChannel = channelsDb.find(c => c.mapped_niches && c.mapped_niches.includes(mainNiche));
             
             if (matchedChannel) {
-                addLog(`[YOUTUBE] Mapped channel found (${matchedChannel.channelName}). Initiating auto-upload...`);
+                addLog(`[YOUTUBE] Mapped channel found (${matchedChannel.channel_name}). Initiating auto-upload...`);
                 const ytVideoId = await youtubeModule.uploadToYouTube(
-                    matchedChannel.channelId,
+                    matchedChannel.channel_id,
                     stitchedVideoPath,
                     fs.existsSync(thumbLocalPath) ? thumbLocalPath : null,
                     {
                         title: customTitle || scriptData.title,
                         description: customDescription || scriptData.description,
-                        tags: scriptData.tags
+                        tags: scriptData.tags,
+                        mainNiche: mainNiche,
+                        publishAt: publishAtIso
                     }
                 );
+                
+                if (process.env.DATABASE_URL && ytVideoId) {
+                    await db.query(`UPDATE videos SET youtube_id = $1, status = 'uploaded' WHERE title = $2`, [ytVideoId, metadata.title]);
+                }
                 addLog(`[YOUTUBE] Upload complete! Private Video ID: ${ytVideoId}`);
             } else {
                 addLog(`[YOUTUBE] No channel mapped for niche '${mainNiche}'. Skipping auto-upload.`);
@@ -1963,25 +2007,41 @@ app.get('/api/youtube/callback', async (req, res) => {
     }
 });
 
-app.get('/api/youtube/channels', (req, res) => {
-    res.json(youtube.getChannelsDb());
+app.post('/api/analytics/sync', async (req, res) => {
+    try {
+        await cronModule.syncAnalytics();
+        res.json({ success: true, message: 'Analytics synced manually.' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
-app.post('/api/youtube/channels/:id/niches', (req, res) => {
+app.get('/api/youtube/channels', async (req, res) => {
+    try {
+        const result = await db.query('SELECT channel_id as "channelId", channel_name as "channelName", avatar as "channelAvatar", mapped_niches as "mappedNiches" FROM channels');
+        res.json(result.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/youtube/channels/:id/niches', async (req, res) => {
     const { niches } = req.body;
-    const db = youtube.getChannelsDb();
-    const channel = db.find(c => c.channelId === req.params.id);
-    if (!channel) return res.status(404).json({ error: "Channel not found" });
-    channel.mappedNiches = niches || [];
-    youtube.saveChannelsDb(db);
-    res.json(channel);
+    try {
+        await db.query('UPDATE channels SET mapped_niches = $1 WHERE channel_id = $2', [JSON.stringify(niches || []), req.params.id]);
+        res.json({ success: true, mappedNiches: niches });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
-app.delete('/api/youtube/channels/:id', (req, res) => {
-    let db = youtube.getChannelsDb();
-    db = db.filter(c => c.channelId !== req.params.id);
-    youtube.saveChannelsDb(db);
-    res.json({ success: true });
+app.delete('/api/youtube/channels/:id', async (req, res) => {
+    try {
+        await db.query('DELETE FROM channels WHERE channel_id = $1', [req.params.id]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post('/api/cancel', (req, res) => {
@@ -2006,27 +2066,34 @@ app.post('/api/queue/clear', (req, res) => {
     global.jobQueue = [];
     res.json({ message: "Queue cleared." });
 });
-// Endpoint to fetch all previously generated videos (scans root & subfolders)
-app.get('/api/videos', (req, res) => {
+
+app.get('/api/videos', async (req, res) => {
     try {
+        if (process.env.DATABASE_URL) {
+            const result = await db.query('SELECT * FROM videos ORDER BY created_at DESC');
+            return res.json(result.rows);
+        }
+        
+        // Legacy file scan fallback
         const videos = [];
-        function scanDir(dir) {
+        const scanDir = (dir) => {
             if (!fs.existsSync(dir)) return;
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            for (const entry of entries) {
-                const fullPath = path.join(dir, entry.name);
-                if (entry.isDirectory()) {
+            const files = fs.readdirSync(dir);
+            for (const file of files) {
+                const fullPath = path.join(dir, file);
+                const stat = fs.statSync(fullPath);
+                if (stat.isDirectory()) {
                     scanDir(fullPath);
-                } else if (entry.isFile() && entry.name.endsWith('.json')) {
+                } else if (file.endsWith('.json') && file !== 'status.json' && file !== 'channels.json') {
                     try {
                         const data = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
-                        if (data && data.title && data.videoUrl) {
+                        if (data.id && data.title) {
                             videos.push(data);
                         }
-                    } catch (_) {}
+                    } catch (e) { }
                 }
             }
-        }
+        };
         scanDir(outputDir);
         // Deduplicate by video id
         const unique = [];
