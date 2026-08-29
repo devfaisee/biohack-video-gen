@@ -2048,6 +2048,16 @@ app.post('/api/analytics/sync', async (req, res) => {
     }
 });
 
+app.post('/api/auto-gen/trigger', async (req, res) => {
+    try {
+        // Run async in background so we don't block the request
+        cronModule.autoGenerateVideos();
+        res.json({ success: true, message: 'Auto-generation started in the background for all mapped channels.' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/api/youtube/channels', async (req, res) => {
     try {
         const result = await db.query('SELECT channel_id as "channelId", channel_name as "channelName", avatar as "channelAvatar", mapped_niches as "mappedNiches" FROM channels');

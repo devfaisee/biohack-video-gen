@@ -1,11 +1,18 @@
 const cron = require('node-cron');
 const db = require('./db');
 const { google } = require('googleapis');
+const axios = require('axios');
 
 // Fetch analytics at 3 AM every day
 cron.schedule('0 3 * * *', async () => {
     console.log('[CRON] Starting YouTube Analytics Sync...');
     await syncAnalytics();
+});
+
+// Auto-Generate videos for all mapped channels at 5 AM every day
+cron.schedule('0 5 * * *', async () => {
+    console.log('[CRON] Starting Daily Auto-Generation...');
+    await autoGenerateVideos();
 });
 
 async function syncAnalytics() {
@@ -79,4 +86,48 @@ async function syncAnalytics() {
     }
 }
 
-module.exports = { syncAnalytics };
+async function autoGenerateVideos() {
+    if (!process.env.DATABASE_URL) return;
+
+    try {
+        const channelsRes = await db.query("SELECT channel_id, channel_name, mapped_niches FROM channels");
+        const channels = channelsRes.rows;
+
+        for (const channel of channels) {
+            const niches = channel.mapped_niches || [];
+            if (niches.length === 0) continue;
+
+            // Pick a random mapped niche
+            const randomNiche = niches[Math.floor(Math.random() * niches.length)];
+            
+            // Randomize format: 70% chance of vertical (Short), 30% horizontal (Long-form)
+            const format = Math.random() > 0.3 ? 'vertical' : 'horizontal';
+            const durationMinutes = format === 'vertical' ? 1 : 5;
+
+            console.log(`[AUTO-GEN] Queuing ${format} video for channel ${channel.channel_name}, Niche: ${randomNiche}`);
+
+            // Hit the local API to queue it (using internal port)
+            const port = process.env.PORT || 5000;
+            try {
+                await axios.post(`http://localhost:${port}/api/generate`, {
+                    durationMinutes,
+                    format,
+                    mainNiche: randomNiche,
+                    subNiche: 'General',
+                    topic: '', // LLM will auto-pick a viral topic
+                    visualSource: 'ai_images',
+                    autoSchedule: true // Let the Peak-Hour system handle the upload timing
+                });
+            } catch (postErr) {
+                console.error(`[AUTO-GEN] Failed to queue video for ${channel.channel_name}:`, postErr.message);
+            }
+            
+            // Sleep for 30 seconds between queueing to prevent overwhelming the server instantly
+            await new Promise(r => setTimeout(r, 30000));
+        }
+    } catch (e) {
+        console.error('[AUTO-GEN] Error:', e);
+    }
+}
+
+module.exports = { syncAnalytics, autoGenerateVideos };
