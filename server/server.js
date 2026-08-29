@@ -331,6 +331,40 @@ Output ONLY pure JSON:
 
 async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", format = 'horizontal', autoSchedule = false, jobId }) {
     try {
+        // --- AUTO-LEARNING: FETCH ANALYTICS FEEDBACK ---
+        let analyticsFeedback = "";
+        try {
+            if (process.env.DATABASE_URL) {
+                const topRes = await db.query(`
+                    SELECT a.retention, v.title 
+                    FROM analytics a 
+                    JOIN videos v ON a.youtube_id = v.youtube_id 
+                    WHERE v.niche = $1 AND a.retention > 0
+                    ORDER BY a.retention DESC LIMIT 2
+                `, [mainNiche]);
+                
+                const worstRes = await db.query(`
+                    SELECT a.retention, v.title 
+                    FROM analytics a 
+                    JOIN videos v ON a.youtube_id = v.youtube_id 
+                    WHERE v.niche = $1 AND a.retention > 0
+                    ORDER BY a.retention ASC LIMIT 2
+                `, [mainNiche]);
+
+                if (topRes.rows.length > 0) {
+                    analyticsFeedback = `
+DATA-DRIVEN FEEDBACK LOOP (LEARN FROM PAST VIDEOS):
+- Highest Retention Videos in this Niche:
+${topRes.rows.map(r => `  * Title: "${r.title}" (Retention: ${r.retention}%) - Analyze why this worked and emulate its pacing/hooks.`).join('\n')}
+- Lowest Retention Videos to AVOID:
+${worstRes.rows.map(r => `  * Title: "${r.title}" (Retention: ${r.retention}%) - Avoid this topic or change the narrative structure completely.`).join('\n')}
+`;
+                }
+            }
+        } catch (e) {
+            console.warn("[ANALYTICS] Could not fetch feedback loop:", e.message);
+        }
+
         // ── FORMAT-AWARE DURATION MATH ────────────────────────────────────────
         // Shorts (vertical): TTS speaks faster (~155 WPM), max 60s YouTube limit
         // Long-form (horizontal): documentary pace ~130 WPM
@@ -529,9 +563,7 @@ CRITICAL RISE & FALL RULES:
             voicePrompt = "High-level elite mentor. Authoritative, intense, fast-paced, high energy.";
             nicheRules = `
 CRITICAL LUXURY & MOTIVATION RULES:
-1. TONE: You must design a script that forces high retention. Start with an aggressive, visually striking hook. No "hello guys". 
-${analyticsFeedback}
-Never promise what you will talk about; just start talking about it. Every segment must deliver high-value information, not filler.
+1. TONE: Sound like an elite high-level mentor — authoritative, intense, fast-paced, no fluff.
 2. VISUALS: Supercars, penthouses, yachts, luxury timepieces, private jets, city skylines at night.
 3. ASPIRATION: Every segment must make the viewer feel they are witnessing a secret of the ultra-successful.`;
         } else if (nicheKey.includes("finance") || nicheKey.includes("wealth") || nicheKey.includes("money") || nicheKey.includes("investing")) {
