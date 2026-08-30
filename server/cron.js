@@ -149,7 +149,8 @@ async function autoGenerateVideos() {
 
                 const port = process.env.PORT || 5000;
                 try {
-                    await axios.post(`http://localhost:${port}/api/generate`, {
+                    console.log(`[AUTO-GEN] Hitting local API: http://localhost:${port}/api/generate`);
+                    const res = await axios.post(`http://localhost:${port}/api/generate`, {
                         durationMinutes,
                         format,
                         mainNiche: randomNiche,
@@ -158,8 +159,19 @@ async function autoGenerateVideos() {
                         visualSource: 'stock_videos', // CRITICAL: Forced to always use stock_videos, never AI images in auto-mode
                         autoSchedule: true 
                     });
+                    console.log(`[AUTO-GEN] Queued successfully. Response:`, res.data);
                 } catch (postErr) {
                     console.error(`[AUTO-GEN] Failed to queue video for ${channel.channel_name}:`, postErr.message);
+                    if (postErr.response) {
+                        console.error(`[AUTO-GEN] Response data:`, postErr.response.data);
+                        // Save this failure to the database so we can see it externally!
+                        try {
+                            await db.query(
+                                "INSERT INTO videos (youtube_id, title, niche, status, script) VALUES ($1, $2, $3, $4, $5)",
+                                ["FAILED_AUTO", "Auto-Gen Failed", randomNiche, "failed", JSON.stringify(postErr.response.data)]
+                            );
+                        } catch(e) {}
+                    }
                 }
                 
                 // Robust scaling: Sleep for 60 seconds between queueing to prevent overwhelming the server memory and API quotas
