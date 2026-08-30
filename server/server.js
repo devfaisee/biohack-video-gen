@@ -189,8 +189,10 @@ async function safeReplicateRun(modelIdentifier, inputOptions, label = "Replicat
 async function withRetry(fn, operationName, maxRetries = 20, baseDelayMs = 4000) {
     for (let i = 0; i < maxRetries; i++) {
         try {
+            if (typeof jobTimeout !== 'undefined') clearTimeout(jobTimeout);
             return await fn();
         } catch (err) {
+            if (typeof jobTimeout !== 'undefined') clearTimeout(jobTimeout);
             if (i === maxRetries - 1) {
                 addLog(`[FATAL] ${operationName} failed after ${maxRetries} attempts.`);
                 throw err;
@@ -375,6 +377,13 @@ ${worstRes.rows.map(r => `  * Title: "${r.title}" (Retention: ${r.retention}%) -
 
         // Shorts: fewer segments so each has enough words to be spoken clearly (never under 3s)
         // Long-form: 2 segments/min keeps each segment at 60-90 words
+        
+        // FAIL-SAFE: 5-minute absolute timeout for the entire generation process to prevent infinite hangs
+        const jobTimeout = setTimeout(() => {
+            console.error(`[FATAL] Job ${jobId} exceeded 7-minute maximum timeout. Aborting.`);
+            abortController.abort();
+        }, 7 * 60 * 1000);
+
         const targetSegments = isVertical
             ? Math.max(Math.min(Math.round(effectiveDuration * 6), 6), 4) // 4-6 segs for Shorts
             : Math.max(Math.round(effectiveDuration * 2), 6);
@@ -1227,7 +1236,7 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                             .input(concatListPath)
                             .inputOptions(['-f', 'concat', '-safe', '0'])
                             .videoCodec('libx264')
-                            .outputOptions(['-pix_fmt', 'yuv420p', '-preset', 'ultrafast', '-an'])
+                            .outputOptions(['-pix_fmt', 'yuv420p', '-preset', 'ultrafast', '-an', '-y'])
                             .save(stitchedPath)
                             .on('end', resolve)
                             .on('error', reject);
@@ -1570,7 +1579,8 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                             '-ar 44100', // Force uniform 44.1kHz audio (prevents concat desync)
                             '-pix_fmt yuv420p',
                             '-preset veryfast', // Drastically speeds up encoding
-                            '-threads 2' // Balances CPU load across parallel processes
+                            '-threads 2', // Balances CPU load across parallel processes
+                            '-y' // Crucial: force overwrite to prevent infinite hang on prompt
                         ])
                         .save(clipPath)
                         .on('end', resolve)
@@ -2006,8 +2016,11 @@ duration ${c.duration.toFixed(3)}`).join('\n');
             event: "complete",
             ...metadata
         }));
+        
+        if (typeof jobTimeout !== 'undefined') clearTimeout(jobTimeout);
 
     } catch (err) {
+        if (typeof jobTimeout !== 'undefined') clearTimeout(jobTimeout);
         addLog(JSON.stringify({ event: "error", message: err.message, id: global.currentJob?.id || "unknown" }));
         
         // Save failed run to history so the user can see what happened
