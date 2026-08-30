@@ -155,7 +155,7 @@ async function autoGenerateVideos() {
                         mainNiche: randomNiche,
                         subNiche: 'General',
                         topic: '', 
-                        visualSource: 'stock_footage', // CRITICAL: Forced to always use stock_footage, never AI images in auto-mode
+                        visualSource: 'stock_videos', // CRITICAL: Forced to always use stock_videos, never AI images in auto-mode
                         autoSchedule: true 
                     });
                 } catch (postErr) {
