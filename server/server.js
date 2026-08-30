@@ -1781,7 +1781,8 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                 "Thumbnail Gen"
             );
             
-            const thumbBuffer = await withRetry(() => axios.get(thumbUrl[0], { responseType: 'arraybuffer' }), "Download Thumbnail");
+            const actualThumbUrl = Array.isArray(thumbUrl) ? thumbUrl[0] : thumbUrl;
+            const thumbBuffer = await withRetry(() => axios.get(actualThumbUrl, { responseType: 'arraybuffer' }), "Download Thumbnail");
             
             // 4. SERVER-SIDE TEXT COMPOSITOR — always overlay text in the RIGHT ZONE
             try {
