@@ -147,6 +147,19 @@ async function autoGenerateVideos() {
 
                 console.log(`[AUTO-GEN] Queuing ${format} video for channel ${channel.channel_name}, Niche: ${randomNiche} (Video ${v+1}/${rules.videosPerDay})`);
 
+                // Load dynamic sub-niches from the master niches.json file
+                let selectedSubNiche = 'General';
+                try {
+                    const nichesData = require('../client/src/niches.json');
+                    const nicheObj = nichesData.find(n => n.name === randomNiche || randomNiche.includes(n.name));
+                    if (nicheObj && nicheObj.subNiches && nicheObj.subNiches.length > 0) {
+                        const randomIdx = Math.floor(Math.random() * nicheObj.subNiches.length);
+                        selectedSubNiche = nicheObj.subNiches[randomIdx];
+                    }
+                } catch (e) {
+                    console.log(`[AUTO-GEN] Could not load niches.json, defaulting to General`);
+                }
+
                 const port = process.env.PORT || 5000;
                 try {
                     console.log(`[AUTO-GEN] Hitting local API: http://localhost:${port}/api/generate`);
@@ -154,7 +167,7 @@ async function autoGenerateVideos() {
                         durationMinutes,
                         format,
                         mainNiche: randomNiche,
-                        subNiche: 'General',
+                        subNiche: selectedSubNiche,
                         topic: '', 
                         visualSource: 'stock_videos', // CRITICAL: Forced to always use stock_videos, never AI images in auto-mode
                         autoSchedule: true 
