@@ -1781,7 +1781,13 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                 "Thumbnail Gen"
             );
             
-            const actualThumbUrl = Array.isArray(thumbUrl) ? thumbUrl[0] : thumbUrl;
+            let actualThumbUrl = Array.isArray(thumbUrl) ? thumbUrl[0] : thumbUrl;
+            if (actualThumbUrl && typeof actualThumbUrl.url === 'function') {
+                actualThumbUrl = actualThumbUrl.url().href;
+            } else if (actualThumbUrl && typeof actualThumbUrl.href === 'string') {
+                actualThumbUrl = actualThumbUrl.href;
+            }
+            
             const thumbBuffer = await withRetry(() => axios.get(actualThumbUrl, { responseType: 'arraybuffer' }), "Download Thumbnail");
             
             // 4. SERVER-SIDE TEXT COMPOSITOR — always overlay text in the RIGHT ZONE
