@@ -248,14 +248,14 @@ async function processQueue() {
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 app.post('/api/generate', (req, res) => {
-    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'stock_videos', mainNiche, subNiche, format = 'horizontal' } = req.body;
+    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'stock_videos', mainNiche, subNiche, format = 'horizontal', autoSchedule = false } = req.body;
     if (!mainNiche || !subNiche) return res.status(400).json({ error: 'mainNiche and subNiche are required' });
     if (durationMinutes < 0.5 || durationMinutes > 30) return res.status(400).json({ error: 'Duration must be between 0.5 and 30 minutes' });
     if (!['horizontal', 'vertical'].includes(format)) return res.status(400).json({ error: 'Format must be horizontal or vertical' });
     if (!['stock_videos', 'ai_images'].includes(visualSource)) return res.status(400).json({ error: 'visualSource must be stock_videos or ai_images' });
     const jobId = crypto.randomUUID();
     
-    global.jobQueue.push({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, jobId });
+    global.jobQueue.push({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, autoSchedule, jobId });
     
     addLog(`Job ${jobId} added to queue. Position: ${global.jobQueue.length}`);
     
@@ -2036,9 +2036,10 @@ duration ${c.duration.toFixed(3)}`).join('\n');
         // Save to Postgres videos table
         try {
             if (process.env.DATABASE_URL) {
-                await db.query(`
+                const insertRes = await db.query(`
                     INSERT INTO videos (youtube_id, title, description, tags, niche, published_at, status, thumbnail_url, script)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    RETURNING id
                 `, [
                     null, // No youtube_id yet
                     metadata.title,
@@ -2050,6 +2051,7 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                     metadata.thumbnailUrl,
                     JSON.stringify(scriptData)
                 ]);
+                metadata._dbRowId = insertRes.rows[0]?.id || null;
             }
         } catch (e) {
             console.error("[DB] Failed to save video to database:", e.message);
@@ -2080,8 +2082,8 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                     }
                 );
                 
-                if (process.env.DATABASE_URL && ytVideoId) {
-                    await db.query(`UPDATE videos SET youtube_id = $1, status = 'uploaded' WHERE title = $2`, [ytVideoId, metadata.title]);
+                if (process.env.DATABASE_URL && ytVideoId && metadata._dbRowId) {
+                    await db.query(`UPDATE videos SET youtube_id = $1, status = 'uploaded' WHERE id = $2`, [ytVideoId, metadata._dbRowId]);
                 }
                 addLog(`[YOUTUBE] Upload complete! Private Video ID: ${ytVideoId}`);
             } else {
