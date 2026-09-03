@@ -1925,17 +1925,58 @@ duration ${c.duration.toFixed(3)}`).join('\n');
 
         let publishAtIso = null;
         if (autoSchedule) {
-            // PERFECT FUTURE-PROOF SCHEDULING ALGORITHM
+            // PERFECT FUTURE-PROOF SCHEDULING ALGORITHM — ALL 30 NICHES
+            // Each slot is a UTC hour. Multiple slots = multiple videos per day.
+            // Slots MUST match videosPerDay in cron.js nicheRules.
             const nicheScheduleConfig = {
-                "Science": { slots: [14] },      // 10 AM EST
-                "Tech": { slots: [16] },         // 12 PM EST
-                "Gaming": { slots: [16, 20] },   // 12 PM EST, 4 PM EST
-                "Finance": { slots: [12] },      // 8 AM EST
-                "True Crime": { slots: [22] },   // 6 PM EST
-                "Motivation": { slots: [10, 14, 18] }, // 6 AM, 10 AM, 2 PM EST
-                "Comedy": { slots: [23] },       // 7 PM EST
-                "History": { slots: [18] },      // 2 PM EST
-                "default": { slots: [15] }       // 11 AM EST
+                // ── PSYCHOLOGY & MINDSET ──
+                "Dark Psychology":   { slots: [14] },        // 10 AM EST — morning deep-think audience
+                "Luxury":            { slots: [17] },        // 1 PM EST — lunch break aspirational
+                "Stoicism":          { slots: [11] },        // 7 AM EST — morning routine crowd
+                "Motivation":        { slots: [10, 16] },    // 6 AM + 12 PM EST — morning + midday boost
+                "Relationship":      { slots: [20] },        // 4 PM EST — after work scrolling
+                "Money Psychology":  { slots: [13] },        // 9 AM EST — early finance audience
+
+                // ── FINANCE & BUSINESS ──
+                "Finance":           { slots: [12] },        // 8 AM EST — market open
+                "Entrepreneurship":  { slots: [14] },        // 10 AM EST — business hours
+                "Crypto":            { slots: [15] },        // 11 AM EST — crypto trading hours
+                "Rise & Fall":       { slots: [19] },        // 3 PM EST — story time
+                "Unethical But Legal": { slots: [21] },      // 5 PM EST — edgy evening content
+
+                // ── CRIME & MYSTERY ──
+                "True Crime":        { slots: [22] },        // 6 PM EST — evening binge
+                "Unsolved Mysteries": { slots: [23] },       // 7 PM EST — late night mystery
+                "Horror":            { slots: [0] },         // 8 PM EST — night horror
+                "Revenge":           { slots: [21] },        // 5 PM EST — after work stories
+
+                // ── HISTORY & CIVILIZATION ──
+                "Ancient History":   { slots: [16] },        // 12 PM EST — lunch break learning
+                "Modern History":    { slots: [17] },        // 1 PM EST — afternoon deep dive
+                "Military":          { slots: [18] },        // 2 PM EST — afternoon engagement
+                "Historical Empires": { slots: [16] },       // 12 PM EST — educational prime
+                "History":           { slots: [18] },        // 2 PM EST — general history fallback
+
+                // ── SCIENCE & TECH ──
+                "Science":           { slots: [14] },        // 10 AM EST — curious minds
+                "Space":             { slots: [22] },        // 6 PM EST — evening wonder
+                "Tech":              { slots: [16] },        // 12 PM EST — tech lunch break
+                "AI & Future":       { slots: [15] },        // 11 AM EST — tech-forward audience
+                "Health":            { slots: [13] },        // 9 AM EST — morning health routine
+
+                // ── NATURE & SURVIVAL ──
+                "Nature":            { slots: [17] },        // 1 PM EST — relaxing afternoon
+                "Survival":          { slots: [20] },        // 4 PM EST — evening adventure
+
+                // ── LIFESTYLE & ENTERTAINMENT ──
+                "Comedy":            { slots: [23] },        // 7 PM EST — evening entertainment
+                "Gaming":            { slots: [16, 22] },    // 12 PM + 6 PM EST — after school + evening
+                "Food Science":      { slots: [18] },        // 2 PM EST — food curiosity
+                "Fitness":           { slots: [12] },        // 8 AM EST — morning workout crowd
+                "Cinematic Geography": { slots: [19] },      // 3 PM EST — visual wanderlust
+
+                // ── FALLBACK ──
+                "default":           { slots: [15] }         // 11 AM EST
             };
 
             let scheduleKey = "default";
