@@ -230,12 +230,15 @@ async function processQueue() {
     if (global.currentJob || global.jobQueue.length === 0) return;
     
     const jobData = global.jobQueue.shift();
-    const { durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, jobId } = jobData;
+    const { durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, autoSchedule, channelId, jobId } = jobData;
+    
+    // CRITICAL: Immediately lock the queue to prevent Race Condition #1
+    global.currentJob = { id: jobId, stage: "initializing" };
     
     addLog(`[QUEUE] Starting generation job ${jobId}. Remaining in queue: ${global.jobQueue.length}`);
     
     try {
-        await generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, jobId });
+        await generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, autoSchedule, channelId, jobId });
     } catch (err) {
         addLog(JSON.stringify({ event: "error", message: err.message, id: jobId }));
     }
@@ -248,14 +251,14 @@ async function processQueue() {
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 app.post('/api/generate', (req, res) => {
-    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'stock_videos', mainNiche, subNiche, format = 'horizontal', autoSchedule = false } = req.body;
+    const { durationMinutes = 1, topic, customTitle, customDescription, visualSource = 'stock_videos', mainNiche, subNiche, format = 'horizontal', autoSchedule = false, channelId } = req.body;
     if (!mainNiche || !subNiche) return res.status(400).json({ error: 'mainNiche and subNiche are required' });
     if (durationMinutes < 0.5 || durationMinutes > 30) return res.status(400).json({ error: 'Duration must be between 0.5 and 30 minutes' });
     if (!['horizontal', 'vertical'].includes(format)) return res.status(400).json({ error: 'Format must be horizontal or vertical' });
     if (!['stock_videos', 'ai_images'].includes(visualSource)) return res.status(400).json({ error: 'visualSource must be stock_videos or ai_images' });
     const jobId = crypto.randomUUID();
     
-    global.jobQueue.push({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, autoSchedule, jobId });
+    global.jobQueue.push({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche, subNiche, format, autoSchedule, channelId, jobId });
     
     addLog(`Job ${jobId} added to queue. Position: ${global.jobQueue.length}`);
     
@@ -329,7 +332,8 @@ Output ONLY pure JSON:
     }
 });
 
-async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", format = 'horizontal', autoSchedule = false, jobId }) {
+// Core Video Generation Pipeline
+async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", format = 'horizontal', autoSchedule = false, channelId, jobId }) {
     try {
         // --- AUTO-LEARNING: FETCH ANALYTICS FEEDBACK ---
         let analyticsFeedback = "";
@@ -1161,7 +1165,7 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                         .input(audioPaths[i])
                         .outputOptions([
                             `-af apad=pad_dur=${needed.toFixed(3)}`,
-                            '-ar 44100', '-ac 2'
+                            '-ar 44100', '-ac 2', '-y'
                         ])
                         .save(paddedPath)
                         .on('end', res).on('error', rej);
@@ -1603,8 +1607,8 @@ duration ${c.duration.toFixed(3)}`).join('\n');
         await new Promise((resolve, reject) => {
             const cmd = ffmpeg()
                 .input(listPath)
-                .inputOptions(['-f concat', '-safe 0'])
-                .outputOptions('-c copy')
+                .inputOptions(['-f', 'concat', '-safe', '0'])
+                .outputOptions(['-c', 'copy', '-y'])
                 .save(stitchedVideoPath)
                 .on('end', resolve)
                 .on('error', reject);
@@ -1684,7 +1688,8 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                         '-c:v copy',
                         '-c:a aac',
                         '-b:a 192k',
-                        '-movflags +faststart'
+                        '-movflags +faststart',
+                        '-y'
                     ])
                     .save(finalVideoTmpPath)
                     .on('end', () => {
@@ -2064,8 +2069,15 @@ duration ${c.duration.toFixed(3)}`).join('\n');
             const youtubeModule = require('./youtube');
             const channelsRes = await db.query('SELECT * FROM channels');
             const channelsDb = channelsRes.rows;
-            // mapped_niches is stored as JSONB array, pg returns it as an array
-            const matchedChannel = channelsDb.find(c => c.mapped_niches && c.mapped_niches.includes(mainNiche));
+            
+            let matchedChannel = null;
+            if (channelId) {
+                // If invoked by cron, we have the exact channelId
+                matchedChannel = channelsDb.find(c => c.channel_id === channelId);
+            } else {
+                // Fallback for manual frontend triggers
+                matchedChannel = channelsDb.find(c => c.mapped_niches && c.mapped_niches.includes(mainNiche));
+            }
             
             if (matchedChannel) {
                 addLog(`[YOUTUBE] Mapped channel found (${matchedChannel.channel_name}). Initiating auto-upload...`);

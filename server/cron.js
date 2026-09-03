@@ -221,7 +221,8 @@ async function autoGenerateVideos() {
                         subNiche: selectedSubNiche,
                         topic: '', 
                         visualSource: 'stock_videos', // CRITICAL: Forced to always use stock_videos, never AI images in auto-mode
-                        autoSchedule: true 
+                        autoSchedule: true,
+                        channelId: channel.channel_id
                     });
                     console.log(`[AUTO-GEN] Queued successfully. Response:`, res.data);
                 } catch (postErr) {
