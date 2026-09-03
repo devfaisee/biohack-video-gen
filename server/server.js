@@ -1925,30 +1925,71 @@ duration ${c.duration.toFixed(3)}`).join('\n');
 
         let publishAtIso = null;
         if (autoSchedule) {
-            // Peak-hour calculation: Dynamic based on Niche to maximize algorithm push
-            const nichePeakHours = {
-                "Science": 14,      // 10 AM EST
-                "Tech": 16,         // 12 PM EST
-                "Gaming": 20,       // 4 PM EST
-                "Finance": 12,      // 8 AM EST
-                "True Crime": 22,   // 6 PM EST
-                "Motivation": 10,   // 6 AM EST
-                "Comedy": 23,       // 7 PM EST
-                "History": 18       // 2 PM EST
+            // PERFECT FUTURE-PROOF SCHEDULING ALGORITHM
+            const nicheScheduleConfig = {
+                "Science": { slots: [14] },      // 10 AM EST
+                "Tech": { slots: [16] },         // 12 PM EST
+                "Gaming": { slots: [16, 20] },   // 12 PM EST, 4 PM EST
+                "Finance": { slots: [12] },      // 8 AM EST
+                "True Crime": { slots: [22] },   // 6 PM EST
+                "Motivation": { slots: [10, 14, 18] }, // 6 AM, 10 AM, 2 PM EST
+                "Comedy": { slots: [23] },       // 7 PM EST
+                "History": { slots: [18] },      // 2 PM EST
+                "default": { slots: [15] }       // 11 AM EST
             };
-            
-            let peakHour = 15; // Default 11 AM EST
-            for (const [key, hour] of Object.entries(nichePeakHours)) {
+
+            let scheduleKey = "default";
+            for (const key of Object.keys(nicheScheduleConfig)) {
                 if (mainNiche.includes(key) || mainNiche === key) {
-                    peakHour = hour;
+                    scheduleKey = key;
                     break;
                 }
             }
-            
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setUTCHours(peakHour, 0, 0, 0); 
-            publishAtIso = tomorrow.toISOString();
+            const slots = nicheScheduleConfig[scheduleKey].slots;
+
+            try {
+                // Find the most recently scheduled future video for this niche
+                const lastVideo = await db.query(
+                    "SELECT published_at FROM videos WHERE niche = $1 AND published_at > NOW() ORDER BY published_at DESC LIMIT 1",
+                    [mainNiche]
+                );
+
+                let nextPublishDate;
+                if (lastVideo.rows.length > 0 && lastVideo.rows[0].published_at) {
+                    // We have a future video scheduled. Find the NEXT logical slot.
+                    const lastDate = new Date(lastVideo.rows[0].published_at);
+                    const lastHour = lastDate.getUTCHours();
+                    
+                    // Find which slot index this was (or next available)
+                    const currentSlotIdx = slots.indexOf(lastHour);
+                    
+                    if (currentSlotIdx !== -1 && currentSlotIdx < slots.length - 1) {
+                        // There is another slot on the SAME day!
+                        nextPublishDate = new Date(lastDate);
+                        nextPublishDate.setUTCHours(slots[currentSlotIdx + 1], 0, 0, 0);
+                    } else {
+                        // Move to the FIRST slot of the NEXT day
+                        nextPublishDate = new Date(lastDate);
+                        nextPublishDate.setDate(nextPublishDate.getDate() + 1);
+                        nextPublishDate.setUTCHours(slots[0], 0, 0, 0);
+                    }
+                } else {
+                    // No future videos! Start scheduling for TOMORROW at the FIRST slot.
+                    nextPublishDate = new Date();
+                    nextPublishDate.setDate(nextPublishDate.getDate() + 1);
+                    nextPublishDate.setUTCHours(slots[0], 0, 0, 0);
+                }
+                
+                publishAtIso = nextPublishDate.toISOString();
+                addLog(`[SCHEDULING] Perfectly calculated next slot for ${scheduleKey}: ${publishAtIso}`);
+            } catch (dbErr) {
+                console.error("[SCHEDULING ERROR]", dbErr);
+                // Fallback to basic tomorrow
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setUTCHours(slots[0], 0, 0, 0); 
+                publishAtIso = tomorrow.toISOString();
+            }
         }
 
         // Save to Postgres videos table
