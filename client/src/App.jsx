@@ -277,6 +277,15 @@ function CreatorStudio() {
     }
   }, [baseUrl, toast]);
 
+  const triggerAutoRun = useCallback(async () => {
+    try {
+      await axios.post(`${baseUrl}/api/trigger-auto`);
+      toast('Daily Auto-Generation triggered in the background!', 'success');
+    } catch {
+      toast('Failed to trigger auto run.', 'error');
+    }
+  }, [baseUrl, toast]);
+
   // Filter out metadata keys; stars are unicode and render natively in <option>
   const nicheKeys = useMemo(() => Object.keys(NICHES).filter(k => !k.startsWith('_')), []);
   const subNiches = useMemo(() => NICHES[mainNiche] || [], [mainNiche]);
@@ -285,20 +294,32 @@ function CreatorStudio() {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="page-content">
       <div className="glass-card creator-card">
-        <div className="header">
-          <h1 className="title">Create Masterpiece</h1>
-          <p className="subtitle">Universal AI Generation Pipeline</p>
+        <div className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h1 className="title">Create Masterpiece</h1>
+            <p className="subtitle">Universal AI Generation Pipeline</p>
+          </div>
+          <button onClick={triggerAutoRun} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Zap size={16} /> Trigger Auto-Run
+          </button>
         </div>
 
         <div className="form-grid-2">
           <div className="form-group">
             <label className="label">
               Content Niche
-              <span style={{fontSize:'11px',marginLeft:'8px',color:'var(--accent)',opacity:0.8}}>⭐ = Top performers</span>
+              <div style={{fontSize:'11px', marginTop:'4px', color:'var(--accent)', opacity:0.8, display: 'flex', gap: '8px'}}>
+                <span>🔴 Best for AI Images</span>
+                <span>🔵 Best for Stock Footage</span>
+              </div>
             </label>
             <div className="select-wrapper">
               <select className="select" value={mainNiche} onChange={(e) => { setMainNiche(e.target.value); setSubNiche((NICHES[e.target.value] || [])[0] || ''); }}>
-                {nicheKeys.map(n => <option key={n} value={n}>{n}</option>)}
+                {nicheKeys.map(n => {
+                  const isAI = ["Dark Psychology", "Unsolved Mysteries", "Ancient History", "Space", "Science", "Horror", "Empires", "AI & Future", "Conspiracies"].some(k => n.includes(k));
+                  const icon = isAI ? '🔴' : '🔵';
+                  return <option key={n} value={n}>{icon} {n}</option>;
+                })}
               </select>
               <ChevronDown size={16} className="select-icon" />
             </div>

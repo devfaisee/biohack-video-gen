@@ -1045,9 +1045,30 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                 }
 
                 if (clipUrls.length === 0 || !visualPaths[i]) {
-                    // Stock video not found — auto-fallback to AI image for this segment
-                    addLog(`[Segment ${i + 1}] No stock video found for "${primaryQuery}" — generating AI image fallback...`);
-                    const fallbackPrompt = segment.imagePrompt || segment.searchQuery || `cinematic ${safeSubNiche} scene, dramatic lighting, 4k`;
+                    if (visualSource === 'stock_videos') {
+                        // STRICT RULE: Never mix AI images into a stock video. It ruins the aesthetic.
+                        addLog(`[Segment ${i + 1}] Stock search failed completely. Retrying with ultra-generic fallback to prevent mixed-media...`);
+                        const genericQuery = isVertical ? "nature cinematic vertical" : "abstract background";
+                        const fbRes = await axios.get(`https://api.pexels.com/videos/search?query=${encodeURIComponent(genericQuery)}&per_page=3&orientation=${isVertical ? 'portrait' : 'landscape'}`, {
+                            headers: { Authorization: process.env.PEXELS_API_KEY },
+                            timeout: 15000,
+                            signal: abortController.signal
+                        });
+                        const fbClips = (fbRes.data.videos || []).map(v => v.video_files.find(f => f.quality === 'hd' && f.width >= 1080) || v.video_files[0]).filter(Boolean).map(f => f.link);
+                        
+                        if (fbClips.length > 0) {
+                            const rawPath = path.join(tmpDir, `seg_${i}_fb.mp4`);
+                            const buf = await withRetry(() => axios.get(fbClips[0], { responseType: 'arraybuffer' }), `DL Generic FB`);
+                            fs.writeFileSync(rawPath, buf.data);
+                            visualPaths[i] = { type: 'multi_clip', paths: [rawPath] };
+                            addLog(`[Segment ${i + 1}] Stock video fallback recovered successfully.`);
+                        } else {
+                            throw new Error(`CRITICAL: Stock video API exhausted. Rejecting job to prevent mixed media.`);
+                        }
+                    } else {
+                        // Stock video not found — auto-fallback to AI image for this segment
+                        addLog(`[Segment ${i + 1}] No stock video found for "${primaryQuery}" — generating AI image fallback...`);
+                        const fallbackPrompt = segment.imagePrompt || segment.searchQuery || `cinematic ${safeSubNiche} scene, dramatic lighting, 4k`;
                     const imgResult = await safeReplicateRun(
                         "black-forest-labs/flux-schnell:c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
                         { input: { prompt: fallbackPrompt + ", cinematic, highly detailed, 4k", aspect_ratio: isVertical ? "9:16" : "16:9", output_format: "webp", num_outputs: 1 } },
@@ -1060,6 +1081,7 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                     fs.writeFileSync(visualPathWebp, imgData);
                     visualPaths[i] = visualPathWebp;
                     addLog(`[Segment ${i + 1}] AI image fallback saved.`);
+                    }
                 }
             } else {
                 addLog(`[Segment ${i + 1}] Requesting image from Flux-Schnell...`);
@@ -2286,6 +2308,14 @@ app.use('/output', express.static(outputDir));
 
 const port = process.env.PORT || 5000;
 if (require.main === module) {
+    app.post('/api/trigger-auto', (req, res) => {
+        addLog("[SYSTEM] Manual trigger of daily auto-generation requested via web UI.");
+        const cronModule = require('./cron');
+        // Run asynchronously to immediately unblock the UI
+        cronModule.autoGenerateVideos().catch(e => console.error(e));
+        res.json({ message: "Auto-generation sequence initiated in background." });
+    });
+
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);
     });
