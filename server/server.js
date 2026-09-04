@@ -1046,7 +1046,7 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
 
                 if (clipUrls.length === 0 || !visualPaths[i]) {
                     // Stock video not found — auto-fallback to AI image for this segment
-                    addLog(`[Segment ${i + 1}] No stock video found for "${query}" — generating AI image fallback...`);
+                    addLog(`[Segment ${i + 1}] No stock video found for "${primaryQuery}" — generating AI image fallback...`);
                     const fallbackPrompt = segment.imagePrompt || segment.searchQuery || `cinematic ${safeSubNiche} scene, dramatic lighting, 4k`;
                     const imgResult = await safeReplicateRun(
                         "black-forest-labs/flux-schnell:c846a69991daf4c0e5d016514849d14ee5b2e6846ce6b9d6f21369e564cfe51e",
@@ -1192,9 +1192,13 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                 // Build a clip list that covers audioDuration without padding or excessive looping
                 let totalCovered = 0;
                 const clipList = [];
+                // CRITICAL PACING RULE: Force rapid cuts. Max 4.5s per visual for Shorts, 6.5s for Longs.
+                // This prevents the "boring 1-minute clip" problem the user feared.
+                const maxClipScreenTime = isVertical ? 4.5 : 6.5;
+
                 for (let ci = 0; ci < rawPaths.length && totalCovered < audioDuration; ci++) {
                     const needed = audioDuration - totalCovered;
-                    const use = Math.min(clipDurations[ci], needed); // trim clip if it overshoots
+                    const use = Math.min(clipDurations[ci], needed, maxClipScreenTime); // trim clip if it overshoots OR exceeds pacing
                     if (use > 0.5) { // skip clips shorter than 0.5s
                         clipList.push({ path: rawPaths[ci], duration: use });
                         totalCovered += use;
@@ -1202,13 +1206,12 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                 }
 
                 // If we ran out of clips and still need more, cycle through them with short trims
-                // (Much better than looping a single clip for a minute)
                 if (totalCovered < audioDuration * 0.95) {
                     let idx = 0;
                     while (totalCovered < audioDuration && idx < rawPaths.length * 3) {
                         const ci = idx % rawPaths.length;
                         const needed = audioDuration - totalCovered;
-                        const maxUseFromCycle = Math.min(clipDurations[ci], needed, 8); // max 8s per clip in cycle
+                        const maxUseFromCycle = Math.min(clipDurations[ci], needed, maxClipScreenTime); 
                         if (maxUseFromCycle > 0.5) {
                             clipList.push({ path: rawPaths[ci], duration: maxUseFromCycle });
                             totalCovered += maxUseFromCycle;
