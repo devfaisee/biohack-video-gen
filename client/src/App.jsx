@@ -317,8 +317,7 @@ function CreatorStudio() {
             <label className="label">
               Content Niche
               <div style={{fontSize:'11px', marginTop:'4px', color:'var(--accent)', opacity:0.8, display: 'flex', gap: '8px'}}>
-                <span>🔴 Best for AI Images</span>
-                <span>🔵 Best for Stock Footage</span>
+                <span>✨ 100% Verified YouTube Automation & Stock-Safe</span>
               </div>
             </label>
             <div className="select-wrapper">
@@ -328,12 +327,9 @@ function CreatorStudio() {
                 const subs = entry && !Array.isArray(entry) ? (entry.subNiches || []) : (Array.isArray(entry) ? entry : []);
                 setSubNiche(subs[0] || ''); 
               }}>
-                {nicheKeys.map(n => {
-                  const entry = NICHES[n];
-                  const isStockSafe = entry && typeof entry === 'object' && !Array.isArray(entry) ? entry._stockSafe : true;
-                  const icon = isStockSafe ? '🔵' : '🔴';
-                  return <option key={n} value={n}>{icon} {n}</option>;
-                })}
+                {nicheKeys.map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
               </select>
               <ChevronDown size={16} className="select-icon" />
             </div>
