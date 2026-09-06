@@ -2212,7 +2212,7 @@ app.post('/api/auto-gen/trigger', async (req, res) => {
 
 app.get('/api/youtube/channels', async (req, res) => {
     try {
-        const result = await db.query('SELECT channel_id as "channelId", channel_name as "channelName", avatar as "channelAvatar", mapped_niches as "mappedNiches" FROM channels');
+        const result = await db.query('SELECT channel_id as "channelId", channel_name as "channelName", avatar as "channelAvatar", mapped_niches as "mappedNiches", COALESCE(mapped_sub_niches, \'{}\'::jsonb) as "mappedSubNiches" FROM channels');
         res.json(result.rows);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -2220,10 +2220,19 @@ app.get('/api/youtube/channels', async (req, res) => {
 });
 
 app.post('/api/youtube/channels/:id/niches', async (req, res) => {
-    const { niches } = req.body;
+    const { niches, subNiches } = req.body;
     try {
-        await db.query('UPDATE channels SET mapped_niches = $1 WHERE channel_id = $2', [JSON.stringify(niches || []), req.params.id]);
-        res.json({ success: true, mappedNiches: niches });
+        let updateQuery = 'UPDATE channels SET mapped_niches = $1';
+        let params = [JSON.stringify(niches || [])];
+        if (subNiches !== undefined) {
+            updateQuery += ', mapped_sub_niches = $2 WHERE channel_id = $3';
+            params.push(JSON.stringify(subNiches || {}), req.params.id);
+        } else {
+            updateQuery += ' WHERE channel_id = $2';
+            params.push(req.params.id);
+        }
+        await db.query(updateQuery, params);
+        res.json({ success: true, mappedNiches: niches, mappedSubNiches: subNiches || {} });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

@@ -333,6 +333,11 @@ function CreatorStudio() {
               </select>
               <ChevronDown size={16} className="select-icon" />
             </div>
+            {NICHES[mainNiche]?.description && (
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: '1.4' }}>
+                💡 <strong>Channel Theme:</strong> {NICHES[mainNiche].description}
+              </p>
+            )}
           </div>
           <div className="form-group">
             <label className="label">Micro-Niche <span style={{fontSize:'11px',marginLeft:'4px',color:'#888'}}>(content category)</span></label>

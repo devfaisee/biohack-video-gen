@@ -99,7 +99,7 @@ async function autoGenerateVideos() {
     try { await retryPendingUploads(); } catch (recErr) { console.error('[AUTO-GEN] Pre-run recovery error:', recErr.message); }
 
     try {
-        const channelsRes = await db.query("SELECT channel_id, channel_name, mapped_niches FROM channels");
+        const channelsRes = await db.query("SELECT channel_id, channel_name, mapped_niches, COALESCE(mapped_sub_niches, '{}'::jsonb) as mapped_sub_niches FROM channels");
         const channels = channelsRes.rows;
 
         // ═══════════════════════════════════════════════════════════════════
@@ -213,18 +213,23 @@ async function autoGenerateVideos() {
 
                 console.log(`[AUTO-GEN] Queuing ${format} video for channel ${channel.channel_name}, Niche: ${randomNiche} (Video ${v+1}/${rules.videosPerDay})`);
 
-                // ── DE-DUPLICATION ENGINE ──
-                // Query the database for all sub-niches used in the last 14 days for this niche.
-                // Exclude them from the pool so we never repeat a topic within 2 weeks.
+                // ── SUB-NICHE SELECTION & DE-DUPLICATION ENGINE ──
+                // If the channel has chosen specific sub-niches, only pick from those!
+                // If none chosen, auto-rotate through ALL 15 sub-niches with 14-day de-duplication.
                 let selectedSubNiche = 'General';
                 try {
-                    // Get the sub-niche list from new format
-                    let subNicheList = null;
+                    let fullSubNicheList = null;
                     if (nicheEntry) {
-                        subNicheList = Array.isArray(nicheEntry) ? nicheEntry : (nicheEntry.subNiches || null);
+                        fullSubNicheList = Array.isArray(nicheEntry) ? nicheEntry : (nicheEntry.subNiches || null);
                     }
                     
-                    if (subNicheList && subNicheList.length > 0) {
+                    // Check if channel has specific sub-niches mapped for this niche
+                    const channelSpecificSubs = (channel.mapped_sub_niches && (channel.mapped_sub_niches[randomNiche] || (nicheKey && channel.mapped_sub_niches[nicheKey]))) || [];
+                    const subNichePool = (Array.isArray(channelSpecificSubs) && channelSpecificSubs.length > 0)
+                        ? fullSubNicheList.filter(s => channelSpecificSubs.includes(s))
+                        : fullSubNicheList;
+
+                    if (subNichePool && subNichePool.length > 0) {
                         // Query recently used sub-niches (last 14 days)
                         const recentRes = await db.query(
                             "SELECT DISTINCT script->>'subNiche' as sub FROM videos WHERE niche = $1 AND created_at > NOW() - INTERVAL '14 days' AND script->>'subNiche' IS NOT NULL",
@@ -233,15 +238,15 @@ async function autoGenerateVideos() {
                         const recentlyUsed = new Set(recentRes.rows.map(r => r.sub));
                         
                         // Filter out recently used sub-niches
-                        const available = subNicheList.filter(s => !recentlyUsed.has(s));
+                        const available = subNichePool.filter(s => !recentlyUsed.has(s));
                         
                         if (available.length > 0) {
                             selectedSubNiche = available[Math.floor(Math.random() * available.length)];
-                            console.log(`[AUTO-GEN] De-dup: ${recentlyUsed.size} sub-niches used in last 14d, ${available.length} still available. Picked: "${selectedSubNiche}"`);
+                            console.log(`[AUTO-GEN] De-dup: ${recentlyUsed.size} used in last 14d, ${available.length} available in pool. Picked: "${selectedSubNiche}"`);
                         } else {
-                            // All sub-niches exhausted in 14 days — reset and pick any (this means amazing content coverage!)
-                            selectedSubNiche = subNicheList[Math.floor(Math.random() * subNicheList.length)];
-                            console.log(`[AUTO-GEN] De-dup: All ${subNicheList.length} sub-niches used in last 14d! Full cycle complete. Picking fresh: "${selectedSubNiche}"`);
+                            // All sub-niches in pool exhausted in 14 days — reset cycle
+                            selectedSubNiche = subNichePool[Math.floor(Math.random() * subNichePool.length)];
+                            console.log(`[AUTO-GEN] De-dup: All ${subNichePool.length} sub-niches in pool used in last 14d! Cycle complete. Picking fresh: "${selectedSubNiche}"`);
                         }
                     }
                     console.log(`[AUTO-GEN] Selected sub-niche: "${selectedSubNiche}" from "${randomNiche}"`);

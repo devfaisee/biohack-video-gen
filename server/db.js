@@ -21,9 +21,11 @@ async function initDB() {
         channel_name TEXT,
         avatar TEXT,
         tokens JSONB,
-        mapped_niches JSONB DEFAULT '[]'
+        mapped_niches JSONB DEFAULT '[]',
+        mapped_sub_niches JSONB DEFAULT '{}'
       );
     `);
+    await client.query("ALTER TABLE channels ADD COLUMN IF NOT EXISTS mapped_sub_niches JSONB DEFAULT '{}';");
     
     // 2. Videos Table (Replaces library.json and tracks generation history)
     await client.query(`
