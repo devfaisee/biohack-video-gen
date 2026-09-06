@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Youtube, Trash2, Check, ExternalLink, Search, ShieldCheck, AlertCircle, Plus, X, ChevronDown, ChevronUp, RefreshCw, Target, Sparkles, BookOpen, Layers, ArrowRight } from 'lucide-react';
+import { Youtube, Trash2, Check, ExternalLink, Search, ShieldCheck, AlertCircle, Plus, X, ChevronDown, ChevronUp, RefreshCw, Target, Sparkles, BookOpen, Layers, ArrowRight, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import nichesData from './niches.json';
 import blueprints from './blueprints.json';
@@ -65,6 +65,15 @@ export default function Channels({ baseUrl, toast }) {
       toast('Channel disconnected.', 'success');
     } catch {
       toast('Failed to disconnect channel.', 'error');
+    }
+  };
+
+  const handleTriggerAuto = async () => {
+    try {
+      await axios.post(`${baseUrl}/api/trigger-auto`);
+      toast('⚡ Daily Auto-Pilot triggered! Generating scheduled videos for all mapped channels in the background.', 'success');
+    } catch {
+      toast('Failed to trigger auto-generation.', 'error');
     }
   };
 
@@ -174,7 +183,17 @@ export default function Channels({ baseUrl, toast }) {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {channels.length > 0 && (
+            <button 
+              onClick={handleTriggerAuto} 
+              className="btn-secondary" 
+              style={{ padding: '10px 16px', display: 'flex', gap: '8px', alignItems: 'center', borderColor: '#eab308', color: '#facc15' }}
+              title="Immediately triggers today's scheduled video generation for all mapped channels without waiting for 5 AM"
+            >
+              <Zap size={16} /> ⚡ Run Auto-Pilot Now
+            </button>
+          )}
           <button 
             onClick={() => {
               setBlueprintTargetChannel(channels[0]?.channelId || null);
