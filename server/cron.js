@@ -99,51 +99,27 @@ async function autoGenerateVideos() {
         // videosPerDay: How many videos to generate per day for this niche
         // ═══════════════════════════════════════════════════════════════════
         const nicheRules = {
-            // ── PSYCHOLOGY & MINDSET ──
-            "Dark Psychology":   { targetShortsRatio: 0.6, videosPerDay: 1 }, // Mix of quick hooks + deep dives
-            "Luxury":            { targetShortsRatio: 0.7, videosPerDay: 1 }, // Visual Shorts dominate, occasional long
-            "Stoicism":          { targetShortsRatio: 0.7, videosPerDay: 1 }, // Quote-style Shorts crush here
-            "Motivation":        { targetShortsRatio: 0.8, videosPerDay: 2 }, // High-volume short clips
-            "Relationship":      { targetShortsRatio: 0.6, videosPerDay: 1 }, // Balanced emotional content
-            "Money Psychology":   { targetShortsRatio: 0.6, videosPerDay: 1 }, // Quick tips + deep psychology
-
-            // ── FINANCE & BUSINESS ──
+            // ── TIER 1: HIGH CPM ($15-50+) ──
             "Finance":           { targetShortsRatio: 0.4, videosPerDay: 1 }, // Deep dives build trust
-            "Entrepreneurship":  { targetShortsRatio: 0.5, videosPerDay: 1 }, // Balanced advice content
-            "Crypto":            { targetShortsRatio: 0.6, videosPerDay: 1 }, // Fast-moving market needs Shorts
+            "Business":          { targetShortsRatio: 0.5, videosPerDay: 1 }, // Balanced advice content
+            "Real Estate":       { targetShortsRatio: 0.4, videosPerDay: 1 }, // High value, longer watch time
             "Rise & Fall":       { targetShortsRatio: 0.3, videosPerDay: 1 }, // Story-driven long-form
-            "Unethical But Legal": { targetShortsRatio: 0.5, videosPerDay: 1 }, // Balanced shock content
 
-            // ── CRIME & MYSTERY ──
-            "True Crime":        { targetShortsRatio: 0.2, videosPerDay: 1 }, // Heavily long-form narrative
-            "Unsolved Mysteries": { targetShortsRatio: 0.3, videosPerDay: 1 }, // Story-heavy long-form
-            "Horror":            { targetShortsRatio: 0.5, videosPerDay: 1 }, // Mix of creepy Shorts + stories
-            "Revenge":           { targetShortsRatio: 0.4, videosPerDay: 1 }, // Narrative payoff needs length
-
-            // ── HISTORY & CIVILIZATION ──
-            "Ancient History":   { targetShortsRatio: 0.3, videosPerDay: 1 }, // Educational long-form
-            "Modern History":    { targetShortsRatio: 0.3, videosPerDay: 1 }, // Geopolitics needs depth
-            "Military":          { targetShortsRatio: 0.4, videosPerDay: 1 }, // Tactical analysis + quick facts
-            "Historical Empires": { targetShortsRatio: 0.3, videosPerDay: 1 }, // Narrative long-form
-            "History":           { targetShortsRatio: 0.3, videosPerDay: 1 }, // General history fallback
-
-            // ── SCIENCE & TECH ──
-            "Science":           { targetShortsRatio: 0.5, videosPerDay: 1 }, // Mix of explainers
-            "Space":             { targetShortsRatio: 0.5, videosPerDay: 1 }, // Visual Shorts + deep docs
-            "Tech":              { targetShortsRatio: 0.5, videosPerDay: 1 }, // Balanced tech reviews
-            "AI & Future":       { targetShortsRatio: 0.6, videosPerDay: 1 }, // Trending, needs Shorts velocity
+            // ── TIER 2: TECH, HEALTH & LIFESTYLE ($10-25) ──
+            "Tech":              { targetShortsRatio: 0.5, videosPerDay: 1 }, // Balanced tech explainers
             "Health":            { targetShortsRatio: 0.6, videosPerDay: 1 }, // Quick tips dominate
-
-            // ── NATURE & SURVIVAL ──
-            "Nature":            { targetShortsRatio: 0.5, videosPerDay: 1 }, // Beautiful Shorts + documentaries
-            "Survival":          { targetShortsRatio: 0.4, videosPerDay: 1 }, // Story-driven content
-
-            // ── LIFESTYLE & ENTERTAINMENT ──
-            "Comedy":            { targetShortsRatio: 0.8, videosPerDay: 1 }, // Shorts-first comedy
-            "Gaming":            { targetShortsRatio: 0.7, videosPerDay: 2 }, // High volume clips
-            "Food Science":      { targetShortsRatio: 0.5, videosPerDay: 1 }, // Quick facts + deep dives
             "Fitness":           { targetShortsRatio: 0.7, videosPerDay: 1 }, // Visual Shorts dominate
-            "Cinematic Geography": { targetShortsRatio: 0.5, videosPerDay: 1 }, // Visual spectacle both formats
+            "Luxury":            { targetShortsRatio: 0.7, videosPerDay: 1 }, // Aspirational Shorts
+
+            // ── TIER 3: BROAD AUDIENCE ($5-15) ──
+            "Nature":            { targetShortsRatio: 0.5, videosPerDay: 1 }, // Beautiful Shorts + documentaries
+            "Ocean":             { targetShortsRatio: 0.5, videosPerDay: 1 }, // Deep sea mysteries
+            "Food":              { targetShortsRatio: 0.5, videosPerDay: 1 }, // Culinary history & facts
+            "Geography":         { targetShortsRatio: 0.5, videosPerDay: 1 }, // Visual spectacle both formats
+            "Survival":          { targetShortsRatio: 0.4, videosPerDay: 1 }, // Story-driven content
+            "Money Psychology":  { targetShortsRatio: 0.6, videosPerDay: 1 }, // Quick tips + deep psychology
+            "Relationship":      { targetShortsRatio: 0.6, videosPerDay: 1 }, // Balanced emotional content
+            "Self-Improvement":  { targetShortsRatio: 0.6, videosPerDay: 1 }, // Productivity hacks & deep dives
 
             // ── FALLBACK ──
             "default":           { targetShortsRatio: 0.5, videosPerDay: 1 }
