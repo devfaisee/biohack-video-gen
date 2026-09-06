@@ -1,0 +1,302 @@
+[
+  {
+    "id": "crime-scams",
+    "title": "The Wall Street Detective",
+    "icon": "🕵️",
+    "mainNiche": "⭐ White-Collar Crime & Scam Exposés",
+    "nameIdeas": [
+      "Scam Dossier",
+      "The Fraud Archive",
+      "Paper Billionaires",
+      "Wall Street Exposed"
+    ],
+    "modelChannels": "Coffeezilla, James Jani, Spencer Cornelia",
+    "cpm": " – +",
+    "recommendedFormat": "longs_only",
+    "formatLabel": "🖥️ Longs Only (Documentaries)",
+    "summary": "Expose fake billionaires, Wall Street Ponzi schemes, corporate fraudsters, and crypto rugpulls without showing your face.",
+    "targetAudience": "Curious viewers hooked on investigative drama, fraud exposés, and scammers getting caught.",
+    "sampleTitles": [
+      "How a 26-Year-Old Faked a Billion-Dollar Empire",
+      "The Math Behind the Biggest Ponzi Scheme in History",
+      "Inside the Luxury Real Estate Money Laundering Machine"
+    ],
+    "topicsToLock": [
+      "The Biggest Ponzi Schemes in Wall Street History",
+      "Fake Billionaires Who Fooled Banks, Media & Forbes",
+      "Crypto Exchange Collapses, Rugpulls & Stolen Billions",
+      "Corporate Accounting Fraud & Cooked Financial Books",
+      "Penny Stock Pump & Dump Scams & Boiler Rooms"
+    ]
+  },
+  {
+    "id": "corporate-empires",
+    "title": "The Empire Autopsy",
+    "icon": "📉",
+    "mainNiche": "⭐ Rise & Fall — Corporate Empires",
+    "nameIdeas": [
+      "Empire Collapse",
+      "Monopoly Downfall",
+      "Corporate Autopsy",
+      "The Fallen Giant"
+    ],
+    "modelChannels": "MagnatesMedia, ColdFusion, Company Man",
+    "cpm": " – ",
+    "recommendedFormat": "longs_only",
+    "formatLabel": "🖥️ Longs Only (Mini-Documentaries)",
+    "summary": "Cinematic mini-documentaries breaking down how multi-billion dollar monopolies crashed or how toxic CEOs ruined their empires.",
+    "targetAudience": "Business enthusiasts, ambitious founders, and casual viewers who love corporate drama.",
+    "sampleTitles": [
+      "The Arrogant Mistake That Destroyed Blockbuster in 48 Hours",
+      "How WeWork Burned  Billion and Made the Founder a Billionaire",
+      "The Whistleblower Who Ended Big Tobacco’s 50-Year Monopoly"
+    ],
+    "topicsToLock": [
+      "Tech Giants: The Rise, Dominance & Antitrust Battles",
+      "Wall Street Scandals: Collapsed Banks & Financial Giants",
+      "Whistleblowers & Corporate Revenge: How Insiders Took Down Giants",
+      "Startup Unicorns That Burned Billions and Crashed",
+      "Retail Extinction: How Big-Box Chains Died"
+    ]
+  },
+  {
+    "id": "senior-health",
+    "title": "Ageless Living (Senior Health & Longevity)",
+    "icon": "🧬",
+    "mainNiche": "⭐ Health & Biohacking",
+    "nameIdeas": [
+      "Ageless Blueprint",
+      "Longevity Protocol",
+      "The Vital 50+",
+      "Brain & Body Longevity"
+    ],
+    "modelChannels": "Peter Attia, Dr. Brad Stanfield, Huberman Style",
+    "cpm": " – ",
+    "recommendedFormat": "both",
+    "formatLabel": "🔀 Both (Shorts Tips + Long Explainers)",
+    "summary": "Actionable health protocols for people 45-75 looking to protect their memory, prevent dementia, ease joints, and live disease-free.",
+    "targetAudience": "Middle-aged and senior demographics with high disposable income and high health motivation.",
+    "sampleTitles": [
+      "3 Warning Signs of Brain Aging (And How to Reverse It)",
+      "The 10-Minute Morning Routine to Protect Your Joints After 50",
+      "What Deep Sleep Does to Alzheimer’s Plaque Overnight"
+    ],
+    "topicsToLock": [
+      "Senior Health & Longevity: Vitality & Anti-Aging After 50",
+      "Dementia, Alzheimer's & Cognitive Brain Aging Prevention",
+      "Sleep Optimization, Deep REM Sleep & Circadian Biology",
+      "Joint Health, Cartilage Repair & Mobility Maintenance",
+      "Cardiovascular Heart Health & Arterial Plaque Prevention"
+    ]
+  },
+  {
+    "id": "future-tech",
+    "title": "The Future Blueprint (AI & Breakthrough Tech)",
+    "icon": "🤖",
+    "mainNiche": "⭐ Tech & Digital Innovation",
+    "nameIdeas": [
+      "Future Mechanics",
+      "Silicon Horizon",
+      "The AI Frontier",
+      "Next-Gen Tech"
+    ],
+    "modelChannels": "Cleo Abram, ColdFusion Tech, Matt Wolfe",
+    "cpm": " – ",
+    "recommendedFormat": "both",
+    "formatLabel": "🔀 Both (Viral Shorts + Deep Dives)",
+    "summary": "Futuristic AI breakthroughs, humanoid robots, autonomous cars, and the silent technology wars shaping civilization.",
+    "targetAudience": "Tech workers, early adopters, and curious casual viewers fascinated by the future.",
+    "sampleTitles": [
+      "This Humanoid Robot Just Changed Manufacturing Forever",
+      "Why the US Government is Terrified of This Microchip",
+      "The Silent War for Quantum Computing Supremacy"
+    ],
+    "topicsToLock": [
+      "Artificial Intelligence: How LLMs & Neural Networks Work",
+      "The Humanoid Robotics & Factory Automation Boom",
+      "Cybersecurity Wars: How Elite Hackers Infiltrate Systems",
+      "Autonomous Self-Driving Cars & The Future of Transit",
+      "Hyper-Scale Data Centers & The Global Cloud Backbone"
+    ]
+  },
+  {
+    "id": "luxury-mindset",
+    "title": "The Billionaire Standard (Quiet Luxury)",
+    "icon": "🛥️",
+    "mainNiche": "⭐ Luxury & Success Mindset",
+    "nameIdeas": [
+      "The Sovereign Mindset",
+      "Apex Routine",
+      "Quiet Capital",
+      "The 1% Standard"
+    ],
+    "modelChannels": "Alux.com, Ben Lionel Scott, FarFromAverage",
+    "cpm": " – ",
+    "recommendedFormat": "shorts_only",
+    "formatLabel": "📱 Shorts Only (High Viral CTR)",
+    "summary": "Aspirational lifestyles, private aviation, billionaire daily disciplines, hypercars, and unwritten social rules of the elite.",
+    "targetAudience": "Aspirational young professionals and mobile Shorts viewers seeking motivation and luxury visual candy.",
+    "sampleTitles": [
+      "The 4 AM Routine of Self-Made Multi-Billionaires",
+      "Old Money vs New Money: 5 Insecurities That Expose You",
+      "Inside the ,000,000 Mega-Yacht With Its Own Submarine"
+    ],
+    "topicsToLock": [
+      "Billionaire Daily Routines, Morning Habits & Deep Work",
+      "Inside the Ultra-High-Net-Worth Lifestyle & Mega-Yachts",
+      "Supercar & Hypercar Culture: Engineering & Speed Icons",
+      "Old Money vs New Money: Etiquette, Values & Culture",
+      "The Unspoken Wealth Rules of the Global Top 1 Percent"
+    ]
+  },
+  {
+    "id": "deep-ocean",
+    "title": "The Abyssal Deep (Ocean Mysteries)",
+    "icon": "🌊",
+    "mainNiche": "Ocean & Marine Science",
+    "nameIdeas": [
+      "Abyssal Earth",
+      "Deep Blue Mysteries",
+      "The Oceanic Void",
+      "Mariana Trench Files"
+    ],
+    "modelChannels": "Real Science, BlueWorld, BBC Earth Faceless",
+    "cpm": " – ",
+    "recommendedFormat": "longs_only",
+    "formatLabel": "🖥️ Longs Only (Deep Sea Documentaries)",
+    "summary": "Cinematic, hauntingly beautiful documentaries about alien-like abyssal creatures, shipwrecks, and unexplored ocean trenches.",
+    "targetAudience": "Global documentary fans, science enthusiasts, and nature lovers seeking relaxing visual wonder.",
+    "sampleTitles": [
+      "What Scientists Found 30,000 Feet Below the Mariana Trench",
+      "The Bioluminescent Monsters That Live in Total Darkness",
+      "The Ghost Ships Still Resting Intact on the Atlantic Sea Floor"
+    ],
+    "topicsToLock": [
+      "Deep Sea Mysteries: Alien Creatures of the Midnight Zone",
+      "Bioluminescence: Creatures That Glow in Complete Darkness",
+      "Shipwrecks on the Ocean Floor & Underwater Archaeology",
+      "Great White, Tiger & Hammerhead Shark Hunting Science",
+      "Hydrothermal Vents & Chemosynthetic Life Under Extreme Pressure"
+    ]
+  },
+  {
+    "id": "interior-design",
+    "title": "Spatial Living (Tiny Homes & Modern Decor)",
+    "icon": "🛋️",
+    "mainNiche": "⭐ Interior Design & Architecture",
+    "nameIdeas": [
+      "The Minimal Studio",
+      "Spatial Living",
+      "Room Blueprint",
+      "Compact Architecture"
+    ],
+    "modelChannels": "Never Too Small, Architectural Digest Faceless",
+    "cpm": " – ",
+    "recommendedFormat": "both",
+    "formatLabel": "🔀 Both (Shorts Decor Hacks + Home Tours)",
+    "summary": "Clever small-apartment space hacks, Japandi minimalism, budget room makeovers, and architectural walkthroughs.",
+    "targetAudience": "Renters, homeowners, design enthusiasts, and people looking to upgrade their living space.",
+    "sampleTitles": [
+      "How to Turn a 300 Sq Ft Studio into a Luxury 1-Bedroom",
+      "5 Interior Design Mistakes That Make Your Home Look Cheap",
+      "The Japandi Living Room: Minimalist Warmth on a Budget"
+    ],
+    "topicsToLock": [
+      "Small Apartment & Studio Space Hacks: Multiplying Square Footage",
+      "Minimalist & Japandi Design: Calm, Functional & Warm Living",
+      "Budget Room Makeovers: Transforming Spaces with IKEA & Paint",
+      "Walkthroughs of Modern Luxury Mansions & Architectural Marvels",
+      "Lighting Architecture: Layered Warm Light vs Sterile Overhead Glare"
+    ]
+  },
+  {
+    "id": "canine-mind",
+    "title": "The Canine Mind (Dog Breeds & Pet Secrets)",
+    "icon": "🐕",
+    "mainNiche": "⭐ Dogs & Pets",
+    "nameIdeas": [
+      "The Canine Mind",
+      "Dog Breed Files",
+      "Paw Science",
+      "The Faithful Hound"
+    ],
+    "modelChannels": "Jaw-Dropping Facts Dogs, Animalogic",
+    "cpm": " – ",
+    "recommendedFormat": "shorts_only",
+    "formatLabel": "📱 Shorts Only (Extreme Viral Retention)",
+    "summary": "Dog breed origins, obedience hacks, puppy psychology, and understanding what your dog’s body language actually means.",
+    "targetAudience": "Pet owners and dog lovers of all ages who share cute, educational animal facts.",
+    "sampleTitles": [
+      "What Your Dog’s Sleeping Position Actually Means",
+      "The Ancient Origin of the Siberian Husky (They Are Not Wolves)",
+      "3 Toxic Foods in Your Kitchen That Can Harm Your Dog"
+    ],
+    "topicsToLock": [
+      "Dog Breed Deep Dives: History, Temperament & Working Instincts",
+      "Canine & Feline Psychology: Decoding Body Language & Tail Wags",
+      "Senior Dog Health & Comfort: Prolonging Your Pet's Golden Years",
+      "First-Time Puppy Owner Handbook: Potty Training & Crate Setup",
+      "Dangerous & Banned Dog Breeds: Myths vs Actual Statistics"
+    ]
+  },
+  {
+    "id": "consumer-psychology",
+    "title": "The Consumer Trap (Shopping & Money Mind Games)",
+    "icon": "🧠",
+    "mainNiche": "Money Psychology & Consumer Behavior",
+    "nameIdeas": [
+      "The Consumer Trap",
+      "Subconscious Spending",
+      "Brain & Retail",
+      "The Price Hack"
+    ],
+    "modelChannels": "How Money Works, PolyMatter, Economics Explained",
+    "cpm": " – ",
+    "recommendedFormat": "both",
+    "formatLabel": "🔀 Both (Shorts Tricks + Deep Breakdowns)",
+    "summary": "Exposing the dirty psychological traps that supermarkets, casinos, credit card companies, and advertisers use on your brain.",
+    "targetAudience": "Everyday consumers, curious thinkers, and people looking to stop wasting money.",
+    "sampleTitles": [
+      "The Hidden Supermarket Layout Designed to Force Impulse Buys",
+      "Why Casinos Don’t Have Windows or Clocks (Sensory Architecture)",
+      "The Sneaky Math Behind Pricing Items at .99"
+    ],
+    "topicsToLock": [
+      "The Psychology of Impulse Buying & How Stores Steal Attention",
+      "Casino Psychology: No Clocks, Sound Loops & Near-Miss Mechanics",
+      "Credit Card Traps, Minimum Payments & Debt Slavery Math",
+      "The Sunk Cost Fallacy & Walking Away from Bad Decisions",
+      "The Psychology of Pricing: Why Items End in .99 & Decoy Pricing"
+    ]
+  },
+  {
+    "id": "travel-nomad",
+    "title": "The Secret Atlas (Hidden Travel & Budget Escapes)",
+    "icon": "✈️",
+    "mainNiche": "⭐ Travel & Tourism",
+    "nameIdeas": [
+      "Wander Blueprint",
+      "The Secret Atlas",
+      "Nomad Escape",
+      "Hidden Earth Guides"
+    ],
+    "modelChannels": "Geography Now, Wolters World, Travel Alone Idea",
+    "cpm": " – ",
+    "recommendedFormat": "longs_only",
+    "formatLabel": "🖥️ Longs Only (Travel Guides)",
+    "summary": "Cinematic guides to secret travel gems, top countries where you can retire for under ,200/month, and scenic road trips.",
+    "targetAudience": "Travelers, digital nomads, retirees, and dreamers looking for beautiful escapism.",
+    "sampleTitles": [
+      "5 European Hidden Gems Tourists Completely Overlook in 2026",
+      "Top 7 Safest Countries to Retire Overseas for ,200 a Month",
+      "How to Backpack Across Western Europe on  a Day"
+    ],
+    "topicsToLock": [
+      "Undiscovered & Hidden Gem Travel Destinations Around the World",
+      "Budget Travel Hacks: Exploring Western Europe on  a Day",
+      "Top 10 Best Affordable & Safe Countries to Retire Overseas",
+      "Iconic Road Trip Itineraries: Route 66, Pacific Coast & Amalfi",
+      "Tourist Traps & Overrated Cities You Should Skip"
+    ]
+  }
+]
