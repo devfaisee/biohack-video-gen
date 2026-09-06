@@ -2212,7 +2212,7 @@ app.post('/api/auto-gen/trigger', async (req, res) => {
 
 app.get('/api/youtube/channels', async (req, res) => {
     try {
-        const result = await db.query('SELECT channel_id as "channelId", channel_name as "channelName", avatar as "channelAvatar", mapped_niches as "mappedNiches", COALESCE(mapped_sub_niches, \'{}\'::jsonb) as "mappedSubNiches" FROM channels');
+        const result = await db.query('SELECT channel_id as "channelId", channel_name as "channelName", avatar as "channelAvatar", mapped_niches as "mappedNiches", COALESCE(mapped_sub_niches, \'{}\'::jsonb) as "mappedSubNiches", COALESCE(preferred_format, \'both\') as "preferredFormat" FROM channels');
         res.json(result.rows);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -2220,19 +2220,28 @@ app.get('/api/youtube/channels', async (req, res) => {
 });
 
 app.post('/api/youtube/channels/:id/niches', async (req, res) => {
-    const { niches, subNiches } = req.body;
+    const { niches, subNiches, preferredFormat } = req.body;
     try {
         let updateQuery = 'UPDATE channels SET mapped_niches = $1';
         let params = [JSON.stringify(niches || [])];
+        let paramIdx = 2;
+
         if (subNiches !== undefined) {
-            updateQuery += ', mapped_sub_niches = $2 WHERE channel_id = $3';
-            params.push(JSON.stringify(subNiches || {}), req.params.id);
-        } else {
-            updateQuery += ' WHERE channel_id = $2';
-            params.push(req.params.id);
+            updateQuery += `, mapped_sub_niches = $${paramIdx}`;
+            params.push(JSON.stringify(subNiches || {}));
+            paramIdx++;
         }
+        if (preferredFormat !== undefined) {
+            updateQuery += `, preferred_format = $${paramIdx}`;
+            params.push(preferredFormat || 'both');
+            paramIdx++;
+        }
+
+        updateQuery += ` WHERE channel_id = $${paramIdx}`;
+        params.push(req.params.id);
+
         await db.query(updateQuery, params);
-        res.json({ success: true, mappedNiches: niches, mappedSubNiches: subNiches || {} });
+        res.json({ success: true, mappedNiches: niches, mappedSubNiches: subNiches || {}, preferredFormat: preferredFormat || 'both' });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

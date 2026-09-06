@@ -62,17 +62,22 @@ export default function Channels({ baseUrl, toast }) {
     }
   };
 
-  const updateMapping = async (channelId, newMappedNiches, newMappedSubNiches) => {
+  const updateMapping = async (channelId, newMappedNiches, newMappedSubNiches, newPreferredFormat) => {
+    const channel = channels.find(c => c.channelId === channelId);
+    const format = newPreferredFormat !== undefined ? newPreferredFormat : (channel?.preferredFormat || 'both');
+
     setChannels(prev => prev.map(c => c.channelId === channelId ? {
       ...c,
       mappedNiches: newMappedNiches,
-      mappedSubNiches: newMappedSubNiches
+      mappedSubNiches: newMappedSubNiches,
+      preferredFormat: format
     } : c));
 
     try {
       await axios.post(`${baseUrl}/api/youtube/channels/${channelId}/niches`, {
         niches: newMappedNiches,
-        subNiches: newMappedSubNiches
+        subNiches: newMappedSubNiches,
+        preferredFormat: format
       });
       toast('Channel automation settings updated!', 'success');
     } catch {
@@ -237,6 +242,41 @@ export default function Channels({ baseUrl, toast }) {
                         <span style={{ fontSize: '0.85rem', color: 'var(--warning)' }}>No niches mapped. Auto-upload is paused.</span>
                       </>
                     )}
+                  </div>
+
+                  {/* Format Preference Selector */}
+                  <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', flexWrap: 'wrap', gap: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      Format Mode:
+                    </span>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {[
+                        { id: 'both', label: '🔀 Both (Balanced)' },
+                        { id: 'shorts_only', label: '📱 Shorts Only' },
+                        { id: 'longs_only', label: '🖥️ Longs Only' }
+                      ].map(f => {
+                        const active = (channel.preferredFormat || 'both') === f.id;
+                        return (
+                          <button
+                            key={f.id}
+                            onClick={() => updateMapping(channel.channelId, channel.mappedNiches || [], channel.mappedSubNiches || {}, f.id)}
+                            style={{
+                              padding: '4px 10px',
+                              fontSize: '0.75rem',
+                              borderRadius: '6px',
+                              border: active ? '1px solid var(--primary)' : '1px solid var(--border)',
+                              background: active ? 'var(--primary-soft)' : 'transparent',
+                              color: active ? 'var(--primary)' : 'var(--text-secondary)',
+                              cursor: 'pointer',
+                              fontWeight: active ? 600 : 400,
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            {f.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 

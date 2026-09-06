@@ -99,7 +99,7 @@ async function autoGenerateVideos() {
     try { await retryPendingUploads(); } catch (recErr) { console.error('[AUTO-GEN] Pre-run recovery error:', recErr.message); }
 
     try {
-        const channelsRes = await db.query("SELECT channel_id, channel_name, mapped_niches, COALESCE(mapped_sub_niches, '{}'::jsonb) as mapped_sub_niches FROM channels");
+        const channelsRes = await db.query("SELECT channel_id, channel_name, mapped_niches, COALESCE(mapped_sub_niches, '{}'::jsonb) as mapped_sub_niches, COALESCE(preferred_format, 'both') as preferred_format FROM channels");
         const channels = channelsRes.rows;
 
         // ═══════════════════════════════════════════════════════════════════
@@ -205,8 +205,13 @@ async function autoGenerateVideos() {
                 const currentShortsRatio = pastTotal > 0 ? (pastShorts / pastTotal) : 0;
                 
                 let format = 'vertical'; // default short
-                if (currentShortsRatio > rules.targetShortsRatio) {
-                    format = 'horizontal'; // force long-form to balance
+                if (channel.preferred_format === 'shorts_only') {
+                    format = 'vertical';
+                } else if (channel.preferred_format === 'longs_only') {
+                    format = 'horizontal';
+                } else {
+                    // Both (Balanced) — use deterministic ratio balancing
+                    format = (currentShortsRatio > rules.targetShortsRatio) ? 'horizontal' : 'vertical';
                 }
 
                 const durationMinutes = format === 'vertical' ? 1 : 5;
