@@ -15,6 +15,12 @@ cron.schedule('0 5 * * *', async () => {
     await autoGenerateVideos();
 });
 
+// Auto-retry failed or pending YouTube uploads every 4 hours
+cron.schedule('0 */4 * * *', async () => {
+    console.log('[CRON] Starting Upload Recovery Sweep...');
+    await retryPendingUploads();
+});
+
 async function syncAnalytics() {
     if (!process.env.DATABASE_URL) return;
 
@@ -88,6 +94,9 @@ async function syncAnalytics() {
 
 async function autoGenerateVideos() {
     if (!process.env.DATABASE_URL) return;
+
+    // Run upload recovery sweep before queuing new videos
+    try { await retryPendingUploads(); } catch (recErr) { console.error('[AUTO-GEN] Pre-run recovery error:', recErr.message); }
 
     try {
         const channelsRes = await db.query("SELECT channel_id, channel_name, mapped_niches FROM channels");
@@ -276,4 +285,99 @@ async function autoGenerateVideos() {
     }
 }
 
-module.exports = { syncAnalytics, autoGenerateVideos };
+async function retryPendingUploads() {
+    if (!process.env.DATABASE_URL) return;
+
+    try {
+        const pendingRes = await db.query(`
+            SELECT id, title, description, tags, niche, published_at, script
+            FROM videos 
+            WHERE status = 'generated' AND (youtube_id IS NULL OR youtube_id = '') AND created_at > NOW() - INTERVAL '7 days'
+            ORDER BY created_at ASC
+            LIMIT 3
+        `);
+        if (pendingRes.rows.length === 0) return;
+
+        console.log(`[UPLOAD-RETRY] Found ${pendingRes.rows.length} pending video(s) to recover and upload...`);
+        const fs = require('fs');
+        const path = require('path');
+        const youtube = require('./youtube');
+        const outputDir = path.join(__dirname, 'output');
+
+        const channelsRes = await db.query("SELECT channel_id, mapped_niches FROM channels");
+        const channels = channelsRes.rows;
+
+        for (const video of pendingRes.rows) {
+            const matchedChannel = channels.find(c => c.mapped_niches && c.mapped_niches.includes(video.niche));
+            if (!matchedChannel) {
+                console.log(`[UPLOAD-RETRY] No channel mapped for niche '${video.niche}'. Skipping video ${video.id}.`);
+                continue;
+            }
+
+            let targetVideoPath = null;
+            let targetThumbPath = null;
+
+            // Check if legacy flat file exists: output/{id}.mp4
+            const flatPath = path.join(outputDir, `${video.id}.mp4`);
+            if (fs.existsSync(flatPath)) {
+                targetVideoPath = flatPath;
+                const flatThumb = path.join(outputDir, `${video.id}_thumb.jpg`);
+                if (fs.existsSync(flatThumb)) targetThumbPath = flatThumb;
+            } else if (fs.existsSync(outputDir)) {
+                // Check folder-based structure: output/{date}_{slug}_{shortId}/video.mp4
+                const shortId = video.id.substring(0, 8);
+                const entries = fs.readdirSync(outputDir, { withFileTypes: true });
+                for (const entry of entries) {
+                    if (entry.isDirectory() && entry.name.includes(shortId)) {
+                        const candidate = path.join(outputDir, entry.name, 'video.mp4');
+                        if (fs.existsSync(candidate)) {
+                            targetVideoPath = candidate;
+                            const thumbCandidate = path.join(outputDir, entry.name, 'thumbnail.jpg');
+                            if (fs.existsSync(thumbCandidate)) targetThumbPath = thumbCandidate;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!targetVideoPath) {
+                console.log(`[UPLOAD-RETRY] Video file for ID ${video.id} not found on disk. Marking unrecoverable.`);
+                await db.query("UPDATE videos SET status = 'file_missing' WHERE id = $1", [video.id]);
+                continue;
+            }
+
+            console.log(`[UPLOAD-RETRY] Retrying upload for '${video.title}' to channel ${matchedChannel.channel_id}...`);
+            try {
+                let tags = [];
+                if (Array.isArray(video.tags)) tags = video.tags;
+                else if (typeof video.tags === 'string') {
+                    try { tags = JSON.parse(video.tags); } catch (_) { tags = [video.tags]; }
+                }
+
+                const ytVideoId = await youtube.uploadToYouTube(
+                    matchedChannel.channel_id,
+                    targetVideoPath,
+                    targetThumbPath,
+                    {
+                        title: video.title,
+                        description: video.description,
+                        tags: tags,
+                        mainNiche: video.niche,
+                        publishAt: video.published_at ? new Date(video.published_at).toISOString() : null
+                    }
+                );
+
+                if (ytVideoId) {
+                    await db.query("UPDATE videos SET youtube_id = $1, status = 'uploaded' WHERE id = $2", [ytVideoId, video.id]);
+                    console.log(`[UPLOAD-RETRY] Successfully uploaded! YouTube ID: ${ytVideoId}`);
+                }
+            } catch (retryErr) {
+                console.error(`[UPLOAD-RETRY] Retry failed for video ${video.id}:`, retryErr.message);
+            }
+        }
+    } catch (err) {
+        console.error('[UPLOAD-RETRY] Error:', err.message);
+    }
+}
+
+module.exports = { syncAnalytics, autoGenerateVideos, retryPendingUploads };

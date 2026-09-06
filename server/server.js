@@ -718,7 +718,7 @@ with equal depth. Item 1 through Item N must all appear with full narration.
 SEO & METADATA RULES:
 - Title: Psychologically compelling. MrBeast-level curiosity but factually accurate.
 - Tags: 25-30 tags mixing short-tail (1 word), medium-tail (2-3 words), long-tail (5+ words), trending (2026).
-- Description: Hook paragraph → Timestamps → About → Keywords → hashtags → AI disclosure line.
+- Description: Compelling hook paragraph → Timestamps/Chapters → In-depth topic context → High-volume search keywords → 3-5 trending hashtags.
 
 TTS COMPLIANCE (Gemini TTS safety filter — violations cause generation failure):
 - NEVER use: kill, murder, rape, drug, suicide, blood, gore, bomb, terrorist
@@ -1214,9 +1214,9 @@ REMEMBER: ${targetSegments} segments. ${minWordsPerSegment}-${maxWordsPerSegment
                 // Build a clip list that covers audioDuration without padding or excessive looping
                 let totalCovered = 0;
                 const clipList = [];
-                // CRITICAL PACING RULE: Force rapid cuts. Max 4.5s per visual for Shorts, 6.5s for Longs.
-                // This prevents the "boring 1-minute clip" problem the user feared.
-                const maxClipScreenTime = isVertical ? 4.5 : 6.5;
+                // CRITICAL PACING RULE: Force rapid cuts. Max 2.2s per visual for Shorts, 5.0s for Longs.
+                // Modern 2026 short-form retention demands visual cuts every 2 seconds.
+                const maxClipScreenTime = isVertical ? 2.2 : 5.0;
 
                 for (let ci = 0; ci < rawPaths.length && totalCovered < audioDuration; ci++) {
                     const needed = audioDuration - totalCovered;
@@ -1355,14 +1355,15 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text'
             ].join('\n');
 
-            // Group words into phrases (sentences or max ~6 words)
+            // Group words into punchy phrases (Alex Hormozi style: max 3 words for Shorts, 5 for Longs)
             const phrases = [];
             let currentPhrase = [];
+            const maxPhraseWords = isVertical ? 3 : 5;
             for (let i = 0; i < timings.length; i++) {
                 currentPhrase.push(timings[i]);
                 const w = timings[i].word;
                 const isPunctuation = w.endsWith('.') || w.endsWith('!') || w.endsWith('?') || w.endsWith(',');
-                if (isPunctuation || currentPhrase.length >= 6 || i === timings.length - 1) {
+                if (isPunctuation || currentPhrase.length >= maxPhraseWords || i === timings.length - 1) {
                     phrases.push(currentPhrase);
                     currentPhrase = [];
                 }
@@ -2106,9 +2107,11 @@ duration ${c.duration.toFixed(3)}`).join('\n');
             
             if (matchedChannel) {
                 addLog(`[YOUTUBE] Mapped channel found (${matchedChannel.channel_name}). Initiating auto-upload...`);
+                // CRITICAL FIX: Upload the final video containing normalized voiceover + mixed BGM, not raw stitched video!
+                const uploadVideoFile = fs.existsSync(finalVideoPath) ? finalVideoPath : (fs.existsSync(legacyVideoPath) ? legacyVideoPath : stitchedVideoPath);
                 const ytVideoId = await youtubeModule.uploadToYouTube(
                     matchedChannel.channel_id,
-                    stitchedVideoPath,
+                    uploadVideoFile,
                     fs.existsSync(thumbLocalPath) ? thumbLocalPath : null,
                     {
                         title: customTitle || scriptData.title,

@@ -84,14 +84,32 @@ async function uploadToYouTube(channelId, videoPath, thumbPath, metadata) {
         statusObj.publishAt = metadata.publishAt;
     }
 
+    // Dynamic niche-to-category mapping for optimal YouTube recommendation algorithm clustering
+    function resolveCategoryId(niche) {
+        if (!niche) return '27';
+        const n = niche.toLowerCase();
+        if (n.includes('pet') || n.includes('dog') || n.includes('cat') || n.includes('animal')) return '15'; // Pets & Animals
+        if (n.includes('travel') || n.includes('tourism') || n.includes('geography')) return '19'; // Travel & Events
+        if (n.includes('tech') || n.includes('ai') || n.includes('digital') || n.includes('science')) return '28'; // Science & Technology
+        if (n.includes('interior') || n.includes('fitness') || n.includes('bodybuilding') || n.includes('decor') || n.includes('food')) return '26'; // Howto & Style
+        if (n.includes('car') || n.includes('auto') || n.includes('vehicle')) return '2'; // Autos & Vehicles
+        if (n.includes('nature') || n.includes('ocean') || n.includes('wildlife')) return '15'; // Pets & Animals
+        if (n.includes('rise & fall') || n.includes('empire') || n.includes('survival') || n.includes('disaster')) return '24'; // Entertainment
+        if (n.includes('psychology') || n.includes('relationship') || n.includes('self-improvement') || n.includes('lifestyle') || n.includes('luxury')) return '22'; // People & Blogs
+        return '27'; // Education (Finance, Wealth, Real Estate, Business)
+    }
+
+    const assignedCategory = resolveCategoryId(metadata.mainNiche);
+    const parsedTags = Array.isArray(metadata.tags) ? metadata.tags.slice(0, 25) : (metadata.tags ? [metadata.tags] : []);
+
     const videoRes = await youtube.videos.insert({
         part: 'snippet,status',
         requestBody: {
             snippet: {
                 title: metadata.title.substring(0, 100),
                 description: metadata.description.substring(0, 5000),
-                tags: metadata.tags ? metadata.tags.slice(0, 500).slice(0, 15) : [],
-                categoryId: '27'
+                tags: parsedTags,
+                categoryId: assignedCategory
             },
             status: statusObj
         },
