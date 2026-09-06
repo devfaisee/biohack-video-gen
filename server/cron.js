@@ -155,6 +155,38 @@ async function autoGenerateVideos() {
 
             const randomNiche = niches[Math.floor(Math.random() * niches.length)];
             
+            // ── STOCK-SAFE GATE ──
+            // Auto-mode always uses stock_videos. If the mapped niche isn't stock-safe, skip it.
+            let nichesData = {};
+            try {
+                // Clear require cache so edits to niches.json take effect without restart
+                delete require.cache[require.resolve('../client/src/niches.json')];
+                nichesData = require('../client/src/niches.json');
+            } catch (e) {
+                console.log(`[AUTO-GEN] Could not load niches.json`);
+            }
+            
+            let nicheEntry = null;
+            let nicheKey = null;
+            for (const [name, data] of Object.entries(nichesData)) {
+                if (name.startsWith('_')) continue;
+                if (name === randomNiche || randomNiche.includes(name) || name.includes(randomNiche)) {
+                    nicheEntry = data;
+                    nicheKey = name;
+                    break;
+                }
+            }
+            
+            // Check stock safety — auto-mode is ALWAYS stock footage
+            const isStockSafe = nicheEntry && typeof nicheEntry === 'object' && !Array.isArray(nicheEntry) 
+                ? nicheEntry._stockSafe 
+                : true; // legacy flat arrays assumed safe
+            
+            if (!isStockSafe) {
+                console.log(`[AUTO-GEN] ⚠️ Skipping "${randomNiche}" for channel ${channel.channel_name} — NOT stock-safe (requires AI images). Auto-mode only runs stock-safe niches.`);
+                continue;
+            }
+
             let rules = nicheRules["default"];
             for (const key of Object.keys(nicheRules)) {
                 if (randomNiche.includes(key) || randomNiche === key) {
@@ -190,25 +222,40 @@ async function autoGenerateVideos() {
 
                 console.log(`[AUTO-GEN] Queuing ${format} video for channel ${channel.channel_name}, Niche: ${randomNiche} (Video ${v+1}/${rules.videosPerDay})`);
 
-                // Load dynamic sub-niches from the master niches.json file
-                // niches.json format: { "⭐ Finance & Wealth Building": ["sub1", "sub2", ...], ... }
+                // ── DE-DUPLICATION ENGINE ──
+                // Query the database for all sub-niches used in the last 14 days for this niche.
+                // Exclude them from the pool so we never repeat a topic within 2 weeks.
                 let selectedSubNiche = 'General';
                 try {
-                    const nichesData = require('../client/src/niches.json');
-                    // Find the matching key — the mapped niche name might be an exact key or a partial match
+                    // Get the sub-niche list from new format
                     let subNicheList = null;
-                    for (const [nicheName, subs] of Object.entries(nichesData)) {
-                        if (nicheName === randomNiche || randomNiche.includes(nicheName) || nicheName.includes(randomNiche)) {
-                            subNicheList = subs;
-                            break;
-                        }
+                    if (nicheEntry) {
+                        subNicheList = Array.isArray(nicheEntry) ? nicheEntry : (nicheEntry.subNiches || null);
                     }
+                    
                     if (subNicheList && subNicheList.length > 0) {
-                        selectedSubNiche = subNicheList[Math.floor(Math.random() * subNicheList.length)];
+                        // Query recently used sub-niches (last 14 days)
+                        const recentRes = await db.query(
+                            "SELECT DISTINCT script->>'subNiche' as sub FROM videos WHERE niche = $1 AND created_at > NOW() - INTERVAL '14 days' AND script->>'subNiche' IS NOT NULL",
+                            [randomNiche]
+                        );
+                        const recentlyUsed = new Set(recentRes.rows.map(r => r.sub));
+                        
+                        // Filter out recently used sub-niches
+                        const available = subNicheList.filter(s => !recentlyUsed.has(s));
+                        
+                        if (available.length > 0) {
+                            selectedSubNiche = available[Math.floor(Math.random() * available.length)];
+                            console.log(`[AUTO-GEN] De-dup: ${recentlyUsed.size} sub-niches used in last 14d, ${available.length} still available. Picked: "${selectedSubNiche}"`);
+                        } else {
+                            // All sub-niches exhausted in 14 days — reset and pick any (this means amazing content coverage!)
+                            selectedSubNiche = subNicheList[Math.floor(Math.random() * subNicheList.length)];
+                            console.log(`[AUTO-GEN] De-dup: All ${subNicheList.length} sub-niches used in last 14d! Full cycle complete. Picking fresh: "${selectedSubNiche}"`);
+                        }
                     }
                     console.log(`[AUTO-GEN] Selected sub-niche: "${selectedSubNiche}" from "${randomNiche}"`);
                 } catch (e) {
-                    console.log(`[AUTO-GEN] Could not load niches.json, defaulting to General`);
+                    console.log(`[AUTO-GEN] De-dup query failed, falling back to random:`, e.message);
                 }
 
                 const port = process.env.PORT || 5000;

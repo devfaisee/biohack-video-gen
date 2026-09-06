@@ -147,8 +147,11 @@ function CreatorStudio() {
   const [loading, setLoading] = useState(false);
   const [duration, setDuration] = useState(1);
   const [format, setFormat] = useState('horizontal');
-  const [mainNiche, setMainNiche] = useState(Object.keys(NICHES)[0]);
-  const [subNiche, setSubNiche] = useState(NICHES[Object.keys(NICHES)[0]][0]);
+  const firstNicheKey = Object.keys(NICHES).find(k => !k.startsWith('_')) || '';
+  const [mainNiche, setMainNiche] = useState(firstNicheKey);
+  const firstEntry = NICHES[firstNicheKey];
+  const firstSubs = firstEntry && !Array.isArray(firstEntry) ? (firstEntry.subNiches || []) : (Array.isArray(firstEntry) ? firstEntry : []);
+  const [subNiche, setSubNiche] = useState(firstSubs[0] || '');
   const [topic, setTopic] = useState('');
   const [visualSource, setVisualSource] = useState('ai_images');
   const [customTitle, setCustomTitle] = useState('');
@@ -288,7 +291,12 @@ function CreatorStudio() {
 
   // Filter out metadata keys; stars are unicode and render natively in <option>
   const nicheKeys = useMemo(() => Object.keys(NICHES).filter(k => !k.startsWith('_')), []);
-  const subNiches = useMemo(() => NICHES[mainNiche] || [], [mainNiche]);
+  const subNiches = useMemo(() => {
+    const entry = NICHES[mainNiche];
+    if (!entry) return [];
+    // Support both new format { subNiches: [...] } and legacy flat array
+    return Array.isArray(entry) ? entry : (entry.subNiches || []);
+  }, [mainNiche]);
 
 
   return (
@@ -314,10 +322,16 @@ function CreatorStudio() {
               </div>
             </label>
             <div className="select-wrapper">
-              <select className="select" value={mainNiche} onChange={(e) => { setMainNiche(e.target.value); setSubNiche((NICHES[e.target.value] || [])[0] || ''); }}>
+              <select className="select" value={mainNiche} onChange={(e) => { 
+                setMainNiche(e.target.value); 
+                const entry = NICHES[e.target.value];
+                const subs = entry && !Array.isArray(entry) ? (entry.subNiches || []) : (Array.isArray(entry) ? entry : []);
+                setSubNiche(subs[0] || ''); 
+              }}>
                 {nicheKeys.map(n => {
-                  const isAI = ["Dark Psychology", "Unsolved Mysteries", "Ancient History", "Space", "Science", "Horror", "Empires", "AI & Future", "Conspiracies"].some(k => n.includes(k));
-                  const icon = isAI ? '🔴' : '🔵';
+                  const entry = NICHES[n];
+                  const isStockSafe = entry && typeof entry === 'object' && !Array.isArray(entry) ? entry._stockSafe : true;
+                  const icon = isStockSafe ? '🔵' : '🔴';
                   return <option key={n} value={n}>{icon} {n}</option>;
                 })}
               </select>
