@@ -121,6 +121,11 @@ async function autoGenerateVideos() {
             "Relationship":      { targetShortsRatio: 0.6, videosPerDay: 1 }, // Balanced emotional content
             "Self-Improvement":  { targetShortsRatio: 0.6, videosPerDay: 1 }, // Productivity hacks & deep dives
 
+            // ── TIER 4: EVERGREEN TITANS (Affiliate Heavy) ──
+            "Travel":            { targetShortsRatio: 0.5, videosPerDay: 1 }, // Beautiful visual lists
+            "Pets":              { targetShortsRatio: 0.7, videosPerDay: 1 }, // Cute/helpful Shorts dominate
+            "Interior Design":   { targetShortsRatio: 0.6, videosPerDay: 1 }, // Aesthetic visual styling
+            
             // ── FALLBACK ──
             "default":           { targetShortsRatio: 0.5, videosPerDay: 1 }
         };
