@@ -113,6 +113,7 @@ async function autoGenerateVideos() {
             "Business":          { targetShortsRatio: 0.5, videosPerDay: 1 }, // Balanced advice content
             "Real Estate":       { targetShortsRatio: 0.4, videosPerDay: 1 }, // High value, longer watch time
             "Rise & Fall":       { targetShortsRatio: 0.3, videosPerDay: 1 }, // Story-driven long-form
+            "White-Collar":      { targetShortsRatio: 0.35, videosPerDay: 1 }, // High watch-time investigative crime story
 
             // ── TIER 2: TECH, HEALTH & LIFESTYLE ($10-25) ──
             "Tech":              { targetShortsRatio: 0.5, videosPerDay: 1 }, // Balanced tech explainers
