@@ -1,0 +1,562 @@
+[
+  {
+    "id": "senior-longevity",
+    "category": "Health & Longevity",
+    "channelName": "The Senior Longevity Protocol",
+    "icon": "🧬",
+    "tagline": "Vitality, anti-aging, memory preservation, and joint mobility for adults 50+.",
+    "masterNiche": "⭐ Health & Biohacking",
+    "subNiches": [
+      "Senior Health & Longevity: Vitality & Anti-Aging After 50",
+      "Dementia, Alzheimer's & Cognitive Brain Aging Prevention",
+      "Joint Health, Cartilage Repair & Mobility Maintenance",
+      "Sleep Optimization, Deep REM Sleep & Circadian Biology",
+      "Cardiovascular Heart Health & Arterial Plaque Prevention"
+    ],
+    "targetAudience": "Ages 45–70+, high buying power in US/UK/Canada, searching for pain relief, cognitive sharpness, and longevity science.",
+    "cpm": "$18 – $32",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Shorts for reach + Longs for retention)",
+    "modelChannels": "Dr. Brad Stanfield, Physical Therapy Video, Aging Defeated",
+    "nameIdeas": ["Senior Longevity Lab", "Vitality Protocol", "Ageless Blueprint"],
+    "sampleTitles": [
+      "Why 80-Year-Olds in Okinawa Outlive Everyone (3 Daily Rules)",
+      "The 5-Minute Morning Mobility Sequence for Stiff Joints",
+      "The Brain Vitamin That Fights Memory Decline Naturally"
+    ],
+    "whyItWorks": "Older viewers have the highest watch retention on YouTube and highest ad conversion rates, making health channels targeting seniors among the most profitable faceless channels on the platform.",
+    "stockFootageKeywords": "Seniors walking, healthy food, laboratory, stretching, peaceful nature, doctor consultations"
+  },
+  {
+    "id": "biohacking-peak-performance",
+    "category": "Health & Longevity",
+    "channelName": "The Biohacker's Vault",
+    "icon": "⚡",
+    "tagline": "Science-backed protocols for mitochondrial health, deep sleep, cold therapy, and mental focus.",
+    "masterNiche": "⭐ Health & Biohacking",
+    "subNiches": [
+      "Intermittent Fasting, Autophagy & Cellular Renewal",
+      "Cold Plunge & Heat Therapy: Sauna Science Explained",
+      "Breathwork Protocols & Nervous System Stress Control",
+      "Dopamine Detox, Brain Neuroplasticity & Focus Recovery",
+      "Dietary Supplements: What Has Scientific Evidence"
+    ],
+    "targetAudience": "Ages 22–45, tech workers, entrepreneurs, fitness enthusiasts seeking peak productivity and biological optimization.",
+    "cpm": "$16 – $28",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Shorts for viral tips + Longs for protocol deep dives)",
+    "modelChannels": "Andrew Huberman clips, Bryan Johnson Blueprint, FoundMyFitness",
+    "nameIdeas": ["The Biological Edge", "Peak Human Protocol", "NeuroBiohack"],
+    "sampleTitles": [
+      "What 3 Minutes of Cold Exposure Actually Does to Your Dopamine",
+      "The 16:8 Fasting Mistake That Stops Cellular Autophagy",
+      "The 3 Supplements With Actual Peer-Reviewed Evidence"
+    ],
+    "whyItWorks": "Biohacking content has an insatiable audience that binges protocol videos and buys high-ticket supplements, tech gadgets, and sleep tracking devices.",
+    "stockFootageKeywords": "Cold plunges, saunas, athletes breathing, running, microscopes, clean organic food"
+  },
+  {
+    "id": "corporate-rise-fall",
+    "category": "Business & Crime",
+    "channelName": "Corporate Autopsies & Downfalls",
+    "icon": "📉",
+    "tagline": "Cinematic mini-documentaries dissecting the arrogance, fraud, and collapse of mega-corporations.",
+    "masterNiche": "⭐ Rise & Fall — Corporate Empires",
+    "subNiches": [
+      "Startup Unicorns That Burned Billions and Crashed",
+      "Wall Street Scandals: Collapsed Banks & Financial Giants",
+      "Whistleblowers & Corporate Revenge: How Insiders Took Down Giants",
+      "Tech Giants: The Rise, Dominance & Antitrust Battles",
+      "Retail Extinction: How Big-Box Chains Died"
+    ],
+    "targetAudience": "Ages 18–45, finance enthusiasts, business students, entrepreneurs, and documentary lovers.",
+    "cpm": "$22 – $40",
+    "format": "longs_only",
+    "formatLabel": "🎬 Longs Only (Deep 5-15 min cinematic storytelling)",
+    "modelChannels": "MagnatesMedia, ColdFusion, Jake Tran, Company Man",
+    "nameIdeas": ["Empire Autopsy", "Monopoly Breakdown", "The Corporate Fall"],
+    "sampleTitles": [
+      "The Arrogance That Destroyed a $47 Billion Empire (WeWork)",
+      "How One Whistleblower Brought Down Wall Street's Favorite Bank",
+      "The Retail Giant That Ignored the Internet and Went Extinct"
+    ],
+    "whyItWorks": "Storytelling combined with schadenfreude (watching greedy billionaires crash) generates extreme viewer retention, leading to multi-million view viral hits.",
+    "stockFootageKeywords": "Corporate skyscrapers, glass boardrooms, Wall Street trading floors, busy city crosswalks"
+  },
+  {
+    "id": "financial-scams-exposed",
+    "category": "Business & Crime",
+    "channelName": "Financial Scams & Con Artists Exposed",
+    "icon": "🕵️",
+    "tagline": "Investigating high-stakes Ponzi schemes, fake gurus, crypto rugpulls, and white-collar deception.",
+    "masterNiche": "⭐ White-Collar Crime & Scam Exposés",
+    "subNiches": [
+      "The Biggest Ponzi Schemes in Wall Street History",
+      "Fake Billionaires Who Fooled Banks, Media & Forbes",
+      "Crypto Exchange Collapses, Rugpulls & Stolen Billions",
+      "The Psychology of Con Artists & Social Engineering",
+      "Offshore Tax Havens, Shell Companies & Secret Accounts"
+    ],
+    "targetAudience": "Ages 20–55, retail investors, crypto users, and true crime / investigative journalism enthusiasts.",
+    "cpm": "$25 – $50",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Shorts for rapid alerts + Longs for deep investigations)",
+    "modelChannels": "Coffeezilla, Spencer Cornelia, Patrick Boyle",
+    "nameIdeas": ["Scam Ledger", "The Fraud Files", "White Collar Exposed"],
+    "sampleTitles": [
+      "The Math Behind the $65 Billion Ponzi That Fooled Wall Street",
+      "How a Fake 26-Year-Old Heiress Scammed New York's Elite",
+      "The Secret Network of Offshore Shell Companies Explained"
+    ],
+    "whyItWorks": "Financial investigative videos trigger curiosity, outrage, and self-protection instincts, commanding the highest CPM ad rates on YouTube.",
+    "stockFootageKeywords": "Handcuffs, money stacks, dark laptop screens, bank vaults, courtrooms, private jets"
+  },
+  {
+    "id": "passive-wealth-compounding",
+    "category": "Finance & Wealth",
+    "channelName": "The Compounding Wealth Protocol",
+    "icon": "💰",
+    "tagline": "Actionable wealth architecture: index fund compounding, dividend snowballs, and tax minimization.",
+    "masterNiche": "⭐ Finance & Wealth Building",
+    "subNiches": [
+      "Passive Income & Dividend Investing for Beginners",
+      "Stock Market Psychology & Smart Trading Principles",
+      "Legal Tax Loopholes & Wealth Preservation Secrets",
+      "Retirement Planning, Roth IRAs & 401(k) Compounding",
+      "Hidden Banking Fees, Inflation & Traps Exposed"
+    ],
+    "targetAudience": "Ages 24–50, working professionals, early retirees (FIRE community), looking for predictable financial independence.",
+    "cpm": "$25 – $48",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Shorts for money rules + Longs for portfolio setups)",
+    "modelChannels": "Andrei Jikh, Graham Stephan, Mark Tilbury",
+    "nameIdeas": ["Compounding Vault", "Wealth Blueprint", "The Dividend Snowball"],
+    "sampleTitles": [
+      "The Exact Math to Live Off Dividends (Starting With $100/Month)",
+      "Why 90% of Active Traders Lose Money to Boring Index Funds",
+      "The Legal Tax Shelter Used by the Top 1% of Wealth Earners"
+    ],
+    "whyItWorks": "Finance advertisers (Robinhood, Fidelity, Vanguard, Amex) bid the highest dollar amounts per view in the entire YouTube ecosystem.",
+    "stockFootageKeywords": "Stock charts, calculator, signing contracts, modern home office, counting money, vault"
+  },
+  {
+    "id": "luxury-hyperliving",
+    "category": "Luxury & Elite",
+    "channelName": "Billionaire Mega-Assets & Hyper-Living",
+    "icon": "🛥️",
+    "tagline": "Exclusive access into megayachts, private island estates, bespoke hypercars, and haute horology.",
+    "masterNiche": "⭐ Luxury & Success Mindset",
+    "subNiches": [
+      "Inside the Ultra-High-Net-Worth Lifestyle & Mega-Yachts",
+      "Supercar & Hypercar Culture: Engineering & Speed Icons",
+      "Private Aviation, VIP Lounges & Luxury Jet Charters",
+      "Luxury Horology: The World's Most Prestigious Watches",
+      "Architecture of Luxury: Infinity Pools, Penthouses & Estates"
+    ],
+    "targetAudience": "Ages 16–40, aspirational luxury consumers, car lovers, architecture fans, and lifestyle daydreamers worldwide.",
+    "cpm": "$15 – $30",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Viral visual Shorts + Tour-style Longs)",
+    "modelChannels": "FUTR, King Luxury, Enes Yilmazer, Supercar Blondie",
+    "nameIdeas": ["Apex Billionaire", "Haute Living", "Monaco Syndicate"],
+    "sampleTitles": [
+      "Inside the $450 Million Floating Mega-Palace of a Tech Titan",
+      "Why a $2,000,000 Patek Philippe Takes 9 Months to Hand-Craft",
+      "The Private Underground Bunkers Built Under Billionaire Estates"
+    ],
+    "whyItWorks": "Pure visual eye-candy and aspiration. Stock footage for luxury (yachts, Monaco harbor, supercars) is extraordinarily plentiful and breathtaking.",
+    "stockFootageKeywords": "Yachts sailing, sports cars accelerating, glass penthouses, champagne, luxury watches"
+  },
+  {
+    "id": "aviation-catastrophes",
+    "category": "Disasters & Engineering",
+    "channelName": "Cockpit Investigations & Survival Feats",
+    "icon": "✈️",
+    "tagline": "Forensic breakdowns of aviation emergencies, black box recoveries, and pilot decision-making under panic.",
+    "masterNiche": "Survival & Disaster Science",
+    "subNiches": [
+      "Plane Crash Forensic Investigations & Aviation Safety Evolution",
+      "Maritime Disasters: Storms, Rogues Waves & Ship Evacuations",
+      "Miraculous Wilderness Survival Feats Against Impossible Odds",
+      "Decision-Making Psychology Under Extreme Survival Panic",
+      "Structural Engineering Failures: Why High-Rises & Bridges Collapsed"
+    ],
+    "targetAudience": "Ages 25–65, aviation enthusiasts, engineering minds, documentary and mystery fans.",
+    "cpm": "$14 – $24",
+    "format": "longs_only",
+    "formatLabel": "🎬 Longs Only (High suspense 8-12 min breakdown)",
+    "modelChannels": "Mentour Pilot, Disaster Breakdown, The Flight Channel",
+    "nameIdeas": ["Black Box Debrief", "Flight Forensic", "Catastrophe Science"],
+    "sampleTitles": [
+      "The 42 Seconds That Doomed Flight 447: The Complete Cockpit Breakdown",
+      "How a Solo Hiker Survived 7 Days in Freezing Canyons With Zero Food",
+      "The Fatal Flaw That Caused the Collapse of the World's Busiest Bridge"
+    ],
+    "whyItWorks": "Suspense and forensic problem-solving create unmatched watch times and click-through rates. Viewers stay glued to understand what went wrong.",
+    "stockFootageKeywords": "Cockpit instruments, airplanes in stormy skies, radar screens, stormy oceans, mountains"
+  },
+  {
+    "id": "mega-engineering-marvels",
+    "category": "Disasters & Engineering",
+    "channelName": "Mega-Engineering & Human Feats",
+    "icon": "🏗️",
+    "tagline": "How humanity constructs underwater bridges, mountain mega-tunnels, and mile-high skyscrapers.",
+    "masterNiche": "Cinematic Geography & Architecture",
+    "subNiches": [
+      "Engineering Marvels: Deepest Tunnels & Longest Suspension Bridges",
+      "Megacity Urban Planning: How Tokyo & Singapore Function",
+      "Dam Megaprojects: Engineering That Changed Earth's Rotation",
+      "Underground Bunkers, Metro Systems & Subterranean Cities",
+      "Extreme Desert Cities: Dubai, Las Vegas & Climate Survival"
+    ],
+    "targetAudience": "Ages 20–60, builders, architecture buffs, science students, engineering enthusiasts.",
+    "cpm": "$16 – $32",
+    "format": "longs_only",
+    "formatLabel": "🎬 Longs Only (Deep architectural explainers)",
+    "modelChannels": "Practical Engineering, The B1M, Megaprojects, Tomorrow's Build",
+    "nameIdeas": ["MegaStructures", "GeoEngineering", "The Blueprint Guild"],
+    "sampleTitles": [
+      "The Insane Physics of Pouring Concrete Under 300 Feet of Saltwater",
+      "How Singapore Solved Traffic Forever With Underground Tunnels",
+      "The Three Gorges Dam: The Mega-Structure That Shifted Earth's Axis"
+    ],
+    "whyItWorks": "Visual spectacle combined with curiosity about how the modern world is physically constructed. Massive international reach and evergreen shelf life.",
+    "stockFootageKeywords": "Tower cranes, skyscrapers, bridge cables, subway tunnels, highway timelapses"
+  },
+  {
+    "id": "abyssal-ocean-mysteries",
+    "category": "Science & Nature",
+    "channelName": "The Abyssal Ocean & Midnight Zone",
+    "icon": "🌊",
+    "tagline": "Alien biology of the Mariana Trench, ancient shipwrecks, and the pitch-black ocean depths.",
+    "masterNiche": "Ocean & Marine Science",
+    "subNiches": [
+      "Deep Sea Mysteries: Alien Creatures of the Midnight Zone",
+      "Bioluminescence: Creatures That Glow in Complete Darkness",
+      "Shipwrecks on the Ocean Floor & Underwater Archaeology",
+      "Cephalopod Genius: The Camouflage & Brains of Octopuses",
+      "Great White, Tiger & Hammerhead Shark Hunting Science"
+    ],
+    "targetAudience": "Ages 14–60, nature documentary lovers, mystery fans, science and marine biology lovers worldwide.",
+    "cpm": "$9 – $18",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Viral creature Shorts + Atmospheric Longs)",
+    "modelChannels": "Natural World Facts, Real Science, Blue Planet clips",
+    "nameIdeas": ["Abyssal Deep", "Oceanic Vault", "The Midnight Depth"],
+    "sampleTitles": [
+      "What Scientists Discovered 36,000 Feet Down in the Mariana Trench",
+      "Why Deep Sea Creatures Glow: The Terrifying Physics of Bioluminescence",
+      "The 500-Year-Old Shipwreck Found Completely Preserved Under the Baltic Sea"
+    ],
+    "whyItWorks": "The deep ocean is the closest thing to outer space on Earth. Pexels has thousands of 4K underwater clips of jellyfish, bioluminescence, sharks, and reefs.",
+    "stockFootageKeywords": "Deep sea jellyfish glowing, underwater diver, coral reef, sharks, sinking ship"
+  },
+  {
+    "id": "wildlife-apex-predators",
+    "category": "Science & Nature",
+    "channelName": "Apex Predators & Wilderness Wars",
+    "icon": "🦁",
+    "tagline": "Tactical hunting behavior, wolf pack hierarchy, and brutal survival adaptations of apex beasts.",
+    "masterNiche": "Nature & Wildlife",
+    "subNiches": [
+      "Apex Predators: Tactical Hunting Strategies & Kills",
+      "The Secret Life of Wolves, Pack Dynamics & Territory Wars",
+      "Animal Intelligence, Problem Solving & Tool Usage",
+      "Venomous Creatures & Biological Defensive Weapons",
+      "Birds of Prey: Golden Eagles, Falcons & Apex Aviators"
+    ],
+    "targetAudience": "Broad appeal across all ages and demographics, especially nature and wildlife enthusiasts.",
+    "cpm": "$8 – $16",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (High-action Shorts + Epic narrative Longs)",
+    "modelChannels": "BBC Earth, Animalogic, Casual Geographic",
+    "nameIdeas": ["Apex Instinct", "Predator Chronicle", "Wild Dominion"],
+    "sampleTitles": [
+      "Why the Wolf Pack Hierarchy You Learned in School Is Complete Myth",
+      "How a Golden Eagle Hunts Prey 4 Times Its Own Bodyweight",
+      "The Brutal Tactical Ambush of the Bengal Tiger Explained"
+    ],
+    "whyItWorks": "High visual drama and evergreen interest. Videos made in this niche continue to gather views for 5+ years without dating.",
+    "stockFootageKeywords": "Lions running, wolf in snow, eagle soaring, tiger stalking, jungle trees"
+  },
+  {
+    "id": "modern-stoicism-mindset",
+    "category": "Mindset & Psychology",
+    "channelName": "The Stoic Emperor & Mental Fortress",
+    "icon": "🏛️",
+    "tagline": "Ancient Marcus Aurelius philosophy, dopamine detoxing, and building unshakable mental discipline.",
+    "masterNiche": "Self-Improvement & Productivity",
+    "subNiches": [
+      "Stoic Emotional Regulation: Controlling What You Can Control",
+      "Atomic Habit Loops: Cue, Craving, Response & Reward Systems",
+      "Deep Work & Focus: Eradicating Chronic Digital Distractions",
+      "The True Neuroscience of Procrastination & How to Defeat It",
+      "Building Relentless Consistency When Motivation Runs Out"
+    ],
+    "targetAudience": "Ages 18–40, men and women seeking mental resilience, productivity, emotional calm, and self-mastery.",
+    "cpm": "$11 – $22",
+    "format": "shorts_only",
+    "formatLabel": "⚡ Shorts Only (Punchy, viral, dopamine-reset clips)",
+    "modelChannels": "Daily Stoic, Einzelgänger, Better Than Yesterday",
+    "nameIdeas": ["The Stoic Vault", "Iron Mindset", "The Aurelius Protocol"],
+    "sampleTitles": [
+      "Marcus Aurelius: The Rule for Remaining Calm When Insulted",
+      "The 72-Hour Dopamine Detox That Resets Your Focus Completely",
+      "Why Motivation Is a Scam (And How Consistency Beats Talent)"
+    ],
+    "whyItWorks": "Short-form philosophical quotes and mental models perform extraordinarily well on YouTube Shorts and TikTok, generating tens of millions of views with rapid subscriber growth.",
+    "stockFootageKeywords": "Statues of Roman thinkers, man looking at sunset, pouring water, clock ticking, library"
+  },
+  {
+    "id": "dark-psychology-money",
+    "category": "Mindset & Psychology",
+    "channelName": "Dark Psychology & Money Mind Games",
+    "icon": "🧠",
+    "tagline": "Cognitive biases, casino manipulation, marketing hypnosis, and con artist behavioral traps.",
+    "masterNiche": "Money Psychology & Consumer Behavior",
+    "subNiches": [
+      "Casino Psychology: No Clocks, Sound Loops & Near-Miss Mechanics",
+      "The Psychology of Impulse Buying & How Stores Steal Attention",
+      "Scam Detection: How Con Artists Manipulate Human Greed & Fear",
+      "The Sunk Cost Fallacy & Walking Away from Bad Decisions",
+      "Advertising Manipulation: Manufacturing Insecurities to Sell Cures"
+    ],
+    "targetAudience": "Ages 18–50, consumers, psychology students, traders, and people curious about human manipulation.",
+    "cpm": "$15 – $28",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Shorts for mind tricks + Longs for psychological breakdowns)",
+    "modelChannels": "Psych2Go, Sprouts, Aperture",
+    "nameIdeas": ["Subliminal Mind", "The Behavioral Code", "Psychology of Greed"],
+    "sampleTitles": [
+      "Why Casinos Have No Clocks and Curving Carpet Patterns",
+      "The Decoy Pricing Trick Stores Use to Force You to Buy the Large",
+      "The Sunk Cost Trap: Why Smart People Stay in Terrible Deals"
+    ],
+    "whyItWorks": "Reveals the unseen strings pulling human behavior. Viewers feel smarter after watching, creating massive shareability on social media.",
+    "stockFootageKeywords": "Casino roulette wheel, supermarket aisles, brain scan, shadows, magnifying glass"
+  },
+  {
+    "id": "canine-mastery-dog-breeds",
+    "category": "Animals & Pets",
+    "channelName": "Canine Mastery & Dog Breeds",
+    "icon": "🐕",
+    "tagline": "Dog breed histories, puppy psychology, training hacks, and senior pet longevity care.",
+    "masterNiche": "⭐ Dogs & Pets",
+    "subNiches": [
+      "Dog Breed Deep Dives: History, Temperament & Working Instincts",
+      "Dog Training Hacks: Stopping Barking, Biting & Leash Pulling",
+      "Senior Dog Health & Comfort: Prolonging Your Pet's Golden Years",
+      "Canine & Feline Psychology: Decoding Body Language & Tail Wags",
+      "Dangerous & Banned Dog Breeds: Myths vs Actual Statistics"
+    ],
+    "targetAudience": "Dog owners, puppy parents, animal enthusiasts worldwide. High discretionary spending on pet supplies.",
+    "cpm": "$12 – $24",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Cute/helpful Shorts + Breed guide Longs)",
+    "modelChannels": "Zak George, It's Me or the Dog, Animal Watch",
+    "nameIdeas": ["Canine Protocol", "The Dog Breed Vault", "Bark & Mind"],
+    "sampleTitles": [
+      "The Tibetan Mastiff: The Ancient War Dog That Guarded Monasteries",
+      "Why Your Dog Stares at You While Eating (The Hidden Psychology)",
+      "3 Senior Dog Mobility Hacks That Relieve Arthritis in 7 Days"
+    ],
+    "whyItWorks": "Pet owners adore their animals and click instantly on health, nutrition, and breed trivia. Huge potential for affiliate income (pet food, GPS collars, training courses).",
+    "stockFootageKeywords": "Golden retriever puppy, german shepherd training, dog running on grass, vet checkup"
+  },
+  {
+    "id": "minimalist-interior-design",
+    "category": "Lifestyle & Travel",
+    "channelName": "Minimalist Spaces & Architecture",
+    "icon": "🛋️",
+    "tagline": "Japandi aesthetic, small studio hacks, warm lighting architecture, and clutter-free living.",
+    "masterNiche": "⭐ Interior Design & Architecture",
+    "subNiches": [
+      "Small Apartment & Studio Space Hacks: Multiplying Square Footage",
+      "Minimalist & Japandi Design: Calm, Functional & Warm Living",
+      "Lighting Architecture: Layered Warm Light vs Sterile Overhead Glare",
+      "Walkthroughs of Modern Luxury Mansions & Architectural Marvels",
+      "Feng Shui Principles: Harmonizing Room Flow, Doors & Energy"
+    ],
+    "targetAudience": "Ages 22–55, homeowners, apartment dwellers, designers, and lovers of aesthetic calm.",
+    "cpm": "$14 – $26",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Aesthetic room Shorts + Full remodel tour Longs)",
+    "modelChannels": "Never Too Small, Architectural Digest, Paige Wassel",
+    "nameIdeas": ["Japandi Living", "Spatial Mastery", "The Warm Studio"],
+    "sampleTitles": [
+      "How a 300 Sq Ft Micro-Studio Multiplies Storage Without Clutter",
+      "The Japandi Design Rule That Makes Any Living Room Instantly Calmer",
+      "Why Big Overhead Ceiling Lights Ruin Your Evening Brain Chemistry"
+    ],
+    "whyItWorks": "Aesthetic, satisfying, visual content with sky-high re-watch value. Ideal for affiliate sponsorships with home goods, furniture, and lighting brands.",
+    "stockFootageKeywords": "Warm living room, wooden furniture, plants by window, soft ambient light, minimalist bedroom"
+  },
+  {
+    "id": "future-ai-tech-vanguard",
+    "category": "Tech & Future",
+    "channelName": "The AI Vanguard & Future Tech",
+    "icon": "🤖",
+    "tagline": "Dissecting the humanoid robot race, neural networks, semiconductor wars, and quantum computing.",
+    "masterNiche": "⭐ Tech & Digital Innovation",
+    "subNiches": [
+      "Artificial Intelligence: How LLMs & Neural Networks Work",
+      "The Humanoid Robotics & Factory Automation Boom",
+      "Cybersecurity Wars: How Elite Hackers Infiltrate Systems",
+      "The Future of Work: AI Collaboration vs Human Jobs",
+      "Autonomous Self-Driving Cars & The Future of Transit"
+    ],
+    "targetAudience": "Ages 18–50, software engineers, tech enthusiasts, futurists, venture investors.",
+    "cpm": "$20 – $38",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Breakthrough Shorts + Architecture deep dives)",
+    "modelChannels": "Fireship, Two Minute Papers, ColdFusion Tech, Matt Wolfe",
+    "nameIdeas": ["Neural Vanguard", "The AI Frontier", "Silicon Blueprint"],
+    "sampleTitles": [
+      "How Nvidia Quietly Built a Monopoly on the Entire Future of AI",
+      "The Humanoid Robot Race: Tesla Optimus vs Boston Dynamics",
+      "What Happens to Human White-Collar Jobs Over the Next 5 Years"
+    ],
+    "whyItWorks": "AI and robotics dominate current global news. Tech advertisers have immense budgets, generating top-tier CPM revenue.",
+    "stockFootageKeywords": "Robotic arms in factory, server racks blinking, hacker on keyboard, autonomous cars"
+  },
+  {
+    "id": "retire-abroad-travel",
+    "category": "Lifestyle & Travel",
+    "channelName": "Retire Overseas & Hidden World Gems",
+    "icon": "🌍",
+    "tagline": "Safe affordable countries to retire on $1,500/mo, hidden island escapes, and epic scenic rail journeys.",
+    "masterNiche": "⭐ Travel & Tourism",
+    "subNiches": [
+      "Top 10 Best Affordable & Safe Countries to Retire Overseas",
+      "Undiscovered & Hidden Gem Travel Destinations Around the World",
+      "Epic Scenic Train Journeys: Glacier Express & Historic Rail",
+      "Tropical Island Escapes: Crystal Lagoons & Atoll Paradises",
+      "Budget Travel Hacks: Exploring Western Europe on $50 a Day"
+    ],
+    "targetAudience": "Ages 40–70, aspiring retirees, digital nomads, and travel daydreamers looking for lower cost of living.",
+    "cpm": "$14 – $28",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Quick destination Shorts + Comprehensive guide Longs)",
+    "modelChannels": "Our Rich Journey, International Living, Gabriel Traveler",
+    "nameIdeas": ["Retire Abroad Hub", "The Overseas Haven", "Wanderlust Protocol"],
+    "sampleTitles": [
+      "Top 5 Countries Where You Can Live Like Royalty on $1,500/Month",
+      "The Hidden European Coastal Town Tourists Haven't Discovered Yet",
+      "The Most Beautiful Scenic Train Ride in the World (Swiss Glacier Express)"
+    ],
+    "whyItWorks": "Escapism and financial practicality combined. Massive demographic of baby boomers and Gen X seeking sunny, high-quality, affordable retirement destinations.",
+    "stockFootageKeywords": "Tropical beach, european historic alleyways, train through mountains, sunset cafe, palm trees"
+  },
+  {
+    "id": "real-estate-empires",
+    "category": "Finance & Wealth",
+    "channelName": "Real Estate Empires & Land Tycoons",
+    "icon": "🏢",
+    "tagline": "Rental cash flow blueprints, housing market price cycles, and how institutional funds buy neighborhoods.",
+    "masterNiche": "⭐ Real Estate & Property",
+    "subNiches": [
+      "Rental Property Investing for Monthly Cash Flow",
+      "Housing Market Crash Warning Signs & Price Cycles",
+      "REITs: Investing in Real Estate Without Buying Houses",
+      "First-Time Homebuyer Mistakes & Buying Strategies",
+      "Luxury Mega-Mansions & Ultra-High-End Real Estate"
+    ],
+    "targetAudience": "Ages 25–60, real estate investors, homeowners, buyers, and personal finance buffs.",
+    "cpm": "$24 – $45",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Shorts for deal tips + Longs for market analysis)",
+    "modelChannels": "Graham Stephan, Meet Kevin, BiggerPockets",
+    "nameIdeas": ["Property Tycoon", "The Land Ledger", "Cashflow Real Estate"],
+    "sampleTitles": [
+      "How Private Equity Quietly Bought Thousands of American Suburbs",
+      "The 1% Rule for Calculating Rental Property Cash Flow in Seconds",
+      "3 Warning Signs the Housing Market Is Heading Into a Freeze"
+    ],
+    "whyItWorks": "Mortgage, insurance, and property tech advertisers pay enormous sums for real estate views. Extremely loyal audience.",
+    "stockFootageKeywords": "Modern residential suburban homes, skyscraper skyline, signing house deeds, keys in hand"
+  },
+  {
+    "id": "food-science-supermarkets",
+    "category": "Science & Nature",
+    "channelName": "Food Science & Supermarket Secrets",
+    "icon": "🍔",
+    "tagline": "The chemistry of taste, how grocery stores manipulate your cart, and the ancient history of spices.",
+    "masterNiche": "Food, Nutrition & Culinary History",
+    "subNiches": [
+      "Sugar, Salt & Fat: The Food Industry's Bliss Point Formula",
+      "Supermarket Layout Psychology & Hidden Grocery Tricks",
+      "The Science of Taste, Umami & Why We Crave Junk Food",
+      "Fermentation Science: Sourdough, Kimchi, Cheese & Wine",
+      "How the Ancient Spice Trade Built & Destroyed Empires"
+    ],
+    "targetAudience": "Ages 18–60, foodies, consumers, history buffs, and health-conscious eaters.",
+    "cpm": "$11 – $22",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Viral grocery Shorts + Food history Longs)",
+    "modelChannels": "Adam Ragusea, Tasting History with Max Miller, Johnny Harris food series",
+    "nameIdeas": ["Gastronomy Vault", "The Food Equation", "Supermarket Psychology"],
+    "sampleTitles": [
+      "The 'Bliss Point': How Snack Companies Hack Your Brain Chemistry",
+      "Why Grocery Stores Put Milk and Eggs in the Furthest Back Corner",
+      "The Medieval Spice War That Killed Millions for Black Pepper"
+    ],
+    "whyItWorks": "Everyone eats every day. Revealing the corporate and chemical secrets behind everyday supermarket items creates instantaneous curiosity and virality.",
+    "stockFootageKeywords": "Supermarket aisle cart, chef searing steak, spices in wooden bowls, bakery bread, kitchen"
+  },
+  {
+    "id": "muscle-hypertrophy-mechanics",
+    "category": "Health & Longevity",
+    "channelName": "Hypertrophy Science & Lifter Mechanics",
+    "icon": "🏋️",
+    "tagline": "Biomechanics of muscle growth, injury-proof lifting, and high-protein nutrition science.",
+    "masterNiche": "Fitness & Bodybuilding",
+    "subNiches": [
+      "Muscle Hypertrophy Science: Maximum Muscle Growth",
+      "High-Protein Meal Planning, Macros & Fat Loss",
+      "Strength Training Fundamentals: Squat, Bench & Deadlift",
+      "Exercise Recovery, Overtraining & Rest Day Science",
+      "Posture Correction, Forward Head & Spinal Alignment"
+    ],
+    "targetAudience": "Ages 18–45, gym-goers, lifters, athletes, and anyone wanting to build muscle scientifically.",
+    "cpm": "$12 – $24",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Exercise form Shorts + Full workout science Longs)",
+    "modelChannels": "Jeff Nippard, Renaissance Periodization, Jeremy Ethier",
+    "nameIdeas": ["Hypertrophy Lab", "The Science of Lifting", "Anabolic Mechanics"],
+    "sampleTitles": [
+      "The Science-Backed Rep Range That Builds the Most Muscle (Not What You Think)",
+      "Why Overtraining Is Ruining Your Gains: The Rest Day Science",
+      "Fix Forward Head Posture in 3 Simple Daily Spinal Stretches"
+    ],
+    "whyItWorks": "Gym culture is massive on YouTube. Viewers re-watch form tutorials repeatedly, driving watch-time and algorithmic recommendation velocity.",
+    "stockFootageKeywords": "Barbell bench press, dumbbells in gym, healthy protein meal, stretching spine, running"
+  },
+  {
+    "id": "social-dynamics-toxic-traits",
+    "category": "Mindset & Psychology",
+    "channelName": "Social Dynamics & Reading People",
+    "icon": "👥",
+    "tagline": "Micro-expressions, toxic relationship red flags, attachment theory, and effortless social confidence.",
+    "masterNiche": "Relationship & Social Psychology",
+    "subNiches": [
+      "Toxic Relationship Red Flags, Gaslighting & Narcissist Traits",
+      "Attachment Theory: Anxious, Avoidant & Secure Dating Styles",
+      "Nonverbal Body Language: Reading Micro-Expressions & Posture",
+      "Building Unshakable Social Confidence & Overcoming Shyness",
+      "The Psychology of Trust: How It Is Built & Why It Breaks"
+    ],
+    "targetAudience": "Ages 18–45, people navigating modern dating, workplace politics, friendships, and self-confidence.",
+    "cpm": "$12 – $22",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Shorts for body language clues + Longs for relationship deep dives)",
+    "modelChannels": "The School of Life, Charisma on Command, Matthew Hussey",
+    "nameIdeas": ["Human Dynamics", "The Attachment Code", "MicroExpression Lab"],
+    "sampleTitles": [
+      "3 Subtle Micro-Expressions That Reveal Someone Is Lying to Your Face",
+      "The Anxious-Avoidant Dating Trap (And Why You Keep Repeating It)",
+      "How to Set Unshakable Boundaries Without Feeling Guilty"
+    ],
+    "whyItWorks": "Human connection and self-doubt are universal. Relationship and psychology content has extraordinarily high emotional engagement and comment section activity.",
+    "stockFootageKeywords": "Two people talking at cafe, close up of eyes smiling, walking alone in city, friends laughing"
+  }
+]
