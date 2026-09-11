@@ -335,8 +335,9 @@ Output ONLY pure JSON:
 // Core Video Generation Pipeline
 async function generateVideoJob({ durationMinutes, topic, customTitle, customDescription, visualSource, mainNiche = "Science", subNiche = "General", format = 'horizontal', autoSchedule = false, channelId, jobId }) {
     try {
-        // --- AUTO-LEARNING: FETCH ANALYTICS FEEDBACK ---
+        // --- AUTO-LEARNING: FETCH ANALYTICS FEEDBACK & NEGATIVE DEDUPLICATION MEMORY ---
         let analyticsFeedback = "";
+        let pastTitlesContext = "";
         try {
             if (process.env.DATABASE_URL) {
                 const topRes = await db.query(`
@@ -362,6 +363,23 @@ DATA-DRIVEN FEEDBACK LOOP (LEARN FROM PAST VIDEOS):
 ${topRes.rows.map(r => `  * Title: "${r.title}" (Retention: ${r.retention}%) - Analyze why this worked and emulate its pacing/hooks.`).join('\n')}
 - Lowest Retention Videos to AVOID:
 ${worstRes.rows.map(r => `  * Title: "${r.title}" (Retention: ${r.retention}%) - Avoid this topic or change the narrative structure completely.`).join('\n')}
+`;
+                }
+
+                // Fetch recent titles for this niche/channel to prevent repetitive content
+                const pastTitlesRes = await db.query(
+                    "SELECT title FROM videos WHERE (niche = $1 OR (script->>'subNiche') = $2) AND title IS NOT NULL AND title != '' AND title != 'Auto-Gen Failed' ORDER BY created_at DESC LIMIT 15",
+                    [mainNiche, subNiche]
+                );
+                if (pastTitlesRes.rows.length > 0) {
+                    pastTitlesContext = `
+════════════════════════════════════════════════════════
+⛔ STRICT NEGATIVE DEDUPLICATION FILTER (MANDATORY):
+The following ${pastTitlesRes.rows.length} video titles were RECENTLY GENERATED on this channel in this niche:
+${pastTitlesRes.rows.map((r, idx) => `  ${idx + 1}. "${r.title}"`).join('\n')}
+YOU ARE STRICTLY FORBIDDEN from repeating, cloning, or writing about these exact same subjects, companies, or angles. 
+You MUST explore a COMPLETELY FRESH real-world case study, specific historical event, counter-intuitive mechanism, or obscure phenomenon that has NOT been covered above. Zero repetition allowed.
+════════════════════════════════════════════════════════
 `;
                 }
             }
@@ -409,10 +427,22 @@ The user specified the exact topic/angle: "${topic}".
 You MUST base the entire script directly on "${topic}" within the sub-niche "${subNiche}". Do NOT drift into generic topics.`;
         } else {
             specificIdeaInstruction = `
-CRITICAL TOPIC REQUIREMENT [Random Seed: ${randomSeed}]:
-The user has NOT provided a specific topic, only the sub-niche "${subNiche}". 
-You MUST pick ONE hyper-specific, real-world historical event, case study, obscure psychological phenomenon, corporate scandal, or specific entity under "${subNiche}".
-FORBIDDEN: Do NOT write generic overviews or surface-level advice. Pick a concrete narrative or case study to ensure massive uniqueness every time.`;
+════════════════════════════════════════════════════════
+🎯 ELITE TOPIC SELECTION MANDATE [Seed: ${randomSeed}]:
+Assigned Sub-Niche: "${subNiche}" (under "${mainNiche}")
+
+ABSOLUTELY FORBIDDEN TOPIC STYLES:
+❌ NO generic beginner guides or surface tutorials ("How to start X", "5 habits of Y", "The basics of Z").
+❌ NO abstract theoretical overviews that sound like a boring encyclopedia entry.
+❌ NO recycled, clichéd advice that every generic automated channel posts.
+
+MANDATORY NARRATIVE REQUIREMENT:
+You MUST choose ONE specific, concrete, high-stakes real-world story:
+1. A SPECIFIC named person, company, trial, or historical event (with real years, real stakes, dollar amounts, and real consequences).
+2. OR a SPECIFIC counter-intuitive scientific mechanism / biological study (with real research details, Stanford/Okinawa/Harvard references).
+3. OR a SPECIFIC high-dollar corporate scandal, audit failure, or psychological anomaly.
+Treat this as a broadcast-grade investigative documentary or high-retention video essay (MagnatesMedia, ColdFusion, Vox, Huberman standard).
+════════════════════════════════════════════════════════`;
         }
 
         // --- EXPANDED 24-NICHE PRECISION ENGINE & VISUAL AESTHETIC DIRECTIVES ---
@@ -667,6 +697,7 @@ CRITICAL LONG-FORM (16:9) PACING RULES:
         const systemPrompt = `You are an elite YouTube scriptwriter and retention expert specializing in the "${safeMainNiche}" niche, specifically focusing on "${safeSubNiche}". 
 Your goal is to write a highly viral, retention-optimized script for a ${format} YouTube video.
 ${specificIdeaInstruction}
+${pastTitlesContext}
 ${analyticsFeedback}
 ${nicheRules}
 ${formatPacingRules}
@@ -715,10 +746,35 @@ NUMBERED LIST MANDATE:
 If the topic specifies a numbered list ("10 habits", "7 secrets"), you MUST cover EVERY item
 with equal depth. Item 1 through Item N must all appear with full narration.
 
-SEO & METADATA RULES:
-- Title: Psychologically compelling. MrBeast-level curiosity but factually accurate.
-- Tags: 25-30 tags mixing short-tail (1 word), medium-tail (2-3 words), long-tail (5+ words), trending (2026).
-- Description: Compelling hook paragraph → Timestamps/Chapters → In-depth topic context → High-volume search keywords → 3-5 trending hashtags.
+════════════════════════════════════════════════════════
+🎯 HIGH-CTR TITLE & PACKAGING RULES (COLDFUSION / MAGNATES / VOX STANDARD):
+════════════════════════════════════════════════════════
+BANNED TITLE CLICHÉS (Immediate Rejection):
+❌ "You Won't Believe", "The Shocking Truth About", "Secret Revealed", "Mind-Blowing", "Ultimate Guide", "Everything You Need to Know".
+
+MANDATORY TITLE PSYCHOLOGY — Use one of these proven High-Authority Formulas:
+1. THE INFORMATION GAP: "How [Company/Entity] Quietly [Shocking Feat or Catastrophe]"
+   (e.g., "How Nvidia Quietly Monopolized the Next 20 Years")
+2. THE CRITICAL MOMENT / FAILURE: "The [Specific Time/Action] That Destroyed [Subject]"
+   (e.g., "The 37 Seconds That Doomed Flight 447", "The Arrogance That Destroyed a $47 Billion Empire")
+3. THE SCIENTIFIC / BIOLOGICAL PARADOX: "Why [Group/Entity] in [Location] [Shocking Outcome]"
+   (e.g., "Why 80-Year-Olds in Okinawa Outlive Everyone", "The Hidden Cellular Trigger Behind Rapid Aging")
+4. THE INVESTIGATIVE FORENSIC: "The Math Behind [Famous Collapse / Event]"
+   (e.g., "The Math Behind Wall Street's Greatest Ponzi Scheme")
+Length: 45-65 characters maximum so it is never cut off on mobile YouTube feeds.
+
+DESCRIPTION & TAGS:
+- Description:
+  1. Opening Hook: 2 sentences establishing the high-stakes conflict or core premise.
+  2. Chapters/Timestamps: Real estimated breakdown (e.g., 0:00 - The Discovery, 1:30 - The Breakdown, etc.).
+  3. Documentary Context: 100-150 words of rich, search-indexed context with real names and keywords.
+  4. Exactly 3-5 trending hashtags (e.g., #documentary #finance #investigation).
+- Tags: 15-20 targeted, relevant tags (no keyword stuffing).
+
+THUMBNAIL SPECIFICATION:
+- hasThumbnailText: Set to FALSE by default. Top documentary channels let pure 4K cinematic art do the work. Set to true ONLY if 1-2 words (e.g. "EXPOSED" or "TOO LATE") dramatically enhance the visual.
+- thumbnailText: 1-2 words MAX if hasThumbnailText is true. Otherwise empty string "".
+- thumbnailPrompt: A full-bleed, cinematic, photorealistic 16:9 or 9:16 masterpiece. Film still photography, dramatic volumetric lighting, intense emotional focal point, 4k sharp. NO TEXT, NO LETTERS, NO WATERMARKS in the image.
 
 TTS COMPLIANCE (Gemini TTS safety filter — violations cause generation failure):
 - NEVER use: kill, murder, rape, drug, suicide, blood, gore, bomb, terrorist
@@ -1765,16 +1821,18 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                 nicheVisualStyle = 'Dramatic central focal point with volumetric lighting, deep shadows, cinematic teal-orange color grade, extreme depth of field';
             }
 
-            // 2. ALWAYS overlay text — but rewrite the thumbnail prompt to pre-compose space for it
-            const thumbTextRaw = (scriptData.thumbnailText || scriptData.title?.split(' ').slice(0, 3).join(' ') || 'SHOCKING').trim();
+            // 2. THUMBNAIL COMPOSITION & TEXT POLICY
+            // By default, top documentary channels (MagnatesMedia, ColdFusion, Lemmino) use 100% clean cinematic art.
+            // Text is ONLY composited if the script explicitly determined hasThumbnailText === true AND provided a punchy 1-2 word mystery phrase.
+            const shouldRenderText = scriptData.hasThumbnailText === true && scriptData.thumbnailText && scriptData.thumbnailText.trim().length > 0;
+            const thumbTextRaw = (scriptData.thumbnailText || '').trim();
 
-            // 3. THUMBNAIL PROMPT — YouTube-proven compositional spec
-            // Left 55%: dramatic subject. Right 45%: clean gradient zone for text.
+            // 3. FULL-FRAME 4K CINEMATIC THUMBNAIL PROMPT (FLUX 1.1 PRO)
             const videoTitle = (scriptData.title || '').replace(/"/g, "'");
             const aesthetic = scriptData.global_visual_style || nicheVisualStyle;
 
             let thumbPrompt = '';
-            if (scriptData.thumbnailPrompt && scriptData.thumbnailPrompt.length > 60) {
+            if (scriptData.thumbnailPrompt && scriptData.thumbnailPrompt.length > 25) {
                 thumbPrompt = scriptData.thumbnailPrompt
                     .replace(/with.*?text.*?reading.*?['"][^'"]+['"][,.]?/gi, '')
                     .replace(/NO TEXT[^.]*\.?/gi, '')
@@ -1782,15 +1840,15 @@ duration ${c.duration.toFixed(3)}`).join('\n');
             }
 
             const thumbImagePrompt = [
-                `Ultra-high-quality YouTube thumbnail. ${aesthetic}.`,
-                thumbPrompt ? thumbPrompt + '.' : '',
-                `Topic: "${videoTitle}".`,
-                `COMPOSITION: Left 55% of frame — ONE dramatic photorealistic focal subject (person with extreme shocked/fearful/amazed expression, or a dramatic object/scene related to the topic). Right 45% of frame — intentionally clean, dark-to-transparent gradient fade, negative space reserved for text overlay (no objects, no faces, no details in right zone).`,
-                `STYLE: Cinematic, ultra-vivid colours, deep contrast, harsh directional lighting from left, shallow depth of field. Photorealistic, 4K sharp.`,
-                `NO TEXT. NO WORDS. NO LETTERS. NO WATERMARKS anywhere in the image.`
+                `Masterpiece YouTube thumbnail, 4K resolution, cinematic film still, IMAX documentary aesthetic.`,
+                aesthetic ? `Visual style: ${aesthetic}.` : '',
+                thumbPrompt ? `${thumbPrompt}.` : '',
+                `Central Subject / Theme: "${videoTitle}".`,
+                `COMPOSITION: Full-frame dynamic composition, high visual tension, dramatic chiaroscuro lighting, deep shadow contrast, cinematic volumetric light beams, photorealistic depth of field.`,
+                `STRICTLY NO TEXT, NO LETTERS, NO WORDS, NO BORDERS, NO WATERMARKS, NO LOGOS anywhere in the image.`
             ].filter(Boolean).join(' ');
 
-            addLog(`[THUMBNAIL] Generating with topic-aware compositional prompt...`);
+            addLog(`[THUMBNAIL] Generating 4K full-bleed cinematic art via Flux-1.1-Pro...`);
 
             const thumbUrl = await safeReplicateRun(
                 "black-forest-labs/flux-1.1-pro",
@@ -1812,117 +1870,83 @@ duration ${c.duration.toFixed(3)}`).join('\n');
             }
             
             const thumbBuffer = await withRetry(() => axios.get(actualThumbUrl, { responseType: 'arraybuffer' }), "Download Thumbnail");
-            
-            // 4. SERVER-SIDE TEXT COMPOSITOR — always overlay text in the RIGHT ZONE
-            try {
-                const sharp = require('sharp');
-                const imgBuf = Buffer.from(thumbBuffer.data);
-                const meta = await sharp(imgBuf).metadata();
-                const W = meta.width || 1920;
-                const H = meta.height || 1080;
 
-                // Embed Anton font as base64
-                const fontPath = path.join(__dirname, 'assets', 'fonts', 'Anton-Regular.ttf');
-                let fontFaceCSS = '';
-                if (fs.existsSync(fontPath)) {
-                    const fontB64 = fs.readFileSync(fontPath).toString('base64');
-                    fontFaceCSS = `@font-face { font-family: 'Anton'; src: url('data:font/truetype;base64,${fontB64}') format('truetype'); }`;
-                }
-                const fontFamily = fontFaceCSS ? 'Anton' : 'Arial Black, sans-serif';
-                const accentColor = highlightColorHex || '#FFD700';
-                const thumbDisplay = thumbTextRaw.toUpperCase();
-
-                // Split into lines (one word per line if short, split at midpoint for longer)
-                const words = thumbDisplay.split(' ');
-                let lines;
-                if (words.length <= 2) {
-                    lines = words; // each word its own line — big and bold
-                } else {
-                    const mid = Math.ceil(words.length / 2);
-                    lines = [words.slice(0, mid).join(' '), words.slice(mid).join(' ')];
-                }
-
-                // Text zone: right 45% of image, vertically centred
-                const zoneX = Math.round(W * 0.55);
-                const zoneW = W - zoneX;
-
-                // Font size: fill ~90% of zone width
-                const longestLine = lines.reduce((a, b) => a.length > b.length ? a : b, '');
-                let fontSize = Math.min(
-                    Math.round(H * 0.28),                                    
-                    Math.round(zoneW * 0.90 / (longestLine.length * 0.52))   
-                );
-                fontSize = Math.max(fontSize, Math.round(H * 0.09)); 
-                const lineH = Math.round(fontSize * 1.10);
-                const strokeW = Math.max(5, Math.round(fontSize * 0.06));
-                const pad = Math.round(fontSize * 0.18); 
-
-                const totalTextH = lines.length * lineH;
-                const blockStartY = Math.round((H - totalTextH) / 2); 
-
-                const lineEls = lines.map((line, idx) => {
-                    const textY = blockStartY + idx * lineH + lineH * 0.82;
-                    const textX = zoneX + Math.round(zoneW / 2); // centred in zone
-                    // Approximate text width for pill backing
-                    const approxTW = Math.round(line.length * fontSize * 0.52);
-                    const minPillW = Math.round(fontSize * 2.5); // min pill so short words still look good
-                    const finalPillW = Math.max(approxTW, minPillW);
-                    const pillX = textX - Math.round(finalPillW / 2) - pad;
-                    const pillY = blockStartY + idx * lineH - Math.round(lineH * 0.12);
-                    const pillW = finalPillW + pad * 2;
-                    const pillH2 = lineH + Math.round(lineH * 0.12);
-                    const r = Math.round(pillH2 * 0.18); // rounded corner radius
-
-                    return `
-                        <rect x="${pillX}" y="${pillY}" width="${pillW}" height="${pillH2}" rx="${r}" ry="${r}"
-                              fill="#000000" fill-opacity="0.78"/>
-                        <text
-                            x="${textX}" y="${textY}"
-                            font-family="${fontFamily}, Impact, Arial Black, sans-serif"
-                            font-size="${fontSize}"
-                            font-weight="900"
-                            fill="${accentColor}"
-                            stroke="#000000"
-                            stroke-width="${strokeW}"
-                            stroke-linejoin="round"
-                            paint-order="stroke fill"
-                            filter="url(#glow)"
-                            text-anchor="middle"
-                            dominant-baseline="auto"
-                            letter-spacing="2"
-                        >${line}</text>`;
-                }).join('\n');
-
-                // Vertical dark gradient on the right zone to ensure zone is always readable
-                const svgOverlay = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <style>${fontFaceCSS}</style>
-                        <linearGradient id="zone" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
-                            <stop offset="40%" stop-color="#000000" stop-opacity="0.55"/>
-                            <stop offset="100%" stop-color="#000000" stop-opacity="0.80"/>
-                        </linearGradient>
-                        <filter id="glow" x="-10%" y="-10%" width="120%" height="120%">
-                            <feDropShadow dx="0" dy="3" stdDeviation="10" flood-color="#000000" flood-opacity="1"/>
-                            <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="${accentColor}" flood-opacity="0.5"/>
-                        </filter>
-                    </defs>
-                    <!-- Right-zone darkening gradient -->
-                    <rect x="${zoneX - Math.round(W * 0.08)}" y="0" width="${W - zoneX + Math.round(W * 0.08)}" height="${H}" fill="url(#zone)"/>
-                    <!-- Text with pill backings -->
-                    ${lineEls}
-                </svg>`;
-
-                const composited = await sharp(imgBuf)
-                    .composite([{ input: Buffer.from(svgOverlay), blend: 'over' }])
-                    .jpeg({ quality: 97 })
-                    .toBuffer();
-
-                fs.writeFileSync(thumbLocalPath, composited);
-                addLog(`[THUMBNAIL] Composited: "${thumbDisplay}" | ${lines.length} line(s), ${fontSize}px, right-zone layout`);
-            } catch (sharpErr) {
-                console.warn('[THUMBNAIL] Compositor failed, saving raw:', sharpErr.message);
+            // 4. CLEAN CINEMATIC ART VS SLEEK TYPOGRAPHY
+            if (!shouldRenderText) {
+                // Pure, full-bleed 4K cinematic art (Clean aesthetic — no tacky black boxes)
                 fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
+                addLog(`[THUMBNAIL] Clean 4K cinematic thumbnail saved (pure art, zero text overlay).`);
+            } else {
+                // Sleek typography (NO black pill boxes, NO dark side gradients)
+                try {
+                    const sharp = require('sharp');
+                    const imgBuf = Buffer.from(thumbBuffer.data);
+                    const meta = await sharp(imgBuf).metadata();
+                    const W = meta.width || 1920;
+                    const H = meta.height || 1080;
+
+                    const fontPath = path.join(__dirname, 'assets', 'fonts', 'Anton-Regular.ttf');
+                    let fontFaceCSS = '';
+                    if (fs.existsSync(fontPath)) {
+                        const fontB64 = fs.readFileSync(fontPath).toString('base64');
+                        fontFaceCSS = `@font-face { font-family: 'Anton'; src: url('data:font/truetype;base64,${fontB64}') format('truetype'); }`;
+                    }
+                    const fontFamily = fontFaceCSS ? 'Anton' : 'Impact, Arial Black, sans-serif';
+                    const accentColor = highlightColorHex || '#FFD700';
+                    const thumbDisplay = thumbTextRaw.toUpperCase();
+
+                    const words = thumbDisplay.split(' ').slice(0, 3);
+                    const lines = words.length <= 2 ? words : [words.slice(0, 2).join(' '), words.slice(2).join(' ')];
+
+                    const fontSize = Math.round(H * 0.16);
+                    const lineH = Math.round(fontSize * 1.05);
+                    const strokeW = Math.max(6, Math.round(fontSize * 0.07));
+                    const totalTextH = lines.length * lineH;
+                    const startY = Math.round((H - totalTextH) / 2);
+
+                    const lineEls = lines.map((line, idx) => {
+                        const textY = startY + idx * lineH + lineH * 0.82;
+                        const textX = Math.round(W * 0.72); // cleanly placed on right without blocking central subject
+                        return `
+                            <text
+                                x="${textX}" y="${textY}"
+                                font-family="${fontFamily}, Impact, Arial Black, sans-serif"
+                                font-size="${fontSize}"
+                                font-weight="900"
+                                fill="${accentColor}"
+                                stroke="#000000"
+                                stroke-width="${strokeW}"
+                                stroke-linejoin="round"
+                                paint-order="stroke fill"
+                                filter="url(#dropShadow)"
+                                text-anchor="middle"
+                                letter-spacing="3"
+                            >${line}</text>`;
+                    }).join('\n');
+
+                    // Soft ambient drop-shadow filter — NO solid black pill boxes
+                    const svgOverlay = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <style>${fontFaceCSS}</style>
+                            <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feDropShadow dx="0" dy="6" stdDeviation="14" flood-color="#000000" flood-opacity="0.95"/>
+                                <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#000000" flood-opacity="0.90"/>
+                            </filter>
+                        </defs>
+                        ${lineEls}
+                    </svg>`;
+
+                    const composited = await sharp(imgBuf)
+                        .composite([{ input: Buffer.from(svgOverlay), blend: 'over' }])
+                        .jpeg({ quality: 97 })
+                        .toBuffer();
+
+                    fs.writeFileSync(thumbLocalPath, composited);
+                    addLog(`[THUMBNAIL] Sleek cinematic typography applied: "${thumbDisplay}" (clean shadow, no black box).`);
+                } catch (sharpErr) {
+                    console.warn('[THUMBNAIL] Typography compositor fallback, saving pure art:', sharpErr.message);
+                    fs.writeFileSync(thumbLocalPath, thumbBuffer.data);
+                }
             }
 
             try { fs.copyFileSync(thumbLocalPath, legacyThumbPath); } catch (_) {}
