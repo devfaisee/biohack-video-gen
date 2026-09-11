@@ -422,5 +422,110 @@
       "Lighting Architecture: Layered Warm Light vs Sterile Overhead Glare",
       "Sustainable Furniture Restoration & Upcycling Vintage Pieces"
     ]
+  },
+  "⭐ Ancient History & Civilizations": {
+    "_stockSafe": true,
+    "description": "Fall of mighty empires, lost Roman legions, Egyptian pharaohs, medieval siege warfare, and Bronze Age mysteries.",
+    "subNiches": [
+      "The Fall of the Roman Empire: Corruption, Invasions & Collapse",
+      "Ancient Egypt: Pharaoh Tomb Curses, Pyramids & Engineering",
+      "Medieval Siege Warfare: Catapults, Castles & Starvation Tactics",
+      "The Bronze Age Collapse: How Civilizations Vanished in 50 Years",
+      "The Spartan Military Machine: Agoge Training & Thermopylae",
+      "Alexander the Great: Conquering the Known World by Age 30",
+      "The Viking Invasions: Longships, Raids & The Great Heathen Army",
+      "Samurai Warfare: Bushido Code, Katanas & Feudal Clan Battles",
+      "The Byzantine Empire: 1,000 Years of Survival After Rome Fell",
+      "The Silk Road Empires: Genghis Khan & The Mongol Horde Conquests",
+      "Gladiator Bloodsports: The Colosseum & Roman Propaganda",
+      "Lost Civilizations: The Indus Valley & Mesopotamia Secrets",
+      "The Black Death Plague: How Disease Destroyed Feudal Europe",
+      "The Knights Templar: Wealth, Crusades & Friday the 13th Arrests",
+      "Ancient Greek Philosophy & The Golden Age of Athens"
+    ]
+  },
+  "⭐ Space, Astronomy & The Cosmos": {
+    "_stockSafe": true,
+    "description": "James Webb discoveries, supermassive black holes, dying stars, the Fermi paradox, and cosmic anomalies.",
+    "subNiches": [
+      "James Webb Space Telescope: Shocking Discoveries That Break Physics",
+      "Supermassive Black Holes: The Monsters at the Centers of Galaxies",
+      "The Fermi Paradox: Where Are All the Alien Civilizations?",
+      "The Death of Our Sun & The Ultimate Fate of Planet Earth",
+      "Exoplanets That Defy Logic: Diamond Planets & Iron Rain Worlds",
+      "Neutron Stars & Magnetars: The Most Violent Objects in Space",
+      "The Secret Moons of Jupiter & Saturn: Oceans Beneath the Ice",
+      "Voyager 1 & 2: The Loneliest Human Probes in Interstellar Space",
+      "Dark Matter & Dark Energy: The 95% of the Universe We Cannot See",
+      "The Big Bang & Cosmic Inflation: What Existed Before Time?",
+      "Rogue Planets: Giant Nomads Wandering the Pitch-Black Void",
+      "Asteroid Impact Science: How Apophis & Near-Earth Rocks Are Tracked",
+      "The Multiverse Theory & Higher Dimensional Physics Explained",
+      "Living on Mars: The Harsh Biological Realities Humans Face",
+      "The Event Horizon: What Happens If You Fall Into a Black Hole"
+    ]
+  },
+  "⭐ Military & Modern Defense Technology": {
+    "_stockSafe": true,
+    "description": "5th-gen stealth fighters, nuclear submarines, aircraft carrier battle groups, missile shields, and tactical geopolitics.",
+    "subNiches": [
+      "5th-Gen Stealth Fighters: F-35 vs F-22 vs J-20 Technology Breakdown",
+      "Inside Nuclear Submarines: Silent Killers Under Arctic Ice",
+      "Aircraft Carrier Battlegroups: The Supreme Power of Floating Cities",
+      "The Malacca Strait & Global Maritime Chokepoint Geopolitics",
+      "Hypersonic Missile Technology & Anti-Air Defense Shields",
+      "Special Operations Warfare: Navy SEALs & SAS Covert Tactics",
+      "Drone Swarms & The Future of Autonomous Battlefield Warfare",
+      "Electronic Warfare & Radar Jamming: The Invisible Combat Domain",
+      "Main Battle Tanks Evolution: Armor, Active Protection & Javelins",
+      "The Taiwan Strait: The Most Dangerous Geopolitical Flashpoint",
+      "Satellite Warfare: How Militaries Can Blind Entire Nations",
+      "The Logistics of War: How Armies Feed, Fuel & Arm Millions",
+      "Strategic Bomber Fleets: The B-2 Spirit & B-21 Raider Disruption",
+      "Cyber Defense Warfare: State-Sponsored Hackers & Infrastructure",
+      "Cold War Secret Technology: Declassified Spycraft & Skunk Works"
+    ]
+  },
+  "⭐ Unsolved Mysteries & Dark Forensics": {
+    "_stockSafe": true,
+    "description": "Vanished expeditions, cold case forensics, historical enigmas, cryptographic codes, and eerie true mysteries.",
+    "subNiches": [
+      "The Dyatlov Pass Incident: What Really Killed the 9 Skiers?",
+      "The Voynich Manuscript: The Centuries-Old Cipher No One Can Crack",
+      "Vanished Flights & Maritime Ghost Ships: The Mary Celeste & Beyond",
+      "The Bermuda Triangle: Navigational Science vs Paranormal Lore",
+      "The Disappearance of the Roanoke Lost Colony: What History Knows",
+      "Unsolved Forensic Cold Cases That Baffled the FBI for Decades",
+      "The Oak Island Money Pit: Millions Spent Searching for Nothing?",
+      "Kryptos: The Unsolved CIA Sculpture Code at Langley Headquarters",
+      "The Mysterious Taos Hum & Unexplained Global Audio Phenomenon",
+      "Lost Arctic Expeditions: The Tragic Fate of Sir John Franklin",
+      "Ancient Out-Of-Place Artifacts That Mainstream Science Cannot Explain",
+      "The Somerton Man Mystery: The Secret Code in the Pocket",
+      "The Tunguska Siberian Explosion: Meteorite or Something Stranger?",
+      "Spontaneous Human Combustion: Medical Myths vs Forensic Facts",
+      "The Nazca Lines: Massive Geoglyphs Carved in the Peruvian Desert"
+    ]
+  },
+  "⭐ Mega-Engineering & Human Marvels": {
+    "_stockSafe": true,
+    "description": "Deepest undersea tunnels, megastructure skyscrapers, colossal dams, canal bypasses, and extreme engineering feats.",
+    "subNiches": [
+      "The Three Gorges Dam: The Megaproject That Slowed Earth's Rotation",
+      "How Undersea Tunnels Are Dug: The Channel Tunnel & Gotthard Base",
+      "Burj Khalifa & Megatall Towers: How Engineers Defy Hurricane Winds",
+      "The Panama Canal Expansion: Moving Container Ships Across Mountains",
+      "Mega-Bridges of the World: Longest Suspension & Ocean Crossings",
+      "The Nuclear Sarcophagus: Engineering the Chernobyl Arch Containment",
+      "Deep-Sea Oil Rigs: Floating Titanium Giants Battling Category 5 Storms",
+      "The Dutch Delta Works: The Most Audacious Storm Barrier on Earth",
+      "Underground Particle Colliders: The Massive Engineering of CERN's LHC",
+      "Airport Construction on Artificial Islands: Kansai & Hong Kong Feats",
+      "Mountain Passes & Extreme Rail: The Qinghai-Tibet High Altitude Line",
+      "Desalination Megaplants: Turning Sea Water Into Drinking Water for Cities",
+      "The Las Vegas Sphere: Engineering the World's Largest LED Screen",
+      "Mine Engineering Marvels: The Deepest Gold Mines on Earth (4km Down)",
+      "Space Elevators & Future Megastructures: Physics Feasibility Breakdown"
+    ]
   }
 }

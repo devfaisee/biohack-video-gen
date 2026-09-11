@@ -135,6 +135,13 @@ async function autoGenerateVideos() {
             "Travel":            { targetShortsRatio: 0.5, videosPerDay: 1 }, // Beautiful visual lists
             "Pets":              { targetShortsRatio: 0.7, videosPerDay: 1 }, // Cute/helpful Shorts dominate
             "Interior Design":   { targetShortsRatio: 0.6, videosPerDay: 1 }, // Aesthetic visual styling
+
+            // ── TIER 5: HIGH-RETENTION VIRAL TITANS (15-30m Watch Time) ──
+            "Ancient History":   { targetShortsRatio: 0.3, videosPerDay: 1 }, // Epic long-form documentaries
+            "Space":             { targetShortsRatio: 0.5, videosPerDay: 1 }, // Cosmic awe Shorts + astronomy Longs
+            "Military":          { targetShortsRatio: 0.4, videosPerDay: 1 }, // Hardware Shorts + tactical Longs
+            "Unsolved Mysteries":{ targetShortsRatio: 0.3, videosPerDay: 1 }, // Deep investigative cold files
+            "Mega-Engineering":  { targetShortsRatio: 0.4, videosPerDay: 1 }, // Colossal megastructure Longs
             
             // ── FALLBACK ──
             "default":           { targetShortsRatio: 0.5, videosPerDay: 1 }

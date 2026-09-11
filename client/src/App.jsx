@@ -102,8 +102,20 @@ function Navbar() {
         <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>
           <LayoutDashboard size={16} /> Creator
         </Link>
-        <Link to="/masterbook" className={`nav-link ${location.pathname === '/masterbook' ? 'active' : ''}`}>
-          <BookOpen size={16} /> Masterbook
+        <Link to="/masterbook" className={`nav-link ${location.pathname === '/masterbook' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <BookOpen size={16} /> 25 Niches & Blueprints
+          <span style={{ 
+            fontSize: '0.65rem', 
+            background: 'linear-gradient(135deg, #6366f1, #a855f7)', 
+            color: '#fff', 
+            padding: '2px 7px', 
+            borderRadius: '10px', 
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            Auto-Pilot
+          </span>
         </Link>
         <Link to="/channels" className={`nav-link ${location.pathname === '/channels' ? 'active' : ''}`}>
           <Youtube size={16} /> Channels

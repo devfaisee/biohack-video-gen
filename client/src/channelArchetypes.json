@@ -586,5 +586,145 @@
     ],
     "whyItWorks": "B2B, SaaS, and financial advertisers pay some of the highest CPMs on YouTube ($25-$40+). Founders and creators binge watch-time.",
     "stockFootageKeywords": "Modern glass startup office, software code on screen, founder whiteboard pitch, team celebrating, server room"
+  },
+  {
+    "id": "ancient-empires-chronicles",
+    "category": "History & Civilization",
+    "channelName": "Lost Empires & Ancient Chronicles",
+    "icon": "🏛️",
+    "tagline": "The fall of mighty empires, legendary siege tactics, lost Roman legions, and vanished Bronze Age civilizations.",
+    "masterNiche": "⭐ Ancient History & Civilizations",
+    "subNiches": [
+      "The Fall of the Roman Empire: Corruption, Invasions & Collapse",
+      "Ancient Egypt: Pharaoh Tomb Curses, Pyramids & Engineering",
+      "Medieval Siege Warfare: Catapults, Castles & Starvation Tactics",
+      "The Bronze Age Collapse: How Civilizations Vanished in 50 Years",
+      "The Viking Invasions: Longships, Raids & The Great Heathen Army"
+    ],
+    "targetAudience": "Ages 20–65, history enthusiasts, students, documentary bingers, and armchair generals.",
+    "cpm": "$16 – $34",
+    "format": "longs_only",
+    "formatLabel": "🖥️ Longs Only (Cinematic History Documentaries)",
+    "modelChannels": "Fall of Civilizations, Kings and Generals, Weird History",
+    "nameIdeas": ["Empire Chronicles", "Ancient Ledger", "Lost Civilizations", "The Rome Files"],
+    "sampleTitles": [
+      "The 48-Hour Siege That Sacked Rome and Ended an Era",
+      "How an Entire Bronze Age Civilization Vanished in 50 Years",
+      "The Medieval Castle Defense Engineering That Defied 100,000 Troops"
+    ],
+    "whyItWorks": "History documentaries have the highest average watch time on YouTube (often 15–30 minutes). Exceptional retention triggers algorithmic home-feed promotion.",
+    "stockFootageKeywords": "Ancient stone ruins, roman columns, medieval sword and armor, torch in stone hallway, ancient map"
+  },
+  {
+    "id": "cosmic-space-frontiers",
+    "category": "Science & Nature",
+    "channelName": "The Cosmic Void & Space Mysteries",
+    "icon": "🔭",
+    "tagline": "James Webb discoveries, supermassive black hole physics, the Fermi paradox, and alien rogue worlds.",
+    "masterNiche": "⭐ Space, Astronomy & The Cosmos",
+    "subNiches": [
+      "James Webb Space Telescope: Shocking Discoveries That Break Physics",
+      "Supermassive Black Holes: The Monsters at the Centers of Galaxies",
+      "The Fermi Paradox: Where Are All the Alien Civilizations?",
+      "The Event Horizon: What Happens If You Fall Into a Black Hole",
+      "Exoplanets That Defy Logic: Diamond Planets & Iron Rain Worlds"
+    ],
+    "targetAudience": "Ages 16–55, science enthusiasts, astronomy fans, students, and curious thinkers.",
+    "cpm": "$14 – $28",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Viral astronomy Shorts + Deep space Longs)",
+    "modelChannels": "Astrum, SEA, Kosmo, Melodysheep",
+    "nameIdeas": ["The Cosmic Void", "Deep Space Horizon", "Astrophysics Lab", "Event Horizon Files"],
+    "sampleTitles": [
+      "What the James Webb Telescope Just Found at the Edge of the Universe",
+      "The Terrifying Physics of Falling Into a Supermassive Black Hole",
+      "Why the Fermi Paradox Is Far More Terrifying Than We Thought"
+    ],
+    "whyItWorks": "NASA and ESA footage is 100% public domain. Space awe and cosmic dread produce viral click-through rates across all age brackets worldwide.",
+    "stockFootageKeywords": "Galaxy spiral, telescope looking at stars, nebula glowing gas, astronaut helmet reflection, earth from space"
+  },
+  {
+    "id": "military-defense-briefing",
+    "category": "Disasters & Engineering",
+    "channelName": "Tactical Briefing & Modern Warfare",
+    "icon": "🛡️",
+    "tagline": "5th-generation stealth fighters, silent nuclear submarine operations, carrier battle groups, and tactical geopolitics.",
+    "masterNiche": "⭐ Military & Modern Defense Technology",
+    "subNiches": [
+      "5th-Gen Stealth Fighters: F-35 vs F-22 vs J-20 Technology Breakdown",
+      "Inside Nuclear Submarines: Silent Killers Under Arctic Ice",
+      "Aircraft Carrier Battlegroups: The Supreme Power of Floating Cities",
+      "The Malacca Strait & Global Maritime Chokepoint Geopolitics",
+      "Hypersonic Missile Technology & Anti-Air Defense Shields"
+    ],
+    "targetAudience": "Ages 22–65, veterans, defense enthusiasts, engineers, and geopolitics followers.",
+    "cpm": "$20 – $40",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Hardware tech Shorts + Strategic geopolitical Longs)",
+    "modelChannels": "Task & Purpose, Binkov's Battlegrounds, Covert Cabal",
+    "nameIdeas": ["Tactical Briefing", "Defense Matrix", "Combat Engineering", "The War Room"],
+    "sampleTitles": [
+      "Why the F-22 Raptor is Still Undefeated in Aerial Combat",
+      "The Silent 90-Day Mission Inside a Trident Nuclear Submarine",
+      "The Strategic Chokepoint That Could Paralyze Global Trade in 24 Hours"
+    ],
+    "whyItWorks": "US Department of Defense (DVIDS) footage is completely free and public domain. Defense hardware attracts a high-income adult demographic that commands top-tier advertiser bids.",
+    "stockFootageKeywords": "Stealth fighter jet taking off, aircraft carrier deck, military radar screen, soldiers tactical training, warship at sea"
+  },
+  {
+    "id": "unsolved-cold-files",
+    "category": "Business & Crime",
+    "channelName": "Unsolved Enigmas & Forensic Cold Files",
+    "icon": "🔎",
+    "tagline": "Vanished expeditions, cold case forensic breakthroughs, centuries-old unsolved ciphers, and eerie true mysteries.",
+    "masterNiche": "⭐ Unsolved Mysteries & Dark Forensics",
+    "subNiches": [
+      "The Dyatlov Pass Incident: What Really Killed the 9 Skiers?",
+      "The Voynich Manuscript: The Centuries-Old Cipher No One Can Crack",
+      "Vanished Flights & Maritime Ghost Ships: The Mary Celeste & Beyond",
+      "Unsolved Forensic Cold Cases That Baffled the FBI for Decades",
+      "The Disappearance of the Roanoke Lost Colony: What History Knows"
+    ],
+    "targetAudience": "Ages 18–55, mystery enthusiasts, armchair investigators, and true crime fans.",
+    "cpm": "$18 – $36",
+    "format": "longs_only",
+    "formatLabel": "🖥️ Longs Only (Deep Investigative Mystery Documentaries)",
+    "modelChannels": "Lemmino, Nexpo, Barely Sociable",
+    "nameIdeas": ["Enigma Files", "The Cold Dossier", "Unsolved Archive", "The Mystery Vault"],
+    "sampleTitles": [
+      "The Forensic Clues That Turn the Dyatlov Pass Mystery on Its Head",
+      "The 600-Year-Old Manuscript That Cryptographers Still Can't Read",
+      "The Ghost Ship Found Drifting in the Atlantic With Zero Crew Aboard"
+    ],
+    "whyItWorks": "Unsolved mysteries leverage powerful open-loop psychological hooks. Viewers watch through to the end and post hundreds of comments discussing their own theories.",
+    "stockFootageKeywords": "Detective examining old documents, foggy pine forest, dark stormy sea, magnifying glass over map, typewriter"
+  },
+  {
+    "id": "megastructures-engineering",
+    "category": "Disasters & Engineering",
+    "channelName": "Megastructures & Colossal Engineering",
+    "icon": "🏗️",
+    "tagline": "Deepest undersea tunnels, megastructure skyscrapers, colossal dam marvels, and extreme human construction.",
+    "masterNiche": "⭐ Mega-Engineering & Human Marvels",
+    "subNiches": [
+      "The Three Gorges Dam: The Megaproject That Slowed Earth's Rotation",
+      "How Undersea Tunnels Are Dug: The Channel Tunnel & Gotthard Base",
+      "Burj Khalifa & Megatall Towers: How Engineers Defy Hurricane Winds",
+      "The Panama Canal Expansion: Moving Container Ships Across Mountains",
+      "The Nuclear Sarcophagus: Engineering the Chernobyl Arch Containment"
+    ],
+    "targetAudience": "Ages 18–60, engineers, builders, tech enthusiasts, and infrastructure buffs.",
+    "cpm": "$18 – $35",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Construction time-lapse Shorts + Engineering deep dive Longs)",
+    "modelChannels": "The B1M, Practical Engineering, Top Luxury",
+    "nameIdeas": ["Mega Engineering", "Colossal Feats", "The Build Vault", "Titan Structures"],
+    "sampleTitles": [
+      "The Insane Engineering Behind the Dam That Slowed Earth's Rotation",
+      "How Machines Dig Tunnels 1,000 Feet Below the Ocean Floor",
+      "The $1.5 Billion Chernobyl Arch Engineered to Last 100 Years"
+    ],
+    "whyItWorks": "Infrastructure and massive machinery have universal visual appeal. Construction, software, and industrial advertisers pay premium CPMs for this audience.",
+    "stockFootageKeywords": "Giant construction crane, skyscraper framework, dam water rushing, workers in hardhats, tunnel boring machine"
   }
 ]

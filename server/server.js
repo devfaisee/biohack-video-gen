@@ -2119,6 +2119,11 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                 "Food Science":      { slots: [18] },        // 2 PM EST — food curiosity
                 "Fitness":           { slots: [12] },        // 8 AM EST — morning workout crowd
                 "Cinematic Geography": { slots: [19] },      // 3 PM EST — visual wanderlust
+                "Mega-Engineering":  { slots: [17] },        // 1 PM EST — afternoon wonder
+                "White-Collar":      { slots: [21] },        // 5 PM EST — after work exposés
+                "Travel":            { slots: [19] },        // 3 PM EST — evening escapism
+                "Pets":              { slots: [13] },        // 9 AM EST — morning scrolling
+                "Interior Design":   { slots: [15] },        // 11 AM EST — midday aesthetic
 
                 // ── FALLBACK ──
                 "default":           { slots: [15] }         // 11 AM EST
