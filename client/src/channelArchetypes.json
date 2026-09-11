@@ -558,5 +558,33 @@
     ],
     "whyItWorks": "Human connection and self-doubt are universal. Relationship and psychology content has extraordinarily high emotional engagement and comment section activity.",
     "stockFootageKeywords": "Two people talking at cafe, close up of eyes smiling, walking alone in city, friends laughing"
+  },
+  {
+    "id": "startup-empire-builders",
+    "category": "Finance & Wealth",
+    "channelName": "Startup Empire Builders & Founder Secrets",
+    "icon": "🚀",
+    "tagline": "Origin stories of billion-dollar unicorns, post-mortems of spectacular startup crashes, and scaling playbooks.",
+    "masterNiche": "⭐ Business & Entrepreneurship",
+    "subNiches": [
+      "Billion-Dollar Startup Case Studies & Origin Stories",
+      "Post-Mortems of Famous Startup Failures",
+      "Growth Hacking & High-ROI Digital Marketing",
+      "Scaling a Business from Zero to One Million Dollars",
+      "SaaS Business Models & Subscription Recurring Revenue"
+    ],
+    "targetAudience": "Ages 20–50, founders, startup operators, ambitious professionals, and business builders.",
+    "cpm": "$22 – $42",
+    "format": "both",
+    "formatLabel": "⚖️ Balanced (Viral founder lessons Shorts + Deep autopsy Longs)",
+    "modelChannels": "MagnatesMedia, Slidebean, My First Million, Starter Story",
+    "nameIdeas": ["Startup Autopsy", "Venture Blueprint", "Empire Builders", "Founder Mechanics"],
+    "sampleTitles": [
+      "How Notion Survived Near-Bankruptcy to Become a $10 Billion Giant",
+      "The $3.4 Billion Mistake: The Post-Mortem of Fast.co",
+      "Why 90% of Bootstrapped SaaS Founders Fail in Month 6"
+    ],
+    "whyItWorks": "B2B, SaaS, and financial advertisers pay some of the highest CPMs on YouTube ($25-$40+). Founders and creators binge watch-time.",
+    "stockFootageKeywords": "Modern glass startup office, software code on screen, founder whiteboard pitch, team celebrating, server room"
   }
 ]

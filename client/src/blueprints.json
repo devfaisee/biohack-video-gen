@@ -11,7 +11,7 @@
       "Wall Street Exposed"
     ],
     "modelChannels": "Coffeezilla, James Jani, Spencer Cornelia",
-    "cpm": " – +",
+    "cpm": "$25 – $50+",
     "recommendedFormat": "longs_only",
     "formatLabel": "🖥️ Longs Only (Documentaries)",
     "summary": "Expose fake billionaires, Wall Street Ponzi schemes, corporate fraudsters, and crypto rugpulls without showing your face.",
@@ -41,14 +41,14 @@
       "The Fallen Giant"
     ],
     "modelChannels": "MagnatesMedia, ColdFusion, Company Man",
-    "cpm": " – ",
+    "cpm": "$22 – $40",
     "recommendedFormat": "longs_only",
     "formatLabel": "🖥️ Longs Only (Mini-Documentaries)",
     "summary": "Cinematic mini-documentaries breaking down how multi-billion dollar monopolies crashed or how toxic CEOs ruined their empires.",
     "targetAudience": "Business enthusiasts, ambitious founders, and casual viewers who love corporate drama.",
     "sampleTitles": [
       "The Arrogant Mistake That Destroyed Blockbuster in 48 Hours",
-      "How WeWork Burned  Billion and Made the Founder a Billionaire",
+      "How WeWork Burned $47 Billion and Made the Founder a Billionaire",
       "The Whistleblower Who Ended Big Tobacco’s 50-Year Monopoly"
     ],
     "topicsToLock": [
@@ -71,7 +71,7 @@
       "Brain & Body Longevity"
     ],
     "modelChannels": "Peter Attia, Dr. Brad Stanfield, Huberman Style",
-    "cpm": " – ",
+    "cpm": "$18 – $32",
     "recommendedFormat": "both",
     "formatLabel": "🔀 Both (Shorts Tips + Long Explainers)",
     "summary": "Actionable health protocols for people 45-75 looking to protect their memory, prevent dementia, ease joints, and live disease-free.",
@@ -101,7 +101,7 @@
       "Next-Gen Tech"
     ],
     "modelChannels": "Cleo Abram, ColdFusion Tech, Matt Wolfe",
-    "cpm": " – ",
+    "cpm": "$20 – $38",
     "recommendedFormat": "both",
     "formatLabel": "🔀 Both (Viral Shorts + Deep Dives)",
     "summary": "Futuristic AI breakthroughs, humanoid robots, autonomous cars, and the silent technology wars shaping civilization.",
@@ -131,7 +131,7 @@
       "The 1% Standard"
     ],
     "modelChannels": "Alux.com, Ben Lionel Scott, FarFromAverage",
-    "cpm": " – ",
+    "cpm": "$15 – $30",
     "recommendedFormat": "shorts_only",
     "formatLabel": "📱 Shorts Only (High Viral CTR)",
     "summary": "Aspirational lifestyles, private aviation, billionaire daily disciplines, hypercars, and unwritten social rules of the elite.",
@@ -139,7 +139,7 @@
     "sampleTitles": [
       "The 4 AM Routine of Self-Made Multi-Billionaires",
       "Old Money vs New Money: 5 Insecurities That Expose You",
-      "Inside the ,000,000 Mega-Yacht With Its Own Submarine"
+      "Inside the $250,000,000 Mega-Yacht With Its Own Submarine"
     ],
     "topicsToLock": [
       "Billionaire Daily Routines, Morning Habits & Deep Work",
@@ -161,7 +161,7 @@
       "Mariana Trench Files"
     ],
     "modelChannels": "Real Science, BlueWorld, BBC Earth Faceless",
-    "cpm": " – ",
+    "cpm": "$9 – $18",
     "recommendedFormat": "longs_only",
     "formatLabel": "🖥️ Longs Only (Deep Sea Documentaries)",
     "summary": "Cinematic, hauntingly beautiful documentaries about alien-like abyssal creatures, shipwrecks, and unexplored ocean trenches.",
@@ -191,7 +191,7 @@
       "Compact Architecture"
     ],
     "modelChannels": "Never Too Small, Architectural Digest Faceless",
-    "cpm": " – ",
+    "cpm": "$14 – $26",
     "recommendedFormat": "both",
     "formatLabel": "🔀 Both (Shorts Decor Hacks + Home Tours)",
     "summary": "Clever small-apartment space hacks, Japandi minimalism, budget room makeovers, and architectural walkthroughs.",
@@ -221,7 +221,7 @@
       "The Faithful Hound"
     ],
     "modelChannels": "Jaw-Dropping Facts Dogs, Animalogic",
-    "cpm": " – ",
+    "cpm": "$12 – $24",
     "recommendedFormat": "shorts_only",
     "formatLabel": "📱 Shorts Only (Extreme Viral Retention)",
     "summary": "Dog breed origins, obedience hacks, puppy psychology, and understanding what your dog’s body language actually means.",
@@ -251,7 +251,7 @@
       "The Price Hack"
     ],
     "modelChannels": "How Money Works, PolyMatter, Economics Explained",
-    "cpm": " – ",
+    "cpm": "$15 – $28",
     "recommendedFormat": "both",
     "formatLabel": "🔀 Both (Shorts Tricks + Deep Breakdowns)",
     "summary": "Exposing the dirty psychological traps that supermarkets, casinos, credit card companies, and advertisers use on your brain.",
@@ -281,19 +281,19 @@
       "Hidden Earth Guides"
     ],
     "modelChannels": "Geography Now, Wolters World, Travel Alone Idea",
-    "cpm": " – ",
+    "cpm": "$14 – $28",
     "recommendedFormat": "longs_only",
     "formatLabel": "🖥️ Longs Only (Travel Guides)",
-    "summary": "Cinematic guides to secret travel gems, top countries where you can retire for under ,200/month, and scenic road trips.",
+    "summary": "Cinematic guides to secret travel gems, top countries where you can retire for under $1,200/month, and scenic road trips.",
     "targetAudience": "Travelers, digital nomads, retirees, and dreamers looking for beautiful escapism.",
     "sampleTitles": [
       "5 European Hidden Gems Tourists Completely Overlook in 2026",
-      "Top 7 Safest Countries to Retire Overseas for ,200 a Month",
-      "How to Backpack Across Western Europe on  a Day"
+      "Top 7 Safest Countries to Retire Overseas for $1,200 a Month",
+      "How to Backpack Across Western Europe on $50 a Day"
     ],
     "topicsToLock": [
       "Undiscovered & Hidden Gem Travel Destinations Around the World",
-      "Budget Travel Hacks: Exploring Western Europe on  a Day",
+      "Budget Travel Hacks: Exploring Western Europe on $50 a Day",
       "Top 10 Best Affordable & Safe Countries to Retire Overseas",
       "Iconic Road Trip Itineraries: Route 66, Pacific Coast & Amalfi",
       "Tourist Traps & Overrated Cities You Should Skip"

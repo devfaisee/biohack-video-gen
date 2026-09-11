@@ -141,13 +141,9 @@ async function autoGenerateVideos() {
         };
 
         for (const channel of channels) {
-            const niches = channel.mapped_niches || [];
+            let niches = channel.mapped_niches || [];
             if (niches.length === 0) continue;
 
-            const randomNiche = niches[Math.floor(Math.random() * niches.length)];
-            
-            // ── STOCK-SAFE GATE ──
-            // Auto-mode always uses stock_videos. If the mapped niche isn't stock-safe, skip it.
             let nichesData = {};
             try {
                 // Clear require cache so edits to niches.json take effect without restart
@@ -156,25 +152,41 @@ async function autoGenerateVideos() {
             } catch (e) {
                 console.log(`[AUTO-GEN] Could not load niches.json`);
             }
-            
+
+            // Shuffle to pick randomly
+            niches = [...niches].sort(() => Math.random() - 0.5);
+            let randomNiche = null;
             let nicheEntry = null;
             let nicheKey = null;
-            for (const [name, data] of Object.entries(nichesData)) {
-                if (name.startsWith('_')) continue;
-                if (name === randomNiche || randomNiche.includes(name) || name.includes(randomNiche)) {
-                    nicheEntry = data;
-                    nicheKey = name;
+
+            for (const candidateNiche of niches) {
+                let candidateEntry = null;
+                let candidateKey = null;
+                for (const [name, data] of Object.entries(nichesData)) {
+                    if (name.startsWith('_')) continue;
+                    if (name === candidateNiche || candidateNiche.includes(name) || name.includes(candidateNiche)) {
+                        candidateEntry = data;
+                        candidateKey = name;
+                        break;
+                    }
+                }
+                
+                const isStockSafe = candidateEntry && typeof candidateEntry === 'object' && !Array.isArray(candidateEntry) 
+                    ? candidateEntry._stockSafe 
+                    : true;
+                
+                if (isStockSafe) {
+                    randomNiche = candidateNiche;
+                    nicheEntry = candidateEntry;
+                    nicheKey = candidateKey;
                     break;
+                } else {
+                    console.log(`[AUTO-GEN] ⚠️ Skipping "${candidateNiche}" for channel ${channel.channel_name} — NOT stock-safe.`);
                 }
             }
-            
-            // Check stock safety — auto-mode is ALWAYS stock footage
-            const isStockSafe = nicheEntry && typeof nicheEntry === 'object' && !Array.isArray(nicheEntry) 
-                ? nicheEntry._stockSafe 
-                : true; // legacy flat arrays assumed safe
-            
-            if (!isStockSafe) {
-                console.log(`[AUTO-GEN] ⚠️ Skipping "${randomNiche}" for channel ${channel.channel_name} — NOT stock-safe (requires AI images). Auto-mode only runs stock-safe niches.`);
+
+            if (!randomNiche) {
+                console.log(`[AUTO-GEN] ⚠️ No stock-safe niches found for channel ${channel.channel_name}. Skipping channel.`);
                 continue;
             }
 
@@ -190,8 +202,8 @@ async function autoGenerateVideos() {
                 // Deterministic Balancing: Query the last 10 videos generated for this niche
                 // Shorts have <= 6 segments, Longs have > 6 segments
                 const pastVideos = await db.query(
-                    "SELECT jsonb_array_length(script->'segments') as seg_count FROM videos WHERE niche = $1 AND script->'segments' IS NOT NULL ORDER BY created_at DESC LIMIT 10", 
-                    [randomNiche]
+                    "SELECT jsonb_array_length(script->'segments') as seg_count FROM videos WHERE niche = $1 AND channel_id = $2 AND script->'segments' IS NOT NULL ORDER BY created_at DESC LIMIT 10", 
+                    [randomNiche, channel.channel_id]
                 );
                 
                 let pastShorts = 0;
@@ -237,8 +249,8 @@ async function autoGenerateVideos() {
                     if (subNichePool && subNichePool.length > 0) {
                         // Query recently used sub-niches (last 14 days)
                         const recentRes = await db.query(
-                            "SELECT DISTINCT script->>'subNiche' as sub FROM videos WHERE niche = $1 AND created_at > NOW() - INTERVAL '14 days' AND script->>'subNiche' IS NOT NULL",
-                            [randomNiche]
+                            "SELECT DISTINCT script->>'subNiche' as sub FROM videos WHERE niche = $1 AND channel_id = $2 AND created_at > NOW() - INTERVAL '14 days' AND script->>'subNiche' IS NOT NULL",
+                            [randomNiche, channel.channel_id]
                         );
                         const recentlyUsed = new Set(recentRes.rows.map(r => r.sub));
                         
@@ -384,6 +396,7 @@ async function retryPendingUploads() {
                 }
             } catch (retryErr) {
                 console.error(`[UPLOAD-RETRY] Retry failed for video ${video.id}:`, retryErr.message);
+                await db.query("UPDATE videos SET status = 'upload_failed' WHERE id = $1", [video.id]);
             }
         }
     } catch (err) {

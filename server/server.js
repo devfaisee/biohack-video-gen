@@ -368,8 +368,8 @@ ${worstRes.rows.map(r => `  * Title: "${r.title}" (Retention: ${r.retention}%) -
 
                 // Fetch recent titles for this niche/channel to prevent repetitive content
                 const pastTitlesRes = await db.query(
-                    "SELECT title FROM videos WHERE (niche = $1 OR (script->>'subNiche') = $2) AND title IS NOT NULL AND title != '' AND title != 'Auto-Gen Failed' ORDER BY created_at DESC LIMIT 15",
-                    [mainNiche, subNiche]
+                    `SELECT title FROM videos WHERE niche = $1 AND title IS NOT NULL AND title != '' AND title != 'Auto-Gen Failed' ${channelId ? 'AND channel_id = $3' : ''} ORDER BY created_at DESC LIMIT 50`,
+                    channelId ? [mainNiche, subNiche, channelId] : [mainNiche, subNiche]
                 );
                 if (pastTitlesRes.rows.length > 0) {
                     pastTitlesContext = `
@@ -458,7 +458,117 @@ Treat this as a broadcast-grade investigative documentary or high-retention vide
         const safeSubNiche = subNiche.replace(/&/g, 'and').replace(/\s+/g, ' ').trim();
 
 
-        if (nicheKey.includes("revenge") || nicheKey.includes("justice")) {
+        // ═══════════════════════════════════════════════════════════════════
+        // NICHE ROUTING ENGINE v2.0 — ORDERED MOST-SPECIFIC → MOST-GENERIC
+        // CRITICAL: Specific niche names MUST come before generic keyword patterns
+        // to prevent "Food, Nutrition & Culinary History" from matching "history",
+        // "Survival & Disaster Science" from matching "science", etc.
+        // ═══════════════════════════════════════════════════════════════════
+
+        // ── TIER 1: EXACT MULTI-WORD NICHE MATCHES (highest specificity) ──
+        if (nicheKey.includes("white-collar") || nicheKey.includes("scam")) {
+            voiceId = "Algenib";
+            voicePrompt = "Seasoned financial crime investigator. Grave, authoritative, methodical.";
+            nicheRules = `
+CRITICAL WHITE-COLLAR CRIME & SCAM EXPOSÉ RULES:
+1. TONE: Sound like a seasoned investigative journalist exposing financial fraud — grave, methodical, authoritative.
+2. INVESTIGATION: Present evidence chronologically — the scheme, the red flags everyone missed, and the unraveling.
+3. SPECIFICS: Include exact dollar amounts, court case numbers, SEC filings, and victim counts.
+4. SAFETY: Use safe alternatives for violent words: "eliminated", "tragic end", "perished", "vanished".`;
+        } else if (nicheKey.includes("dark psychology") || nicheKey.includes("manipulation")) {
+            voiceId = "Charon";
+            voicePrompt = "Knowledgeable insider revealing hidden mental truths. Confident, slightly conspiratorial, but professional.";
+            nicheRules = `
+CRITICAL DARK PSYCHOLOGY RULES:
+1. TONE: Sound like a knowledgeable insider revealing hidden human behavior truths.
+2. EXAMPLES: Every concept MUST include a vivid real-world scenario the viewer can relate to.
+3. STRUCTURE: Present each tactic/concept as a numbered "law" or "technique" for maximum retention.`;
+        } else if (nicheKey.includes("money psychology") || nicheKey.includes("consumer behavior")) {
+            voiceId = "Charon";
+            voicePrompt = "Behavioral economics expert. Revealing hidden spending traps with data-backed precision.";
+            nicheRules = `
+CRITICAL MONEY PSYCHOLOGY & CONSUMER BEHAVIOR RULES:
+1. TONE: Sound like a behavioral economist exposing invisible manipulation — fascinated, data-driven, slightly outraged.
+2. EXPERIMENTS: Reference specific psychology studies (Kahneman, Thaler, Ariely) with experiment details.
+3. REAL-WORLD: Connect every bias to a real store layout, casino mechanic, or pricing strategy the viewer encounters daily.`;
+        } else if (nicheKey.includes("self-improvement") || nicheKey.includes("productivity")) {
+            voiceId = "Puck";
+            voicePrompt = "High-performance coach. Direct, motivating, evidence-based, zero fluff.";
+            nicheRules = `
+CRITICAL SELF-IMPROVEMENT & PRODUCTIVITY RULES:
+1. TONE: Sound like an elite performance coach — direct, motivating, no-nonsense, evidence-backed.
+2. SCIENCE: Reference specific studies, books, and researchers (Atomic Habits, Deep Work, Flow State research).
+3. PROTOCOL: Every video must give the viewer ONE specific, actionable system they can implement today.
+4. ANTI-GENERIC: Never say "just believe in yourself." Every claim must be backed by neuroscience or behavioral data.`;
+        } else if (nicheKey.includes("real estate") || nicheKey.includes("property")) {
+            voiceId = "Charon";
+            voicePrompt = "Savvy real estate analyst. Authoritative, data-driven, fast-paced insider knowledge.";
+            nicheRules = `
+CRITICAL REAL ESTATE & PROPERTY RULES:
+1. TONE: Sound like an experienced real estate investor sharing insider market intelligence.
+2. DATA: Include specific market prices, cap rates, mortgage calculations, and ROI projections.
+3. CASE STUDIES: Use real neighborhoods, cities, and market cycles as examples.
+4. ACTIONABLE: Provide mathematical frameworks the viewer can use to evaluate deals.`;
+        } else if (nicheKey.includes("interior design")) {
+            voiceId = "Rasalgethi";
+            voicePrompt = "Cultured interior design expert. Warm, knowledgeable, deeply aesthetic.";
+            nicheRules = `
+CRITICAL INTERIOR DESIGN & ARCHITECTURE RULES:
+1. TONE: Sound like a refined interior architect. Cultured, warm, deeply knowledgeable about design theory.
+2. SPECIFICS: Reference exact design movements (Japandi, Mid-Century Modern, Brutalist), materials, and color palettes.
+3. ACTIONABLE: Provide specific product recommendations, spatial tricks, and before/after transformation details.
+4. VISUALS: Describe warm lighting, natural textures, clean lines, and curated living spaces.`;
+        } else if (nicheKey.includes("dogs") || nicheKey.includes("pets") || nicheKey.includes("canine")) {
+            voiceId = "Achird";
+            voicePrompt = "Warm, knowledgeable animal expert. Enthusiastic, caring, deeply informative.";
+            nicheRules = `
+CRITICAL DOGS & PETS RULES:
+1. TONE: Sound like a passionate veterinary behaviorist — warm, caring, deeply informative.
+2. BREEDS: Include specific breed histories, temperament genetics, AKC/FCI classifications, and working lineages.
+3. SCIENCE: Back training advice with positive reinforcement science and canine cognitive research.
+4. SAFETY: Flag common household toxins, poisonous foods, and breed-specific health risks with urgency.`;
+        } else if (nicheKey.includes("ocean") || nicheKey.includes("marine")) {
+            voiceId = "Charon";
+            voicePrompt = "Deep sea explorer narrator. Awestruck, mysterious, hauntingly beautiful delivery.";
+            nicheRules = `
+CRITICAL OCEAN & MARINE SCIENCE RULES:
+1. TONE: Sound like an awestruck deep-sea explorer narrating discoveries in the abyss — mysterious, reverent.
+2. SCALE: Emphasize extreme depths, pressures, and the alien nature of deep-sea ecosystems.
+3. SPECIES: Include specific scientific names, bioluminescence mechanisms, and evolutionary adaptations.
+4. WONDER: Every segment must reveal something about the ocean that feels like discovering an alien world.`;
+        } else if (nicheKey.includes("food") || nicheKey.includes("cooking") || nicheKey.includes("culinary") || nicheKey.includes("nutrition")) {
+            voiceId = "Zubenelgenubi";
+            voicePrompt = "Investigative food journalist. Curious, engaging, and fascinating.";
+            nicheRules = `
+CRITICAL FOOD SCIENCE RULES:
+1. TONE: Investigative journalist meets food scientist. Curious, slightly outraged at industrial food engineering.
+2. REVELATION: Each segment should expose something the viewer never knew about the food they eat daily.`;
+        } else if (nicheKey.includes("relationship") || nicheKey.includes("social") || nicheKey.includes("dating")) {
+            voiceId = "Sulafat";
+            voicePrompt = "Empathetic, articulate interpersonal strategist. Warm, perceptive, and direct.";
+            nicheRules = `
+CRITICAL RELATIONSHIP RULES:
+1. TONE: Sound like a perceptive interpersonal psychologist. Empathetic but direct.
+2. PSYCHOLOGY: Back every point with attachment theory, body language cues, or social dynamics research.
+3. RELATABILITY: Open each concept with a scenario the viewer has personally experienced.`;
+        } else if (nicheKey.includes("survival") || nicheKey.includes("disaster") || nicheKey.includes("prepper")) {
+            voiceId = "Algenib";
+            voicePrompt = "Grave, serious narrator detailing an intense timeline of disaster events.";
+            nicheRules = `
+CRITICAL SURVIVAL RULES:
+1. TONE: Start calm, then escalate urgency as the disaster or survival situation unfolds.
+2. TIMELINE: Present events chronologically with specific timestamps for maximum immersion.
+3. STAKES: Make the viewer feel they are witnessing the event unfold in real-time.`;
+        } else if (nicheKey.includes("corporate collapse") || nicheKey.includes("downfall") || nicheKey.includes("rise") || nicheKey.includes("empire")) {
+            voiceId = "Charon";
+            voicePrompt = "Corporate empire documentary narrator. Analytical, dramatic, and compelling.";
+            nicheRules = `
+CRITICAL RISE & FALL RULES:
+1. STRUCTURE: Follow the classic arc — humble beginnings, meteoric rise, fatal flaw, spectacular collapse.
+2. HUMAN ELEMENT: Focus on the specific decisions and executives that caused the rise AND the collapse.`;
+
+        // ── TIER 2: KEYWORD MATCHES (medium specificity) ──
+        } else if (nicheKey.includes("revenge") || nicheKey.includes("justice")) {
             voiceId = "Algenib";
             voicePrompt = "Grave, serious narrator recounting a dark payback tale. Steady, deliberate pacing.";
             nicheRules = `
@@ -483,14 +593,6 @@ CRITICAL HORROR RULES:
 1. ATMOSPHERE: Build dread slowly. Start normal, then let wrongness creep in gradually.
 2. VISUALS: Dark, unsettling, liminal space imagery. Empty hallways, fog, distorted shadows, eerie landscapes.
 3. NEVER RESOLVE FULLY: Leave a lingering sense of unease. The best horror doesn't fully explain everything.`;
-        } else if (nicheKey.includes("dark psychology") || nicheKey.includes("psychology") || nicheKey.includes("manipulation")) {
-            voiceId = "Charon";
-            voicePrompt = "Knowledgeable insider revealing hidden mental truths. Confident, slightly conspiratorial, but professional.";
-            nicheRules = `
-CRITICAL DARK PSYCHOLOGY RULES:
-1. TONE: Sound like a knowledgeable insider revealing hidden human behavior truths.
-2. EXAMPLES: Every concept MUST include a vivid real-world scenario the viewer can relate to.
-3. STRUCTURE: Present each tactic/concept as a numbered "law" or "technique" for maximum retention.`;
         } else if (nicheKey.includes("stoicism") || nicheKey.includes("philosophy")) {
             voiceId = "Schedar";
             voicePrompt = "Wise, contemplative, and profound. Slow, deliberate, and deeply calming delivery.";
@@ -571,28 +673,6 @@ CRITICAL GAMING RULES:
 1. TONE: Sound like a passionate gaming journalist or documentarian — deep knowledge, high energy.
 2. HISTORY: Include specific game release dates, developer studios, speedrun records, and iconic community moments.
 3. DRAMA: Focus on the human stories — rivalries, controversies, underdog victories.`;
-        } else if (nicheKey.includes("science") || nicheKey.includes("biology") || nicheKey.includes("tech") || nicheKey.includes("technology")) {
-            voiceId = "Charon";
-            voicePrompt = "Futuristic tech & science visionary. Sharp, precise, and highly engaging.";
-            nicheRules = `
-CRITICAL SCIENCE & TECH RULES:
-1. TONE: High-level tech communicator explaining breakthrough innovations.
-2. MECHANICS: Clearly explain HOW the mechanism or technology works in simple, vivid visual analogies.`;
-        } else if (nicheKey.includes("history") || nicheKey.includes("civiliz") || nicheKey.includes("geopolit") || nicheKey.includes("ancient")) {
-            voiceId = "Rasalgethi";
-            voicePrompt = "Epic documentary narrator. Dramatic, grand, painting vast historical canvases.";
-            nicheRules = `
-CRITICAL HISTORY RULES:
-1. TONE: Sound like an epic documentary narrator — dramatic, grand, painting vast historical canvases.
-2. STORYTELLING: Frame history as a STORY with characters, motivations, betrayals, and consequences.
-3. DETAILS: Include specific dates, names of key figures, and cause-effect chains.`;
-        } else if (nicheKey.includes("corporate collapse") || nicheKey.includes("downfall") || nicheKey.includes("rise") || nicheKey.includes("empire")) {
-            voiceId = "Charon";
-            voicePrompt = "Corporate empire documentary narrator. Analytical, dramatic, and compelling.";
-            nicheRules = `
-CRITICAL RISE & FALL RULES:
-1. STRUCTURE: Follow the classic arc — humble beginnings, meteoric rise, fatal flaw, spectacular collapse.
-2. HUMAN ELEMENT: Focus on the specific decisions and executives that caused the rise AND the collapse.`;
         } else if (nicheKey.includes("luxury") || nicheKey.includes("motivation") || nicheKey.includes("success") || nicheKey.includes("mindset")) {
             voiceId = "Puck";
             voicePrompt = "High-level elite mentor. Authoritative, intense, fast-paced, high energy.";
@@ -601,7 +681,7 @@ CRITICAL LUXURY & MOTIVATION RULES:
 1. TONE: Sound like an elite high-level mentor — authoritative, intense, fast-paced, no fluff.
 2. VISUALS: Supercars, penthouses, yachts, luxury timepieces, private jets, city skylines at night.
 3. ASPIRATION: Every segment must make the viewer feel they are witnessing a secret of the ultra-successful.`;
-        } else if (nicheKey.includes("finance") || nicheKey.includes("wealth") || nicheKey.includes("money") || nicheKey.includes("investing")) {
+        } else if (nicheKey.includes("finance") || nicheKey.includes("wealth") || nicheKey.includes("investing")) {
             voiceId = "Charon";
             voicePrompt = "Wall Street insider and wealth strategist. Authoritative, sharp, fast-paced delivery.";
             nicheRules = `
@@ -609,14 +689,6 @@ CRITICAL FINANCE RULES:
 1. AUTHORITY: Sound like a high-level financial insider. Use authoritative, fast-paced delivery.
 2. ACTIONABLE: Provide actual value, mathematical breakdowns, or case studies the viewer can use.
 3. PSYCHOLOGY: Tie every financial concept back to a human behavioral insight or cognitive bias.`;
-        } else if (nicheKey.includes("survival") || nicheKey.includes("disaster") || nicheKey.includes("prepper")) {
-            voiceId = "Algenib";
-            voicePrompt = "Grave, serious narrator detailing an intense timeline of disaster events.";
-            nicheRules = `
-CRITICAL SURVIVAL RULES:
-1. TONE: Start calm, then escalate urgency as the disaster or survival situation unfolds.
-2. TIMELINE: Present events chronologically with specific timestamps for maximum immersion.
-3. STAKES: Make the viewer feel they are witnessing the event unfold in real-time.`;
         } else if (nicheKey.includes("nature") || nicheKey.includes("wildlife") || nicheKey.includes("animal")) {
             voiceId = "Achird";
             voicePrompt = "Warm, awestruck, deeply respectful of nature. Calm, inviting, BBC Earth style.";
@@ -625,21 +697,6 @@ CRITICAL NATURE RULES:
 1. TONE: Warm, awestruck, deeply respectful of nature like David Attenborough.
 2. FACTS: Include specific species names, behaviors, and fascinating biological adaptations.
 3. WONDER: Every segment must end on a fact that makes the viewer say they had no idea.`;
-        } else if (nicheKey.includes("food") || nicheKey.includes("cooking") || nicheKey.includes("culinary")) {
-            voiceId = "Zubenelgenubi";
-            voicePrompt = "Investigative food journalist. Curious, engaging, and fascinating.";
-            nicheRules = `
-CRITICAL FOOD SCIENCE RULES:
-1. TONE: Investigative journalist meets food scientist. Curious, slightly outraged at industrial food engineering.
-2. REVELATION: Each segment should expose something the viewer never knew about the food they eat daily.`;
-        } else if (nicheKey.includes("relationship") || nicheKey.includes("social") || nicheKey.includes("dating")) {
-            voiceId = "Sulafat";
-            voicePrompt = "Empathetic, articulate interpersonal strategist. Warm, perceptive, and direct.";
-            nicheRules = `
-CRITICAL RELATIONSHIP RULES:
-1. TONE: Sound like a perceptive interpersonal psychologist. Empathetic but direct.
-2. PSYCHOLOGY: Back every point with attachment theory, body language cues, or social dynamics research.
-3. RELATABILITY: Open each concept with a scenario the viewer has personally experienced.`;
         } else if (nicheKey.includes("unsolved") || nicheKey.includes("conspiracy") || nicheKey.includes("mystery")) {
             voiceId = "Charon";
             voicePrompt = "Enigmatic, measured investigator. Builds suspense with deliberate pauses and a conspiratorial undertone.";
@@ -656,6 +713,31 @@ CRITICAL HEALTH AND BIOHACKING RULES:
 1. TONE: Sound like a cutting-edge health researcher. Evidence-based, no pseudoscience.
 2. CITATIONS: Reference specific studies, journals, or researchers for credibility.
 3. APPLICATION: Give the viewer an actionable protocol they can implement immediately after watching.`;
+
+        // ── TIER 3: GENERIC KEYWORD CATCHES (lowest specificity — MUST come last) ──
+        } else if (nicheKey.includes("science") || nicheKey.includes("biology") || nicheKey.includes("tech") || nicheKey.includes("technology")) {
+            voiceId = "Charon";
+            voicePrompt = "Futuristic tech & science visionary. Sharp, precise, and highly engaging.";
+            nicheRules = `
+CRITICAL SCIENCE & TECH RULES:
+1. TONE: High-level tech communicator explaining breakthrough innovations.
+2. MECHANICS: Clearly explain HOW the mechanism or technology works in simple, vivid visual analogies.`;
+        } else if (nicheKey.includes("history") || nicheKey.includes("civiliz") || nicheKey.includes("geopolit") || nicheKey.includes("ancient")) {
+            voiceId = "Rasalgethi";
+            voicePrompt = "Epic documentary narrator. Dramatic, grand, painting vast historical canvases.";
+            nicheRules = `
+CRITICAL HISTORY RULES:
+1. TONE: Sound like an epic documentary narrator — dramatic, grand, painting vast historical canvases.
+2. STORYTELLING: Frame history as a STORY with characters, motivations, betrayals, and consequences.
+3. DETAILS: Include specific dates, names of key figures, and cause-effect chains.`;
+        } else if (nicheKey.includes("psychology")) {
+            voiceId = "Charon";
+            voicePrompt = "Knowledgeable insider revealing hidden mental truths. Confident, slightly conspiratorial, but professional.";
+            nicheRules = `
+CRITICAL PSYCHOLOGY RULES:
+1. TONE: Sound like a knowledgeable insider revealing hidden human behavior truths.
+2. EXAMPLES: Every concept MUST include a vivid real-world scenario the viewer can relate to.
+3. STRUCTURE: Present each tactic/concept as a numbered "law" or "technique" for maximum retention.`;
         } else if (nicheKey.includes("geography") || nicheKey.includes("architecture") || nicheKey.includes("travel") || nicheKey.includes("cities")) {
             voiceId = "Rasalgethi";
             voicePrompt = "Worldly, cultured travel narrator. Deeply reverent of place and design.";
@@ -664,6 +746,14 @@ CRITICAL GEOGRAPHY AND ARCHITECTURE RULES:
 1. TONE: Sound like a cultured world traveler. Reverent, awestruck, deeply knowledgeable.
 2. DETAILS: Include specific architectural styles, construction dates, cultural significance, and geographic context.
 3. IMMERSION: Transport the viewer. Make them feel they are standing in the location through vivid sensory narration.`;
+        } else if (nicheKey.includes("money")) {
+            voiceId = "Charon";
+            voicePrompt = "Wall Street insider and wealth strategist. Authoritative, sharp, fast-paced delivery.";
+            nicheRules = `
+CRITICAL FINANCE RULES:
+1. AUTHORITY: Sound like a high-level financial insider. Use authoritative, fast-paced delivery.
+2. ACTIONABLE: Provide actual value, mathematical breakdowns, or case studies the viewer can use.
+3. PSYCHOLOGY: Tie every financial concept back to a human behavioral insight or cognitive bias.`;
         } else {
             voiceId = "Charon";
             voicePrompt = "Top-tier documentary narrator. Factual, professional, and fascinating.";
@@ -766,7 +856,7 @@ Length: 45-65 characters maximum so it is never cut off on mobile YouTube feeds.
 DESCRIPTION & TAGS:
 - Description:
   1. Opening Hook: 2 sentences establishing the high-stakes conflict or core premise.
-  2. Chapters/Timestamps: Real estimated breakdown (e.g., 0:00 - The Discovery, 1:30 - The Breakdown, etc.).
+${isVertical ? '  2. NO chapter timestamps for Shorts — skip this entirely.' : '  2. Chapter Headings: Write thematic chapter labels WITHOUT timestamps (e.g., "The Discovery", "The Breakdown"). Real timestamps are added in post-production.'}
   3. Documentary Context: 100-150 words of rich, search-indexed context with real names and keywords.
   4. Exactly 3-5 trending hashtags (e.g., #documentary #finance #investigation).
 - Tags: 15-20 targeted, relevant tags (no keyword stuffing).
@@ -1893,7 +1983,7 @@ duration ${c.duration.toFixed(3)}`).join('\n');
                     }
                     const fontFamily = fontFaceCSS ? 'Anton' : 'Impact, Arial Black, sans-serif';
                     const accentColor = highlightColorHex || '#FFD700';
-                    const thumbDisplay = thumbTextRaw.toUpperCase();
+                    const thumbDisplay = thumbTextRaw.toUpperCase().replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
                     const words = thumbDisplay.split(' ').slice(0, 3);
                     const lines = words.length <= 2 ? words : [words.slice(0, 2).join(' '), words.slice(2).join(' ')];
@@ -1906,7 +1996,7 @@ duration ${c.duration.toFixed(3)}`).join('\n');
 
                     const lineEls = lines.map((line, idx) => {
                         const textY = startY + idx * lineH + lineH * 0.82;
-                        const textX = Math.round(W * 0.72); // cleanly placed on right without blocking central subject
+                        const textX = Math.round(W * 0.50); // centered on canvas for both vertical and horizontal
                         return `
                             <text
                                 x="${textX}" y="${textY}"
@@ -2088,23 +2178,39 @@ duration ${c.duration.toFixed(3)}`).join('\n');
             }
         }
 
+        // YouTube API safety: enforce title <= 100 chars, tags total <= 500 chars
+        if (scriptData.title && scriptData.title.length > 100) {
+            scriptData.title = scriptData.title.substring(0, 97) + '...';
+        }
+        if (scriptData.tags && Array.isArray(scriptData.tags)) {
+            let totalTagLen = 0;
+            scriptData.tags = scriptData.tags.filter(tag => {
+                totalTagLen += tag.length;
+                return totalTagLen <= 490;
+            });
+        }
+
         // Save to Postgres videos table
         try {
             if (process.env.DATABASE_URL) {
+                // Inject subNiche into scriptData so cron.js 14-day dedup can query it
+                scriptData.subNiche = subNiche;
+                scriptData.channelId = channelId || null;
                 const insertRes = await db.query(`
-                    INSERT INTO videos (youtube_id, title, description, tags, niche, published_at, status, thumbnail_url, script)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    INSERT INTO videos (youtube_id, title, description, tags, niche, published_at, status, thumbnail_url, script, channel_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                     RETURNING id
                 `, [
-                    null, // No youtube_id yet
-                    metadata.title,
-                    metadata.description,
+                    null,
+                    customTitle || metadata.title,
+                    customDescription || metadata.description,
                     JSON.stringify(metadata.tags),
                     metadata.mainNiche,
                     publishAtIso ? new Date(publishAtIso) : new Date(),
                     'generated',
                     metadata.thumbnailUrl,
-                    JSON.stringify(scriptData)
+                    JSON.stringify(scriptData),
+                    channelId || null
                 ]);
                 metadata._dbRowId = insertRes.rows[0]?.id || null;
             }

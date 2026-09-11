@@ -42,9 +42,12 @@ async function initDB() {
         status TEXT,
         thumbnail_url TEXT,
         script JSONB,
-        created_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMP DEFAULT NOW(),
+        channel_id TEXT
       );
     `);
+    await client.query("ALTER TABLE videos ADD COLUMN IF NOT EXISTS channel_id TEXT;");
+    await client.query("CREATE INDEX IF NOT EXISTS idx_videos_channel_id ON videos(channel_id);");
 
     // 3. Analytics Table (The brain for Auto-Learning)
     await client.query(`
